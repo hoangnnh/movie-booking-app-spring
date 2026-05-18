@@ -1,0 +1,494 @@
+@import "tailwindcss";
+
+/* ================================
+   Ticketor Design Tokens - Colors
+   Source: Color Foundation
+================================ */
+
+@theme {
+    /* Primary */
+    --color-primary-900: #3a3a04;
+    --color-primary-800: #7e7e09;
+    --color-primary-700: #cbcb04;
+    --color-primary-600: #fbfb1e;
+    --color-primary-500: #fcfc65;
+    --color-primary-400: #fdfd82;
+    --color-primary-300: #fdfd9e;
+    --color-primary-200: #f7f7c2;
+    --color-primary-100: #fafadc;
+    --color-primary-50: #fcfce8;
+
+    /* Secondary */
+    --color-secondary-900: #133131;
+    --color-secondary-800: #2b6e6e;
+    --color-secondary-700: #3db1b1;
+    --color-secondary-600: #74cfcf;
+    --color-secondary-500: #b3e5e5;
+    --color-secondary-400: #c0e9e9;
+    --color-secondary-300: #cceeee;
+    --color-secondary-200: #dcf0f0;
+    --color-secondary-100: #e7f5f5;
+    --color-secondary-50: #edf7f7;
+
+    /* Neutral */
+    --color-neutral-900: #141418;
+    --color-neutral-700: #353541;
+    --color-neutral-600: #454555;
+    --color-neutral-500: #565669;
+    --color-neutral-400: #73738d;
+    --color-neutral-300: #9797aa;
+    --color-neutral-100: #e0e0e4;
+    --color-neutral-50: #f1f1f3;
+
+    /* Success */
+    --color-success-500: #34b35b;
+    --color-success-400: #5ace7c;
+    --color-success-300: #91e4aa;
+
+    /* Error */
+    --color-error-600: #cb2525;
+    --color-error-500: #df4e4e;
+    --color-error-400: #e57171;
+
+    /* Danger / Warning */
+    --color-danger-600: #f38e30;
+    --color-danger-500: #f5a042;
+    --color-danger-300: #f9c378;
+
+    /* Semantic aliases */
+    --color-app-background: #141418;
+    --color-app-surface: #353541;
+    --color-app-surface-soft: #454555;
+    --color-app-border: #565669;
+
+    --color-app-text: #f1f1f3;
+    --color-app-text-muted: #9797aa;
+    --color-app-text-subtle: #73738d;
+
+    --color-brand: #fbfb1e;
+    --color-brand-hover: #fcfc65;
+    --color-brand-soft: #fafadc;
+    --color-brand-dark: #7e7e09;
+
+    --color-info: #3db1b1;
+    --color-info-soft: #dcf0f0;
+
+
+    /* ================================
+   Ticketor Design Tokens - Typography
+   Font: Manrope
+================================ */
+
+    --font-manrope: "Manrope", sans-serif;
+
+    /* Display */
+    --text-display-1: 64px;
+    --text-display-1--line-height: 1.4;
+
+    --text-display-2: 48px;
+    --text-display-2--line-height: 1.4;
+
+    /* Headings */
+    --text-h1: 44px;
+    --text-h1--line-height: 1.4;
+
+    --text-h2: 42px;
+    --text-h2--line-height: 1.4;
+
+    --text-h3: 36px;
+    --text-h3--line-height: 1.4;
+
+    --text-h4: 32px;
+    --text-h4--line-height: 1.4;
+
+    --text-h5: 20px;
+    --text-h5--line-height: 1.4;
+
+    --text-h6: 16px;
+    --text-h6--line-height: 1.4;
+
+    /* Body */
+    --text-body-xl: 20px;
+    --text-body-xl--line-height: 1.4;
+
+    --text-body-l: 18px;
+    --text-body-l--line-height: 1.4;
+
+    --text-body-m: 16px;
+    --text-body-m--line-height: 1.5;
+
+    --text-body-s: 14px;
+    --text-body-s--line-height: 1.5;
+
+    --text-body-xs: 12px;
+    --text-body-xs--line-height: 1.5;
+
+    /* Caption */
+    --text-caption-l: 14px;
+    --text-caption-l--line-height: 1.4;
+
+    --text-caption-m: 14px;
+    --text-caption-m--line-height: 1.4;
+
+    --text-caption-s: 12px;
+    --text-caption-s--line-height: 1.4;
+
+    /* Button */
+    --text-button-xl: 16px;
+    --text-button-xl--line-height: 1.4;
+
+    --text-button-l: 16px;
+    --text-button-l--line-height: 1.4;
+
+    --text-button-m: 14px;
+    --text-button-m--line-height: 1.4;
+
+    --text-button-s: 14px;
+    --text-button-s--line-height: 1.4;
+
+    /* Label */
+    --text-label-m: 12px;
+    --text-label-m--line-height: 1.4;
+
+    --text-label-s: 12px;
+    --text-label-s--line-height: 1.4;
+
+    --tracking-label: 0.8px;
+
+    /* ================================
+   Ticketor Design Tokens - Layout Grid
+================================ */
+
+    --container-ticketor: 1232px;
+
+    --grid-ticketor-columns: 12;
+    --grid-ticketor-column-width: 88px;
+    --grid-ticketor-gutter: 16px;
+
+    /* ================================
+   Ticketor Design Tokens - Spacing
+================================ */
+
+    --spacing-tk-4: 4px;
+    --spacing-tk-8: 8px;
+    --spacing-tk-12: 12px;
+    --spacing-tk-16: 16px;
+    --spacing-tk-20: 20px;
+    --spacing-tk-24: 24px;
+    --spacing-tk-32: 32px;
+    --spacing-tk-40: 40px;
+    --spacing-tk-48: 48px;
+    --spacing-tk-56: 56px;
+    --spacing-tk-64: 64px;
+    --spacing-tk-72: 72px;
+    --spacing-tk-80: 80px;
+    --spacing-tk-88: 88px;
+    --spacing-tk-96: 96px;
+    --spacing-tk-104: 104px;
+    --spacing-tk-124: 124px;
+
+    /* Semantic spacing aliases */
+    --spacing-page-x: 40px;
+    --spacing-page-y: 32px;
+    --spacing-section: 48px;
+    --spacing-card: 24px;
+    --spacing-card-sm: 16px;
+    --spacing-content-gap: 24px;
+    --spacing-item-gap: 16px;
+
+    /* ================================
+   Ticketor Design Tokens - Radius
+================================ */
+
+    --radius-tk-4: 4px;
+    --radius-tk-8: 8px;
+    --radius-tk-12: 12px;
+
+    /* Semantic radius aliases */
+    --radius-button: 8px;
+    --radius-card: 12px;
+    --radius-input: 8px;
+    --radius-modal: 12px;
+
+    @layer components {
+        .ticketor-container {
+            width: 100%;
+            max-width: var(--container-ticketor);
+            margin-inline: auto;
+            padding-inline: var(--spacing-page-x);
+        }
+
+        .ticketor-grid {
+            display: grid;
+            grid-template-columns: repeat(12, minmax(0, 88px));
+            column-gap: var(--grid-ticketor-gutter);
+            justify-content: center;
+        }
+
+        .page-shell {
+            min-height: 100vh;
+            background: var(--color-app-background);
+            color: var(--color-app-text);
+        }
+
+        .page-section {
+            padding-block: var(--spacing-section);
+        }
+
+        .app-card {
+            border-radius: var(--radius-card);
+            background: var(--color-app-surface);
+            padding: var(--spacing-card);
+        }
+
+        .app-card-sm {
+            border-radius: var(--radius-card);
+            background: var(--color-app-surface);
+            padding: var(--spacing-card-sm);
+        }
+
+        .app-input {
+            border-radius: var(--radius-input);
+            border: 1px solid var(--color-app-border);
+            background: var(--color-app-surface-soft);
+            padding: var(--spacing-tk-12) var(--spacing-tk-16);
+            color: var(--color-app-text);
+        }
+
+        .app-button {
+            border-radius: var(--radius-button);
+            padding: var(--spacing-tk-12) var(--spacing-tk-24);
+        }
+
+        .app-modal {
+            border-radius: var(--radius-modal);
+            background: var(--color-app-surface);
+            padding: var(--spacing-tk-32);
+        }
+    }
+}
+
+@layer base {
+    html {
+        font-family: var(--font-manrope);
+    }
+
+    body {
+        font-family: var(--font-manrope);
+        background: var(--color-app-background);
+        color: var(--color-app-text);
+    }
+}
+
+@layer components {
+    .type-display-1 {
+        font-size: var(--text-display-1);
+        line-height: var(--text-display-1--line-height);
+        font-weight: 800;
+        letter-spacing: 0;
+    }
+
+    .type-display-2 {
+        font-size: var(--text-display-2);
+        line-height: var(--text-display-2--line-height);
+        font-weight: 800;
+        letter-spacing: 0;
+    }
+
+    .type-h1 {
+        font-size: var(--text-h1);
+        line-height: var(--text-h1--line-height);
+        font-weight: 700;
+        letter-spacing: 0;
+    }
+
+    .type-h2 {
+        font-size: var(--text-h2);
+        line-height: var(--text-h2--line-height);
+        font-weight: 700;
+        letter-spacing: 0;
+    }
+
+    .type-h3 {
+        font-size: var(--text-h3);
+        line-height: var(--text-h3--line-height);
+        font-weight: 700;
+        letter-spacing: 0;
+    }
+
+    .type-h4 {
+        font-size: var(--text-h4);
+        line-height: var(--text-h4--line-height);
+        font-weight: 700;
+        letter-spacing: 0;
+    }
+
+    .type-h5 {
+        font-size: var(--text-h5);
+        line-height: var(--text-h5--line-height);
+        font-weight: 700;
+        letter-spacing: 0;
+    }
+
+    .type-h6 {
+        font-size: var(--text-h6);
+        line-height: var(--text-h6--line-height);
+        font-weight: 700;
+        letter-spacing: 0;
+    }
+
+    .type-body-xl {
+        font-size: var(--text-body-xl);
+        line-height: var(--text-body-xl--line-height);
+        font-weight: 400;
+        letter-spacing: 0;
+    }
+
+    .type-body-l {
+        font-size: var(--text-body-l);
+        line-height: var(--text-body-l--line-height);
+        font-weight: 400;
+        letter-spacing: 0;
+    }
+
+    .type-body-m {
+        font-size: var(--text-body-m);
+        line-height: var(--text-body-m--line-height);
+        font-weight: 400;
+        letter-spacing: 0;
+    }
+
+    .type-body-s {
+        font-size: var(--text-body-s);
+        line-height: var(--text-body-s--line-height);
+        font-weight: 400;
+        letter-spacing: 0;
+    }
+
+    .type-body-xs {
+        font-size: var(--text-body-xs);
+        line-height: var(--text-body-xs--line-height);
+        font-weight: 400;
+        letter-spacing: 0;
+    }
+
+    .type-caption-l {
+        font-size: var(--text-caption-l);
+        line-height: var(--text-caption-l--line-height);
+        font-weight: 800;
+        letter-spacing: 0;
+    }
+
+    .type-caption-m {
+        font-size: var(--text-caption-m);
+        line-height: var(--text-caption-m--line-height);
+        font-weight: 400;
+        letter-spacing: 0;
+    }
+
+    .type-caption-s {
+        font-size: var(--text-caption-s);
+        line-height: var(--text-caption-s--line-height);
+        font-weight: 500;
+        letter-spacing: 0;
+    }
+
+    .type-button-xl {
+        font-size: var(--text-button-xl);
+        line-height: var(--text-button-xl--line-height);
+        font-weight: 700;
+        letter-spacing: 0;
+    }
+
+    .type-button-l {
+        font-size: var(--text-button-l);
+        line-height: var(--text-button-l--line-height);
+        font-weight: 500;
+        letter-spacing: 0;
+    }
+
+    .type-button-m {
+        font-size: var(--text-button-m);
+        line-height: var(--text-button-m--line-height);
+        font-weight: 700;
+        letter-spacing: 0;
+    }
+
+    .type-button-s {
+        font-size: var(--text-button-s);
+        line-height: var(--text-button-s--line-height);
+        font-weight: 500;
+        letter-spacing: 0;
+    }
+
+    .type-label-m {
+        font-size: var(--text-label-m);
+        line-height: var(--text-label-m--line-height);
+        font-weight: 500;
+        letter-spacing: var(--tracking-label);
+    }
+
+    .type-label-s {
+        font-size: var(--text-label-s);
+        line-height: var(--text-label-s--line-height);
+        font-weight: 400;
+        letter-spacing: var(--tracking-label);
+    }
+}
+
+@layer components {
+    .ticketor-container {
+        width: 100%;
+        max-width: var(--container-ticketor);
+        margin-inline: auto;
+        padding-inline: var(--spacing-page-x);
+    }
+
+    .ticketor-grid {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 88px));
+        column-gap: var(--grid-ticketor-gutter);
+        justify-content: center;
+    }
+
+    .page-shell {
+        min-height: 100vh;
+        background: var(--color-app-background);
+        color: var(--color-app-text);
+    }
+
+    .page-section {
+        padding-block: var(--spacing-section);
+    }
+
+    .app-card {
+        border-radius: var(--radius-card);
+        background: var(--color-app-surface);
+        padding: var(--spacing-card);
+    }
+
+    .app-card-sm {
+        border-radius: var(--radius-card);
+        background: var(--color-app-surface);
+        padding: var(--spacing-card-sm);
+    }
+
+    .app-input {
+        border-radius: var(--radius-input);
+        border: 1px solid var(--color-app-border);
+        background: var(--color-app-surface-soft);
+        padding: var(--spacing-tk-12) var(--spacing-tk-16);
+        color: var(--color-app-text);
+    }
+
+    .app-button {
+        border-radius: var(--radius-button);
+        padding: var(--spacing-tk-12) var(--spacing-tk-24);
+    }
+
+    .app-modal {
+        border-radius: var(--radius-modal);
+        background: var(--color-app-surface);
+        padding: var(--spacing-tk-32);
+    }
+}
