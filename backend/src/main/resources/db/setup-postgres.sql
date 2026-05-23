@@ -1,0 +1,11 @@
+CREATE DATABASE cinema_booking;
+
+CREATE USER cinema_user WITH PASSWORD 'cinema123';
+
+GRANT ALL PRIVILEGES ON DATABASE cinema_booking TO cinema_user;
+
+\connect cinema_booking
+
+GRANT ALL ON SCHEMA public TO cinema_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO cinema_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO cinema_user;

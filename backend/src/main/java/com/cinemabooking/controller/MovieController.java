@@ -51,6 +51,7 @@ public class MovieController {
 
         return new MovieResponse(
                 movie.getId(),
+                movie.getTmdbId(),
                 movie.getTitle(),
                 movie.getDescription(),
                 movie.getDurationMinutes(),

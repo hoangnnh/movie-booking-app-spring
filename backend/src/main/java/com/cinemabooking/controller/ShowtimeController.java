@@ -3,10 +3,12 @@ package com.cinemabooking.controller;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.cinemabooking.dto.SeatStatusResponse;
 import com.cinemabooking.dto.ShowtimeResponse;
@@ -30,6 +32,14 @@ public class ShowtimeController {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @GetMapping("/showtimes/{showtimeId}")
+    public ShowtimeResponse getShowtimeById(@PathVariable UUID showtimeId) {
+        Showtime showtime = showtimeRepository.findById(showtimeId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Showtime not found"));
+
+        return toResponse(showtime);
     }
 
     @GetMapping("/showtimes/{showtimeId}/seats")
