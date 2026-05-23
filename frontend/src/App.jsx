@@ -1,18 +1,44 @@
-import ProgressAndDetailsPreview from "./pages/ProgressAndDetailsPreview";
-import TimeSelectionPreview from "./pages/TimeSelectionPreview";
-import BookingAtomsPreview from "./pages/BookingAtomsPreview";
-import DashboardPreview from "./pages/DashboardPreview";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useState } from "react";
+import AuthModal from "./components/auth/AuthModal";
+import Navbar from "./components/layout/Navbar";
+import { useAuth } from "./context/useAuth";
 import HomePage from "./pages/HomePage";
 import MovieDetailPage from "./pages/MovieDetailPage";
+import SeatSelectionPage from "./pages/SeatSelectionPage";
+import TimeSelectionPage from "./pages/TimeSelectionPage";
+import TmdbImportPage from "./pages/TmdbImportPage";
 
 export default function App() {
-  return (<>
-    {/* <CardsPreview /> */}
-    {/* <TimeSelectionPreview /> */}
-    {/* <DashboardPreview /> */}
-    {/* <HomePage /> */}
-    {/* <BookingAtomsPreview /> */}
-    <MovieDetailPage />
-  </>
-  )
+  const { user, logout } = useAuth();
+  const [authMode, setAuthMode] = useState(null);
+
+  return (
+    <>
+      <Navbar
+        user={user}
+        onLoginClick={() => setAuthMode("login")}
+        onSignUpClick={() => setAuthMode("signup")}
+        onLogout={logout}
+      />
+
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/movies" element={<HomePage />} />
+        <Route path="/movies/:movieId" element={<MovieDetailPage />} />
+        <Route path="/tmdb" element={<TmdbImportPage />} />
+        <Route path="/booking/:showtimeId" element={<TimeSelectionPage />} />
+        <Route path="/booking/:showtimeId/seats" element={<SeatSelectionPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+
+      {authMode && (
+        <AuthModal
+          mode={authMode}
+          onModeChange={setAuthMode}
+          onClose={() => setAuthMode(null)}
+        />
+      )}
+    </>
+  );
 }

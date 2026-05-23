@@ -20,11 +20,11 @@ export default function MovieCard({
     return (
         <article
             className={cn(
-                "group w-[172px] overflow-hidden bg-app-background text-app-text",
+                "group w-[172px] shrink-0 overflow-hidden bg-app-background text-app-text",
                 className
             )}
         >
-            <div className="relative h-[244px] w-full overflow-hidden bg-neutral-700">
+            <div className="relative aspect-[2/3] w-full overflow-hidden bg-neutral-700">
                 {posterUrl ? (
                     <img
                         src={posterUrl}

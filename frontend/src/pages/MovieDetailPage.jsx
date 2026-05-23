@@ -32,7 +32,7 @@ export default function MovieDetailPage() {
 
         setMovie(movieData);
         setShowtimes(showtimeData);
-      } catch (err) {
+      } catch {
         setError("Cannot load movie details.");
       } finally {
         setLoading(false);
