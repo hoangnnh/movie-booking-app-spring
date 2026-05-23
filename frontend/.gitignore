@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Backend local env
+backend/.env.local
+backend/.env
+
+# Maven build output
+backend/target/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
