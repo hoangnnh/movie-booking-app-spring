@@ -12,6 +12,7 @@ export default function Navbar({
     onSearchClick,
     onLoginClick,
     onSignUpClick,
+    onLogout,
     className = "",
 }) {
     const isLoggedIn = Boolean(user);
@@ -48,14 +49,28 @@ export default function Navbar({
                     <div className="h-[24px] w-px bg-app-border" />
 
                     {isLoggedIn ? (
-                        <button
-                            type="button"
-                            className="flex items-center gap-[12px] text-app-text transition-colors hover:text-brand"
-                        >
-                            <Avatar size={40} src={avatarSrc} alt={user.fullName} />
-                            <span className="type-body-m">{user.fullName}</span>
-                            <ChevronDown className="h-[20px] w-[20px]" />
-                        </button>
+                        <div className="group relative">
+                            <button
+                                type="button"
+                                className="flex items-center gap-[12px] text-app-text transition-colors hover:text-brand"
+                            >
+                                <Avatar size={40} src={avatarSrc} alt={user.fullName} />
+                                <span className="type-body-m">{user.fullName}</span>
+                                <ChevronDown className="h-[20px] w-[20px]" />
+                            </button>
+
+                            <div className="invisible absolute right-0 top-full z-30 min-w-[180px] pt-[12px] opacity-0 transition-opacity group-hover:visible group-hover:opacity-100">
+                                <div className="rounded-tk-8 border border-app-border bg-app-surface p-[8px] shadow-xl">
+                                    <button
+                                        type="button"
+                                        className="w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text-muted transition-colors hover:bg-app-background hover:text-brand"
+                                        onClick={onLogout}
+                                    >
+                                        Logout
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     ) : (
                         <div className="flex items-center gap-[24px]">
                             <button

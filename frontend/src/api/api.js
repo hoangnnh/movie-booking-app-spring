@@ -42,6 +42,28 @@ export const movieApi = {
   getShowtimes: (movieId) => apiRequest(`/movies/${movieId}/showtimes`),
 };
 
+export const tmdbApi = {
+  searchMovies: (query) =>
+    apiRequest(`/tmdb/movies/search?query=${encodeURIComponent(query)}`),
+
+  importMovie: (tmdbId) =>
+    apiRequest(`/tmdb/movies/${tmdbId}/import`, {
+      method: "POST",
+    }),
+
+  importMovieList: ({ list, pages }) =>
+    apiRequest(
+      `/tmdb/movies/import?list=${encodeURIComponent(list)}&pages=${pages}`,
+      {
+        method: "POST",
+      }
+    ),
+};
+
+export const showtimeApi = {
+  getById: (showtimeId) => apiRequest(`/showtimes/${showtimeId}`),
+};
+
 export const bookingApi = {
   getSeats: (showtimeId) => apiRequest(`/showtimes/${showtimeId}/seats`),
 

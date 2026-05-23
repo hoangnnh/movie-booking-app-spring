@@ -23,7 +23,7 @@ export default function HomePage() {
         setLoading(true);
         const data = await movieApi.getAll();
         setMovies(data);
-      } catch (err) {
+      } catch {
         setError("Cannot load movies from server.");
       } finally {
         setLoading(false);
