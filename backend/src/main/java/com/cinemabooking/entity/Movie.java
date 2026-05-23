@@ -22,6 +22,9 @@ import lombok.Setter;
 @Table(name = "movies")
 public class Movie extends BaseEntity {
 
+    @Column(name = "tmdb_id", unique = true)
+    private Integer tmdbId;
+
     @Column(nullable = false, length = 200)
     private String title;
 
