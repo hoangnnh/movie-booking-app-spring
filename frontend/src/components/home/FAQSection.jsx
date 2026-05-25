@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import Button from "../common/Button";
 import { cn } from "../../utils/cn";
 import { faqs } from "./homeData";
 
 export default function FAQSection() {
   const [openIndex, setOpenIndex] = useState(0);
+  const navigate = useNavigate();
 
   return (
-    <section className="ticketor-container py-[64px]">
+    <section id="faq" className="ticketor-container py-[64px]">
       <div className="mb-[32px] text-center">
         <h2 className="type-h3 text-app-text">Frequently Asked Questions</h2>
         <p className="type-body-m mt-[8px] text-app-text-muted">
@@ -58,7 +60,12 @@ export default function FAQSection() {
           Please contact us.
         </p>
 
-        <Button size={40} variant="primary" className="mt-[16px]">
+        <Button
+          size={40}
+          variant="primary"
+          className="mt-[16px]"
+          onClick={() => navigate("/contact")}
+        >
           Contact Us
         </Button>
       </div>
