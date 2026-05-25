@@ -4,6 +4,7 @@ import AuthModal from "./components/auth/AuthModal";
 import Navbar from "./components/layout/Navbar";
 import { useAuth } from "./context/useAuth";
 import HomePage from "./pages/HomePage";
+import FoodDrinkPage from "./pages/FoodDrinkPage";
 import MovieDetailPage from "./pages/MovieDetailPage";
 import SeatSelectionPage from "./pages/SeatSelectionPage";
 import TimeSelectionPage from "./pages/TimeSelectionPage";
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/tmdb" element={<TmdbImportPage />} />
         <Route path="/booking/:showtimeId" element={<TimeSelectionPage />} />
         <Route path="/booking/:showtimeId/seats" element={<SeatSelectionPage />} />
+        <Route path="/booking/:showtimeId/food" element={<FoodDrinkPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 

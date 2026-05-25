@@ -1,14 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ChevronRight } from "lucide-react";
 import DateChip from "../booking/DateChip";
-import TimeSelection from "../booking/TimeSelection";
-
-function formatTime(value) {
-  return new Date(value).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
+import Button from "../common/Button";
 
 function getDateParts(offset) {
   const date = new Date();
@@ -26,7 +20,6 @@ export default function ShowtimesSection({ showtimes = [] }) {
   const navigate = useNavigate();
 
   const [selectedDate, setSelectedDate] = useState(getDateParts(0).key);
-  const [selectedShowtimeId, setSelectedShowtimeId] = useState("");
 
   const dates = useMemo(
     () => Array.from({ length: 7 }).map((_, index) => getDateParts(index)),
@@ -41,19 +34,14 @@ export default function ShowtimesSection({ showtimes = [] }) {
     return filtered.length > 0 ? filtered : showtimes;
   }, [showtimes, selectedDate]);
 
-  const uiShowtimes = showtimesForSelectedDate.map((showtime) => ({
-    id: showtime.id,
-    time: formatTime(showtime.startTime),
-  }));
-
-  const firstShowtime = showtimesForSelectedDate[0];
+  const entryShowtime = showtimesForSelectedDate[0];
 
   return (
     <section id="showtimes" className="ticketor-container py-[56px]">
       <div className="mb-[32px]">
         <h2 className="type-h3 text-app-text">Get Ticket</h2>
         <p className="type-body-m mt-[8px] text-app-text-muted">
-          Select date, cinema, and showtime.
+          Select a date first, then continue to choose cinema and showtime.
         </p>
       </div>
 
@@ -67,7 +55,6 @@ export default function ShowtimesSection({ showtimes = [] }) {
             selected={selectedDate === item.key}
             onClick={() => {
               setSelectedDate(item.key);
-              setSelectedShowtimeId("");
             }}
           />
         ))}
@@ -80,20 +67,31 @@ export default function ShowtimesSection({ showtimes = [] }) {
           </p>
         </div>
       ) : (
-        <TimeSelection
-          cinemaName={firstShowtime?.cinemaName || "Ticketor Cinema"}
-          address="Cinema location will be shown here"
-          distance="0.20 mi"
-          format="Digital 3D"
-          showtimes={uiShowtimes}
-          selectedShowtimeId={selectedShowtimeId}
-          onSelectShowtime={setSelectedShowtimeId}
-          onContinue={() => {
-            if (selectedShowtimeId) {
-              navigate(`/booking/${selectedShowtimeId}`);
-            }
-          }}
-        />
+        <article className="rounded-tk-8 border border-app-border bg-app-surface p-[24px]">
+          <div className="flex flex-col gap-[20px] md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="type-h5 text-app-text">Continue booking</h3>
+              <p className="type-body-s mt-[6px] max-w-[520px] text-app-text-muted">
+                The next step lets you pick a HCM cinema location and available
+                showtime for the selected date.
+              </p>
+            </div>
+
+            <Button
+              size={40}
+              variant="primary"
+              rightIcon={<ChevronRight />}
+              disabled={!entryShowtime}
+              onClick={() => {
+                if (entryShowtime) {
+                  navigate(`/booking/${entryShowtime.id}?date=${selectedDate}`);
+                }
+              }}
+            >
+              Continue
+            </Button>
+          </div>
+        </article>
       )}
     </section>
   );

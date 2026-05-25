@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Filter,
@@ -11,7 +10,7 @@ import {
   Star,
   X,
 } from "lucide-react";
-import { movieApi, showtimeApi } from "../api/api";
+import { cinemaApi, movieApi, showtimeApi } from "../api/api";
 import Button from "../components/common/Button";
 import Footer from "../components/layout/Footer";
 import DateChip from "../components/booking/DateChip";
@@ -25,48 +24,12 @@ import {
 } from "../components/home/homeUtils";
 import { cn } from "../utils/cn";
 
-const venueTemplates = [
-  {
-    name: "Regal Gallery Place",
-    address: "701 Seventh Street Northwest, Washington, DC",
-    distance: "0.20 mi",
-    format: "Digital 3D",
-    offsets: [0, 80, 130, 200],
-  },
-  {
-    name: "Regal Majestic & IMAX",
-    address: "900 Ellsworth Drive, Silver Spring, MD",
-    distance: "1.5 mi",
-    format: "Digital 3D",
-    offsets: [20, 170, 290, 410],
-  },
-  {
-    name: "AMC Hoffman Center 22",
-    address: "206 Swamp Fox Road, Alexandria, VA",
-    distance: "3.5 mi",
-    format: "Standard",
-    offsets: [35, 180, 360, 480],
-  },
-  {
-    name: "Regal Majestic & IMAX",
-    address: "900 Ellsworth Drive, Silver Spring, MD",
-    distance: "7 mi",
-    format: "Digital 3D",
-    offsets: [50, 140, 260, 390],
-  },
-];
-
 const ticketTypes = [
   { key: "adult", label: "Adult", price: 18.07 },
-  { key: "senior", label: "Senior", price: 16.95 },
   { key: "child", label: "Child", price: 12.07 },
 ];
 
-function addMinutes(value, minutes) {
-  const date = new Date(value);
-  date.setMinutes(date.getMinutes() + minutes);
-  return date.toISOString();
-}
+const formatFilters = ["All", "Standard", "3D"];
 
 function formatTime(value) {
   return new Date(value).toLocaleTimeString("en-US", {
@@ -102,19 +65,52 @@ function getTicketTotal(counts) {
   );
 }
 
+function getCinemaOffsets(index) {
+  const presets = [
+    [0, 80, 130, 200],
+    [20, 170, 290, 410],
+    [35, 180, 360, 480],
+    [50, 140, 260, 390],
+  ];
+
+  return presets[index % presets.length];
+}
+
+function getCinemaFormat(cinema, index) {
+  const amenities = Array.isArray(cinema.amenities)
+    ? cinema.amenities.join(" ")
+    : "";
+
+  if (amenities.includes("IMAX")) return "IMAX";
+  if (amenities.includes("4DX")) return "4DX";
+  return index % 3 === 0 ? "Digital 3D" : "Standard";
+}
+
+function makeStartTimeForDate(sourceStartTime, selectedDate, offset) {
+  const source = new Date(sourceStartTime);
+  const date = new Date(`${selectedDate}T00:00:00`);
+
+  date.setHours(source.getHours(), source.getMinutes(), 0, 0);
+  date.setMinutes(date.getMinutes() + offset);
+
+  return date.toISOString();
+}
+
 export default function TimeSelectionPage() {
   const { showtimeId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const [movie, setMovie] = useState(null);
   const [initialShowtime, setInitialShowtime] = useState(null);
   const [showtimes, setShowtimes] = useState([]);
+  const [cinemas, setCinemas] = useState([]);
   const [selectedDate, setSelectedDate] = useState(getDateParts(0).key);
   const [selectedShowtimeId, setSelectedShowtimeId] = useState(showtimeId);
   const [selectedTime, setSelectedTime] = useState(null);
+  const [formatFilter, setFormatFilter] = useState("All");
   const [ticketCounts, setTicketCounts] = useState({
     adult: 0,
-    senior: 0,
     child: 0,
   });
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
@@ -128,23 +124,19 @@ export default function TimeSelectionPage() {
         setError("");
 
         const showtime = await showtimeApi.getById(showtimeId);
-        const [movieData, movieShowtimes] = await Promise.all([
+        const [movieData, movieShowtimes, cinemaData] = await Promise.all([
           movieApi.getById(showtime.movieId),
           movieApi.getShowtimes(showtime.movieId),
+          cinemaApi.getAll(),
         ]);
 
         setInitialShowtime(showtime);
         setMovie(movieData);
         setShowtimes(movieShowtimes);
-        setSelectedDate(showtime.startTime.slice(0, 10));
-        setSelectedShowtimeId(showtime.id);
-        setSelectedTime({
-          id: showtime.id,
-          time: formatTime(showtime.startTime),
-          startTime: showtime.startTime,
-          cinemaName: showtime.cinemaName,
-          format: "Digital 3D",
-        });
+        setCinemas(cinemaData);
+        setSelectedDate(searchParams.get("date") || showtime.startTime.slice(0, 10));
+        setSelectedShowtimeId("");
+        setSelectedTime(null);
       } catch {
         setError("Cannot load time selection.");
       } finally {
@@ -153,7 +145,7 @@ export default function TimeSelectionPage() {
     }
 
     loadSelection();
-  }, [showtimeId]);
+  }, [searchParams, showtimeId]);
 
   const dates = useMemo(
     () =>
@@ -191,13 +183,19 @@ export default function TimeSelectionPage() {
       ? selectedDayShowtimes
       : [initialShowtime];
 
-    return venueTemplates.map((venue, venueIndex) => {
-      const times = venue.offsets.map((offset, timeIndex) => {
+    return cinemas.map((cinema, venueIndex) => {
+      const offsets = getCinemaOffsets(venueIndex);
+      const times = offsets.map((offset, timeIndex) => {
         const source = baseTimes[timeIndex % baseTimes.length];
-        const isRealSource = source.id === initialShowtime.id && timeIndex === 0;
+        const isRealSource =
+          source.id === initialShowtime.id && timeIndex === 0 && venueIndex === 0;
         const startTime = isRealSource
           ? source.startTime
-          : addMinutes(source.startTime, offset + venueIndex * 15);
+          : makeStartTimeForDate(
+              source.startTime,
+              selectedDate,
+              offset + venueIndex * 15
+            );
 
         return {
           id: isRealSource
@@ -206,18 +204,33 @@ export default function TimeSelectionPage() {
           showtimeId: source.id,
           time: formatTime(startTime),
           startTime,
-          cinemaName: venue.name,
-          format: venue.format,
+          cinemaId: cinema.id,
+          cinemaName: cinema.name,
+          format: getCinemaFormat(cinema, venueIndex),
           synthetic: !isRealSource,
         };
       });
 
       return {
-        ...venue,
+        ...cinema,
+        distance: `${(0.8 + venueIndex * 0.6).toFixed(1)} km`,
+        format: getCinemaFormat(cinema, venueIndex),
         times,
       };
     });
-  }, [initialShowtime, selectedDate, showtimes]);
+  }, [cinemas, initialShowtime, selectedDate, showtimes]);
+
+  const filteredVenueGroups = useMemo(() => {
+    if (formatFilter === "All") return venueGroups;
+
+    return venueGroups.filter((venue) => {
+      if (formatFilter === "Standard") {
+        return venue.format === "Standard";
+      }
+
+      return venue.format !== "Standard";
+    });
+  }, [formatFilter, venueGroups]);
 
   const comingSoonMovies = useMemo(() => {
     if (!movieView) return [];
@@ -344,49 +357,64 @@ export default function TimeSelectionPage() {
                 month={date.month}
                 size="large"
                 selected={selectedDate === date.key}
-                onClick={() => setSelectedDate(date.key)}
+                onClick={() => {
+                  setSelectedDate(date.key);
+                  setSelectedShowtimeId("");
+                  setSelectedTime(null);
+                }}
               />
             ))}
 
             <DateUtilityButton icon={<ChevronRight />} label="Next" compact />
-            <DateUtilityButton icon={<CalendarDays />} label="Calendar" />
           </div>
         </section>
 
         <section className="ticketor-container pb-[56px]">
-          <div className="mb-[28px] flex flex-wrap items-center gap-[16px] rounded-tk-8 border border-app-border bg-app-background p-[16px]">
-            <label className="flex items-center gap-[12px]">
-              <span className="type-body-xs text-app-text-muted">Select location</span>
-              <select className="h-[32px] min-w-[180px] rounded-tk-4 border border-app-border bg-app-background px-[12px] type-body-xs text-app-text outline-none">
-                <option>Washington</option>
-              </select>
-            </label>
-
-            <label className="flex items-center gap-[12px]">
-              <span className="type-body-xs text-app-text-muted">Select Cinema</span>
-              <select className="h-[32px] min-w-[180px] rounded-tk-4 border border-app-border bg-app-background px-[12px] type-body-xs text-app-text outline-none">
-                <option>Any Cinema</option>
-              </select>
-            </label>
-          </div>
-
           <div className="mb-[16px] flex items-center gap-[16px]">
-            <span className="type-label-s text-brand">All</span>
-            <span className="type-label-s text-app-text-muted">Standard</span>
-            <span className="type-label-s text-app-text-muted">3D</span>
+            {formatFilters.map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => {
+                  setFormatFilter(filter);
+                  setSelectedShowtimeId("");
+                  setSelectedTime(null);
+                }}
+                className={cn(
+                  "type-label-s transition-colors",
+                  formatFilter === filter
+                    ? "text-brand"
+                    : "text-app-text-muted hover:text-brand"
+                )}
+              >
+                {filter}
+              </button>
+            ))}
           </div>
 
           <div className="grid gap-[16px]">
-            {venueGroups.map((venue) => (
+            {filteredVenueGroups.map((venue) => (
               <CinemaTimeCard
                 key={`${venue.name}-${venue.distance}`}
                 venue={venue}
                 selectedShowtimeId={selectedShowtimeId}
                 selectedDateLabel={selectedDateLabel}
-                onPickTime={openTicketModal}
+                onPickTime={(time) => {
+                  setSelectedShowtimeId(time.id);
+                  setSelectedTime(time);
+                }}
+                onContinue={openTicketModal}
               />
             ))}
           </div>
+
+          {filteredVenueGroups.length === 0 && (
+            <div className="rounded-tk-8 border border-app-border bg-app-surface p-[24px] text-center">
+              <p className="type-body-m text-app-text-muted">
+                No {formatFilter} showtimes are available for this date.
+              </p>
+            </div>
+          )}
 
           <div className="mt-[40px] flex items-center justify-between">
             <h2 className="type-h5 text-app-text">Coming Soon</h2>
@@ -442,20 +470,22 @@ export default function TimeSelectionPage() {
   );
 }
 
-function DateUtilityButton({ icon, label, compact = false }) {
+function DateUtilityButton({ icon, label, compact = false, onClick }) {
   return (
     <button
       type="button"
       aria-label={label}
+      onClick={onClick}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-tk-4 border border-app-border bg-app-surface text-app-text-muted transition-colors hover:border-primary-600 hover:text-primary-600",
-        compact ? "h-[56px] w-[32px]" : "h-[56px] w-[72px] gap-[6px]"
+        "flex shrink-0 items-center justify-center rounded-tk-4 border bg-app-surface text-app-text-muted transition-colors hover:border-primary-600 hover:text-primary-600",
+        compact ? "h-[56px] w-[40px]" : "h-[56px] min-w-[116px] gap-[8px] px-[14px]",
+        "border-app-border"
       )}
     >
-      <span className="flex h-[16px] w-[16px] items-center justify-center">
+      <span className="flex h-[18px] w-[18px] items-center justify-center [&>svg]:h-[18px] [&>svg]:w-[18px]">
         {icon}
       </span>
-      {!compact && <span className="type-label-s">{label}</span>}
+      {!compact && <span className="type-button-s whitespace-nowrap">{label}</span>}
     </button>
   );
 }
@@ -465,6 +495,7 @@ function CinemaTimeCard({
   selectedShowtimeId,
   selectedDateLabel,
   onPickTime,
+  onContinue,
 }) {
   const hasSelected = venue.times.some((time) => time.id === selectedShowtimeId);
 
@@ -513,7 +544,7 @@ function CinemaTimeCard({
               (time) => time.id === selectedShowtimeId
             );
 
-            if (activeTime) onPickTime(activeTime);
+            if (activeTime) onContinue(activeTime);
           }}
         >
           Continue
