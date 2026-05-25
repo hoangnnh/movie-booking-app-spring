@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import AuthModal from "./components/auth/AuthModal";
 import Navbar from "./components/layout/Navbar";
@@ -18,6 +18,7 @@ import TimeSelectionPage from "./pages/TimeSelectionPage";
 import TmdbImportPage from "./pages/TmdbImportPage";
 
 export default function App() {
+  const location = useLocation();
   const { ready, user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [authMode, setAuthMode] = useState(null);
@@ -39,7 +40,10 @@ export default function App() {
 
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/movies" element={<MoviesPage />} />
+        <Route
+          path="/movies"
+          element={<MoviesPage key={`movies:${location.search}`} />}
+        />
         <Route
           path="/movies/:movieId"
           element={<MovieDetailPage onRequireAuth={() => setAuthMode("login")} />}
