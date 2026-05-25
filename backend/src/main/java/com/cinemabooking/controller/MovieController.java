@@ -12,9 +12,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.cinemabooking.dto.MovieAutocompleteResponse;
 import com.cinemabooking.dto.MovieResponse;
 import com.cinemabooking.entity.Movie;
 import com.cinemabooking.repository.MovieRepository;
+import com.cinemabooking.service.MovieSearchService;
 import com.cinemabooking.service.TmdbService;
 
 import lombok.RequiredArgsConstructor;
@@ -26,14 +28,19 @@ public class MovieController {
 
     private final MovieRepository movieRepository;
     private final TmdbService tmdbService;
+    private final MovieSearchService movieSearchService;
 
     @GetMapping
-    public List<MovieResponse> getAllMovies() {
-        return movieRepository.findAll()
-                .stream()
-                .sorted(Comparator.comparing(Movie::getTitle))
-                .map(tmdbService::toStoredMovieResponse)
-                .toList();
+    public List<MovieResponse> getAllMovies(@RequestParam(required = false) String query) {
+        return movieSearchService.searchMovies(query);
+    }
+
+    @GetMapping("/autocomplete")
+    public List<MovieAutocompleteResponse> autocompleteMovies(
+            @RequestParam String query,
+            @RequestParam(required = false) Integer limit
+    ) {
+        return movieSearchService.autocompleteMovies(query, limit);
     }
 
     @GetMapping("/by-actor")
