@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { FaInstagram, FaLinkedinIn, FaXTwitter } from "react-icons/fa6";
 import Logo from "../common/Logo";
 import { cn } from "../../utils/cn";
@@ -5,15 +6,27 @@ import { cn } from "../../utils/cn";
 const footerColumns = [
     {
         title: "Find a Movie",
-        links: ["In Theaters", "Top Movies", "Coming Soon"],
+        links: [
+            { label: "In Theaters", to: "/movies" },
+            { label: "Top Movies", to: "/movies" },
+            { label: "Coming Soon", to: "/movies" },
+        ],
     },
     {
         title: "Company",
-        links: ["About Us", "Partnerships", "Get the App"],
+        links: [
+            { label: "Terms of Use", to: "/terms" },
+            { label: "Privacy Policy", to: "/privacy" },
+            { label: "Get the App", to: "/contact" },
+        ],
     },
     {
         title: "Help",
-        links: ["Contact Us", "Subscription", "FAQs"],
+        links: [
+            { label: "Contact Us", to: "/contact" },
+            { label: "Subscription", to: "/terms" },
+            { label: "FAQs", to: "/#faq" },
+        ],
     },
 ];
 
@@ -38,9 +51,8 @@ export default function Footer({
                         <Logo className="mb-[16px]" />
 
                         <p className="type-body-xs max-w-[360px] text-app-text-muted">
-                            Lorem Ipsum is simply dummy text of the printing and typesetting
-                            industry. Lorem Ipsum has been the industry's standard dummy text
-                            ever since the 1500s.
+                            Ticketor helps moviegoers discover films, pick showtimes,
+                            reserve seats, and keep every booking in one place.
                         </p>
 
                         <div className="mt-[16px] flex items-center gap-[16px]">
@@ -62,13 +74,13 @@ export default function Footer({
                                 Copyright © 2016 - 2025 Ticketor.
                             </p>
 
-                            <a href="#" className="type-body-xs text-app-text-muted hover:text-brand">
+                            <Link to="/privacy" className="type-body-xs text-app-text-muted hover:text-brand">
                                 Privacy Policy
-                            </a>
+                            </Link>
 
-                            <a href="#" className="type-body-xs text-app-text-muted hover:text-brand">
-                                Terms of service
-                            </a>
+                            <Link to="/terms" className="type-body-xs text-app-text-muted hover:text-brand">
+                                Terms of Use
+                            </Link>
                         </div>
 
                         <p className="type-body-xs mt-[4px] text-app-text-muted">
@@ -85,13 +97,13 @@ export default function Footer({
 
                                 <ul className="flex flex-col gap-[8px]">
                                     {column.links.map((link) => (
-                                        <li key={link}>
-                                            <a
-                                                href="#"
+                                        <li key={link.label}>
+                                            <Link
+                                                to={link.to}
                                                 className="type-body-xs text-app-text-muted transition-colors hover:text-brand"
                                             >
-                                                {link}
-                                            </a>
+                                                {link.label}
+                                            </Link>
                                         </li>
                                     ))}
                                 </ul>
