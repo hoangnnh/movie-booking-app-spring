@@ -1,15 +1,17 @@
-import { Link, NavLink } from "react-router-dom";
-import { ChevronDown, LockKeyhole, LogIn, Moon, Search, Sun } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { ChevronDown, LockKeyhole, LogIn, Moon, Search, Sun, X } from "lucide-react";
+import { movieApi } from "../../api/api";
 import { cn } from "../../utils/cn";
 import Avatar from "../common/Avatar";
 import Button from "../common/Button";
 import Logo from "../common/Logo";
+import SearchInput from "../common/SearchInput";
 
 export default function Navbar({
     user = null,
     avatarSrc = "",
     variant = "solid",
-    onSearchClick,
     onLoginClick,
     onSignUpClick,
     onLogout,
@@ -19,6 +21,75 @@ export default function Navbar({
 }) {
     const isLoggedIn = Boolean(user);
     const nextThemeLabel = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+    const navigate = useNavigate();
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [suggestions, setSuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const searchInputRef = useRef(null);
+
+    useEffect(() => {
+        if (!searchOpen) {
+            return;
+        }
+
+        window.setTimeout(() => {
+            searchInputRef.current?.focus();
+        }, 0);
+    }, [searchOpen]);
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function loadSuggestions() {
+            const normalizedSearch = searchTerm.trim();
+
+            if (!searchOpen || normalizedSearch.length === 0) {
+                setSuggestions([]);
+                setShowSuggestions(false);
+                return;
+            }
+
+            try {
+                const data = await movieApi.autocomplete(normalizedSearch);
+
+                if (!ignore) {
+                    const nextSuggestions = Array.isArray(data) ? data : [];
+                    setSuggestions(nextSuggestions);
+                    setShowSuggestions(nextSuggestions.length > 0);
+                }
+            } catch {
+                if (!ignore) {
+                    setSuggestions([]);
+                    setShowSuggestions(false);
+                }
+            }
+        }
+
+        loadSuggestions();
+
+        return () => {
+            ignore = true;
+        };
+    }, [searchOpen, searchTerm]);
+
+    function closeSearch() {
+        setSearchOpen(false);
+        setShowSuggestions(false);
+    }
+
+    function submitSearch(nextQuery = searchTerm) {
+        const normalizedQuery = nextQuery.trim();
+
+        closeSearch();
+
+        if (normalizedQuery.length === 0) {
+            navigate("/movies");
+            return;
+        }
+
+        navigate(`/movies?query=${encodeURIComponent(normalizedQuery)}`);
+    }
 
     return (
         <header
@@ -51,13 +122,89 @@ export default function Navbar({
                         rightIcon={theme === "dark" ? <Sun /> : <Moon />}
                     />
 
-                    <Button
-                        variant="text"
-                        size={40}
-                        iconOnly
-                        rightIcon={<Search />}
-                        onClick={onSearchClick}
-                    />
+                    <div className="relative">
+                        <Button
+                            variant="text"
+                            size={40}
+                            iconOnly
+                            rightIcon={<Search />}
+                            onClick={() => setSearchOpen((current) => !current)}
+                            aria-label="Open movie search"
+                            title="Search movies"
+                        />
+
+                        {searchOpen && (
+                            <div className="absolute right-0 top-[calc(100%+12px)] z-40 w-[min(92vw,420px)] rounded-tk-12 border border-app-border bg-app-surface p-[14px] shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
+                                <form
+                                    onSubmit={(event) => {
+                                        event.preventDefault();
+                                        submitSearch();
+                                    }}
+                                >
+                                    <div className="flex items-center gap-[10px]">
+                                        <SearchInput
+                                            ref={searchInputRef}
+                                            value={searchTerm}
+                                            onChange={(event) => setSearchTerm(event.target.value)}
+                                            onFocus={() => setShowSuggestions(suggestions.length > 0)}
+                                            onBlur={() => {
+                                                window.setTimeout(() => {
+                                                    setShowSuggestions(false);
+                                                }, 120);
+                                            }}
+                                            placeholder="Search movies by title"
+                                            className="flex-1"
+                                        />
+
+                                        <Button
+                                            variant="text"
+                                            size={40}
+                                            iconOnly
+                                            rightIcon={<X />}
+                                            onClick={closeSearch}
+                                            aria-label="Close movie search"
+                                            title="Close search"
+                                        />
+                                    </div>
+                                </form>
+
+                                {showSuggestions && suggestions.length > 0 && (
+                                    <div className="mt-[10px] overflow-hidden rounded-tk-8 border border-app-border bg-app-background">
+                                        {suggestions.map((movie) => (
+                                            <button
+                                                key={movie.id}
+                                                type="button"
+                                                onMouseDown={() => submitSearch(movie.title || "")}
+                                                className="flex w-full items-center justify-between gap-[16px] border-b border-app-border px-[14px] py-[12px] text-left transition-colors last:border-b-0 hover:bg-app-surface"
+                                            >
+                                                <span className="type-body-s text-app-text">
+                                                    {movie.title || "Untitled Movie"}
+                                                </span>
+                                                <span className="type-body-xs text-app-text-muted">
+                                                    {movie.releaseDate
+                                                        ? new Date(movie.releaseDate).getFullYear()
+                                                        : "TBA"}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="mt-[12px] flex items-center justify-between gap-[12px]">
+                                    <p className="type-body-xs text-app-text-muted">
+                                        Press Enter to open the full movie results page.
+                                    </p>
+                                    <Button
+                                        size={32}
+                                        variant="primary"
+                                        onClick={() => submitSearch()}
+                                    >
+                                        Search
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
                     <div className="h-[24px] w-px bg-app-border" />
 
