@@ -1,23 +1,25 @@
 package com.cinemabooking.controller;
 
+import java.net.URI;
+
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import com.cinemabooking.dto.ForgotPasswordRequest;
-import com.cinemabooking.dto.ResetPasswordRequest;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import java.net.URI;
 
 import com.cinemabooking.dto.AuthResponse;
 import com.cinemabooking.dto.AuthSettingsResponse;
+import com.cinemabooking.dto.ForgotPasswordRequest;
 import com.cinemabooking.dto.LoginRequest;
+import com.cinemabooking.dto.MessageResponse;
 import com.cinemabooking.dto.RegisterRequest;
+import com.cinemabooking.dto.ResetPasswordRequest;
 import com.cinemabooking.security.AuthenticatedUser;
 import com.cinemabooking.service.AuthService;
 
@@ -57,29 +59,36 @@ public class AuthController {
     @GetMapping("/verify-email")
     public ResponseEntity<Void> verifyEmail(
             @RequestParam String token,
-            @Value("${app.frontend.url}") String frontendUrl) {
+            @Value("${app.frontend.base-url}") String frontendUrl) {
         authService.verifyEmail(token);
-        // Redirect về trang login với thông báo thành công
         return ResponseEntity.status(302)
-                .location(URI.create(frontendUrl + "/login?verified=true"))
+                .location(URI.create(frontendUrl + "?verified=true"))
                 .build();
     }
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<MessageResponse> register(@RequestBody RegisterRequest request) {
         authService.register(request);
-        return ResponseEntity.ok("Registration successful! Please check your email to verify your account.");
+        return ResponseEntity.ok(new MessageResponse(
+                "Registration successful! Please check your email to verify your account."
+        ));
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<MessageResponse> resendVerification(@RequestBody ForgotPasswordRequest request) {
+        authService.resendVerificationEmail(request.email());
+        return ResponseEntity.ok(new MessageResponse("Verification email has been sent."));
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+    public ResponseEntity<MessageResponse> forgotPassword(@RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request.email());
-        return ResponseEntity.ok("Password reset link has been sent to your email.");
+        return ResponseEntity.ok(new MessageResponse("Password reset link has been sent to your email."));
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<String> resetPassword(@RequestBody ResetPasswordRequest request) {
+    public ResponseEntity<MessageResponse> resetPassword(@RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request);
-        return ResponseEntity.ok("Password has been reset successfully.");
+        return ResponseEntity.ok(new MessageResponse("Password has been reset successfully."));
     }
 }

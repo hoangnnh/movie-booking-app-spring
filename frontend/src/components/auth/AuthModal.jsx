@@ -1,47 +1,28 @@
-import { useState, useEffect } from "react";
-import { Mail, X, ArrowLeft, KeyRound } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, KeyRound, Mail, X } from "lucide-react";
+import { authApi } from "../../api/api";
 import { useAuth } from "../../context/useAuth";
 import Button from "../common/Button";
 import EmailField from "../common/EmailField";
 import Logo from "../common/Logo";
 import { cn } from "../../utils/cn";
 
-// ─── API helpers ──────────────────────────────────────────────────────────────
-
-const API_BASE = "/api/auth";
-
-async function apiPost(path, body) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(text || res.statusText);
-  return text;
-}
-
-// ─── Main component ───────────────────────────────────────────────────────────
-
 export default function AuthModal({ mode = "login", onModeChange, onClose }) {
   const { login, register, loginWithGoogle, googleAuthEnabled } = useAuth();
   const isLogin = mode === "login";
 
-  // "form" | "verify" | "forgot" | "forgot-sent" | "reset"
   const [step, setStep] = useState("form");
-
-  const [fullName, setFullName]             = useState("");
-  const [email, setEmail]                   = useState("");
-  const [password, setPassword]             = useState("");
-  const [resetToken, setResetToken]         = useState("");
-  const [newPassword, setNewPassword]       = useState("");
-  const [error, setError]                   = useState("");
-  const [successMsg, setSuccessMsg]         = useState("");
-  const [loading, setLoading]               = useState(false);
-  const [resendLoading, setResendLoading]   = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // Read ?verified=true from URL after email link click
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("verified") === "true") {
@@ -50,28 +31,30 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
     }
   }, []);
 
-  // Resend cooldown countdown
   useEffect(() => {
     if (resendCooldown <= 0) return;
-    const t = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
+    const timeoutId = setTimeout(() => setResendCooldown((value) => value - 1), 1000);
+    return () => clearTimeout(timeoutId);
   }, [resendCooldown]);
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
-
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function handleSubmit(event) {
+    event.preventDefault();
     setError("");
     setSuccessMsg("");
 
-    if (step === "verify")      return;           // read-only step
-    if (step === "forgot-sent") return;           // read-only step
+    if (step === "verify" || step === "forgot-sent") {
+      return;
+    }
 
     if (step === "forgot") {
-      if (!email.trim()) { setError("Please enter your email."); return; }
+      if (!email.trim()) {
+        setError("Please enter your email.");
+        return;
+      }
+
       try {
         setLoading(true);
-        await apiPost("/forgot-password", { email: email.trim() });
+        await authApi.forgotPassword({ email: email.trim() });
         setStep("forgot-sent");
       } catch (err) {
         setError(cleanError(err));
@@ -86,9 +69,10 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
         setError("Please fill in all fields.");
         return;
       }
+
       try {
         setLoading(true);
-        await apiPost("/reset-password", {
+        await authApi.resetPassword({
           token: resetToken.trim(),
           newPassword: newPassword.trim(),
         });
@@ -105,7 +89,6 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
       return;
     }
 
-    // ── Default: form (login / register) ──
     if (!email.trim() || !password.trim() || (!isLogin && !fullName.trim())) {
       setError("Please fill in all required fields.");
       return;
@@ -117,8 +100,13 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
         await login({ email: email.trim(), password });
         onClose?.();
       } else {
-        await register({ fullName: fullName.trim(), email: email.trim(), password });
+        await register({
+          fullName: fullName.trim(),
+          email: email.trim(),
+          password,
+        });
         setStep("verify");
+        setSuccessMsg("Registration successful! Please check your email to verify your account.");
       }
     } catch (err) {
       setError(cleanError(err));
@@ -129,9 +117,12 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
 
   async function handleResend() {
     if (resendCooldown > 0) return;
+
     try {
+      setError("");
+      setSuccessMsg("");
       setResendLoading(true);
-      await apiPost("/resend-verification", { email: email.trim() });
+      await authApi.resendVerification({ email: email.trim() });
       setResendCooldown(60);
       setSuccessMsg("Verification email resent!");
     } catch (err) {
@@ -143,7 +134,11 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
 
   function handleGoogleLogin() {
     setError("");
-    try { loginWithGoogle(); } catch (err) { setError(cleanError(err)); }
+    try {
+      loginWithGoogle();
+    } catch (err) {
+      setError(cleanError(err));
+    }
   }
 
   function switchMode(nextMode) {
@@ -165,43 +160,46 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
     setSuccessMsg("");
   }
 
-  // ── Submit label ─────────────────────────────────────────────────────────────
   function submitLabel() {
-    if (loading)               return "Please wait…";
-    if (step === "verify")     return "Open Email App";
-    if (step === "forgot")     return "Send Reset Link";
-    if (step === "forgot-sent")return "Close";
-    if (step === "reset")      return "Set New Password";
+    if (loading) return "Please wait...";
+    if (step === "verify") return "Open Email App";
+    if (step === "forgot") return "Send Reset Link";
+    if (step === "forgot-sent") return "Close";
+    if (step === "reset") return "Set New Password";
     return isLogin ? "Login" : "Create Account";
   }
 
   function handleFinalButton() {
-    if (step === "forgot-sent") { onClose?.(); return; }
+    if (step === "forgot-sent") {
+      onClose?.();
+    }
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div
       className="fixed inset-0 z-50 overflow-y-auto bg-black/80"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose?.();
+      }}
     >
       <div className="flex min-h-full items-center justify-center p-0 sm:p-[20px] lg:p-[32px]">
         <form
-          onSubmit={step === "forgot-sent" ? (e) => { e.preventDefault(); onClose?.(); } : handleSubmit}
+          onSubmit={step === "forgot-sent" ? (event) => {
+            event.preventDefault();
+            onClose?.();
+          } : handleSubmit}
           className={cn(
             "relative grid w-full max-w-[940px] grid-cols-1",
             "bg-app-surface shadow-2xl",
             "min-h-screen sm:min-h-0",
             "rounded-none border-0",
             "sm:rounded-tk-8 sm:border sm:border-app-border",
-            "lg:grid-cols-[0.95fr_1fr]",
+            "lg:grid-cols-[0.95fr_1fr]"
           )}
         >
           <AuthArtwork />
 
           <section className="relative flex flex-col bg-app-background p-[20px] pb-[28px] pt-[56px] sm:p-[28px] sm:pb-[32px] sm:pt-[28px] lg:p-[36px] lg:pb-[40px] lg:pt-[36px]">
-
-            {/* Close */}
             <button
               type="button"
               aria-label="Close"
@@ -213,7 +211,6 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
 
             <Logo className="mb-[24px] sm:mb-[28px] lg:mb-[36px]" />
 
-            {/* ── Step: verify ── */}
             {step === "verify" && (
               <VerifyEmailStep
                 email={email}
@@ -224,32 +221,26 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
               />
             )}
 
-            {/* ── Step: forgot password ── */}
             {step === "forgot" && (
               <ForgotStep
                 email={email}
-                onEmailChange={(e) => setEmail(e.target.value)}
+                onEmailChange={(event) => setEmail(event.target.value)}
                 onBack={backToForm}
               />
             )}
 
-            {/* ── Step: forgot-sent ── */}
-            {step === "forgot-sent" && (
-              <ForgotSentStep email={email} />
-            )}
+            {step === "forgot-sent" && <ForgotSentStep email={email} />}
 
-            {/* ── Step: reset password ── */}
             {step === "reset" && (
               <ResetStep
                 token={resetToken}
-                onTokenChange={(e) => setResetToken(e.target.value)}
+                onTokenChange={(event) => setResetToken(event.target.value)}
                 newPassword={newPassword}
-                onPasswordChange={(e) => setNewPassword(e.target.value)}
+                onPasswordChange={(event) => setNewPassword(event.target.value)}
                 onBack={backToForm}
               />
             )}
 
-            {/* ── Step: form (login / register) ── */}
             {step === "form" && (
               <>
                 <div className="mb-[22px]">
@@ -266,13 +257,15 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
                   </p>
                 </div>
 
-                {/* Mode toggle */}
                 <div className="mb-[18px] grid grid-cols-2 rounded-tk-8 border border-app-border bg-app-surface p-[4px]">
-                  <ModeButton active={isLogin}  onClick={() => switchMode("login")}>Login</ModeButton>
-                  <ModeButton active={!isLogin} onClick={() => switchMode("signup")}>Sign Up</ModeButton>
+                  <ModeButton active={isLogin} onClick={() => switchMode("login")}>
+                    Login
+                  </ModeButton>
+                  <ModeButton active={!isLogin} onClick={() => switchMode("signup")}>
+                    Sign Up
+                  </ModeButton>
                 </div>
 
-                {/* Google */}
                 <button
                   type="button"
                   disabled={!googleAuthEnabled}
@@ -281,7 +274,7 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
                     "mb-[18px] flex h-[48px] w-full items-center justify-center gap-[10px] rounded-tk-4 border border-app-border bg-app-surface type-button-m transition-colors",
                     googleAuthEnabled
                       ? "text-app-text hover:border-brand hover:text-brand"
-                      : "cursor-not-allowed text-app-text-muted opacity-60",
+                      : "cursor-not-allowed text-app-text-muted opacity-60"
                   )}
                 >
                   <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-neutral-50 type-label-s font-bold text-neutral-900">
@@ -296,21 +289,19 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
                   </p>
                 )}
 
-                {/* Divider */}
                 <div className="mb-[18px] flex items-center gap-[12px]">
                   <span className="h-px flex-1 bg-app-border" />
                   <span className="type-label-s text-app-text-muted">OR CONTINUE WITH EMAIL</span>
                   <span className="h-px flex-1 bg-app-border" />
                 </div>
 
-                {/* Fields */}
                 <div className="grid gap-[14px]">
                   {!isLogin && (
                     <EmailField
                       label="Full name"
                       type="text"
                       value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
+                      onChange={(event) => setFullName(event.target.value)}
                       placeholder="Your name"
                       informationText=""
                     />
@@ -319,7 +310,7 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
                     label="Email"
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(event) => setEmail(event.target.value)}
                     placeholder="you@example.com"
                     informationText=""
                   />
@@ -327,7 +318,7 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
                     label="Password"
                     type="password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(event) => setPassword(event.target.value)}
                     placeholder="Password"
                     informationText={isLogin ? "" : "Use at least 6 characters."}
                   />
@@ -345,21 +336,18 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
               </>
             )}
 
-            {/* Success message */}
             {successMsg && (
               <div className="mt-[14px] rounded-tk-4 border border-green-500 bg-app-surface p-[12px] type-body-s text-green-500">
                 {successMsg}
               </div>
             )}
 
-            {/* Error */}
             {error && (
               <div className="mt-[14px] rounded-tk-4 border border-error-500 bg-app-surface p-[12px] type-body-s text-error-500">
                 {error}
               </div>
             )}
 
-            {/* Submit button — hidden on verify/forgot-sent read-only views */}
             {step !== "verify" && (
               <Button
                 type="submit"
@@ -373,7 +361,6 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
               </Button>
             )}
 
-            {/* Switch login/signup */}
             {step === "form" && (
               <div className="mt-[16px] text-center">
                 <button
@@ -393,8 +380,6 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
     </div>
   );
 }
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function AuthArtwork() {
   return (
@@ -419,7 +404,7 @@ function ModeButton({ active, onClick, children }) {
       onClick={onClick}
       className={cn(
         "h-[40px] rounded-tk-4 type-button-m transition-colors",
-        active ? "bg-primary-600 text-neutral-900" : "text-app-text-muted hover:text-app-text",
+        active ? "bg-primary-600 text-neutral-900" : "text-app-text-muted hover:text-app-text"
       )}
     >
       {children}
@@ -440,7 +425,6 @@ function BackButton({ onClick }) {
   );
 }
 
-// Step: email sent after register — ask user to check inbox
 function VerifyEmailStep({ email, onResend, resendLoading, resendCooldown, onBack }) {
   return (
     <div>
@@ -451,8 +435,7 @@ function VerifyEmailStep({ email, onResend, resendLoading, resendCooldown, onBac
       <p className="type-label-s mb-[8px] text-brand">CHECK YOUR EMAIL</p>
       <h2 className="type-h3 text-app-text">Verify your account</h2>
       <p className="type-body-s mt-[10px] max-w-[360px] text-app-text-muted">
-        We sent a verification link to{" "}
-        <span className="font-medium text-app-text">{email}</span>.
+        We sent a verification link to <span className="font-medium text-app-text">{email}</span>.
         Click the link to activate your account.
       </p>
 
@@ -468,8 +451,8 @@ function VerifyEmailStep({ email, onResend, resendLoading, resendCooldown, onBac
             {resendCooldown > 0
               ? `resend in ${resendCooldown}s`
               : resendLoading
-              ? "Sending…"
-              : "resend verification email"}
+                ? "Sending..."
+                : "resend verification email"}
           </button>
           .
         </p>
@@ -478,7 +461,6 @@ function VerifyEmailStep({ email, onResend, resendLoading, resendCooldown, onBac
   );
 }
 
-// Step: enter email to request reset link
 function ForgotStep({ email, onEmailChange, onBack }) {
   return (
     <div>
@@ -488,7 +470,7 @@ function ForgotStep({ email, onEmailChange, onBack }) {
       </span>
       <p className="type-label-s mb-[8px] text-brand">FORGOT PASSWORD</p>
       <h2 className="type-h3 text-app-text">Reset your password</h2>
-      <p className="type-body-s mt-[10px] mb-[24px] max-w-[360px] text-app-text-muted">
+      <p className="type-body-s mb-[24px] mt-[10px] max-w-[360px] text-app-text-muted">
         Enter the email you registered with and we'll send you a reset link.
       </p>
       <EmailField
@@ -503,7 +485,6 @@ function ForgotStep({ email, onEmailChange, onBack }) {
   );
 }
 
-// Step: reset link has been sent
 function ForgotSentStep({ email }) {
   return (
     <div>
@@ -513,8 +494,7 @@ function ForgotSentStep({ email }) {
       <p className="type-label-s mb-[8px] text-brand">EMAIL SENT</p>
       <h2 className="type-h3 text-app-text">Check your inbox</h2>
       <p className="type-body-s mt-[10px] max-w-[360px] text-app-text-muted">
-        A password reset link has been sent to{" "}
-        <span className="font-medium text-app-text">{email}</span>.
+        A password reset link has been sent to <span className="font-medium text-app-text">{email}</span>.
         The link expires in <span className="font-medium text-app-text">15 minutes</span>.
       </p>
       <p className="type-body-xs mt-[14px] text-app-text-muted">
@@ -524,7 +504,6 @@ function ForgotSentStep({ email }) {
   );
 }
 
-// Step: enter reset token + new password (if handling reset inside modal)
 function ResetStep({ token, onTokenChange, newPassword, onPasswordChange, onBack }) {
   return (
     <div>
@@ -534,7 +513,7 @@ function ResetStep({ token, onTokenChange, newPassword, onPasswordChange, onBack
       </span>
       <p className="type-label-s mb-[8px] text-brand">RESET PASSWORD</p>
       <h2 className="type-h3 text-app-text">Set a new password</h2>
-      <p className="type-body-s mt-[10px] mb-[24px] max-w-[360px] text-app-text-muted">
+      <p className="type-body-s mb-[24px] mt-[10px] max-w-[360px] text-app-text-muted">
         Paste the reset token from your email and choose a new password.
       </p>
       <div className="grid gap-[14px]">
@@ -559,18 +538,17 @@ function ResetStep({ token, onTokenChange, newPassword, onPasswordChange, onBack
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function cleanError(error) {
   const msg = error?.message || "Authentication failed.";
-  if (msg.includes("Invalid email or password"))      return "Invalid email or password.";
-  if (msg.includes("Email already exists"))           return "This email is already registered.";
-  if (msg.includes("Please verify your email"))       return "Please verify your email before logging in.";
-  if (msg.includes("Email not found"))                return "No account found with this email.";
-  if (msg.includes("Reset token has expired"))        return "Reset link has expired. Please request a new one.";
-  if (msg.includes("Invalid reset token"))            return "Invalid reset token.";
-  if (msg.includes("Email already verified"))         return "This email is already verified.";
+  if (msg.includes("Invalid email or password")) return "Invalid email or password.";
+  if (msg.includes("Email already exists")) return "This email is already registered.";
+  if (msg.includes("Please verify your email")) return "Please verify your email before logging in.";
+  if (msg.includes("Email not found")) return "No account found with this email.";
+  if (msg.includes("Email delivery is not configured correctly")) return "The server could not send email. Check the backend mail configuration.";
+  if (msg.includes("Reset token has expired")) return "Reset link has expired. Please request a new one.";
+  if (msg.includes("Invalid reset token")) return "Invalid reset token.";
+  if (msg.includes("Email already verified")) return "This email is already verified.";
   if (msg.includes("Google login is not configured")) return "Google login is not configured on the server yet.";
-  if (msg.includes("Google"))                         return "This account uses Google login. Password reset is not available.";
+  if (msg.includes("Google")) return "This account uses Google login. Password reset is not available.";
   return msg;
 }

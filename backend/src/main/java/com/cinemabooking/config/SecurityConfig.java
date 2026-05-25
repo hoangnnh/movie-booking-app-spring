@@ -1,5 +1,9 @@
 package com.cinemabooking.config;
 
+import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.http.HttpMethod.POST;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
+
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -22,10 +26,6 @@ import com.cinemabooking.security.JwtAuthenticationFilter;
 import com.cinemabooking.security.OAuth2LoginFailureHandler;
 import com.cinemabooking.security.OAuth2LoginSuccessHandler;
 
-import static org.springframework.http.HttpMethod.GET;
-import static org.springframework.http.HttpMethod.POST;
-import static org.springframework.http.HttpStatus.UNAUTHORIZED;
-
 @Configuration
 @lombok.RequiredArgsConstructor
 public class SecurityConfig {
@@ -41,7 +41,6 @@ public class SecurityConfig {
     @ConditionalOnMissingBean(ClientRegistrationRepository.class)
     public SecurityFilterChain jwtOnlySecurityFilterChain(HttpSecurity http) throws Exception {
         configureCommonSecurity(http);
-
         return http.build();
     }
 
@@ -83,11 +82,8 @@ public class SecurityConfig {
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
-
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-
         return source;
     }
 
@@ -102,7 +98,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/oauth2/**", "/login/**", "/error").permitAll()
                         .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/settings").permitAll()
-                        .requestMatchers("/api/auth/verify-email", "/api/auth/forgot-password", "/api/auth/reset-password").permitAll() // thêm dòng này
+                        .requestMatchers(
+                                "/api/auth/verify-email",
+                                "/api/auth/resend-verification",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password"
+                        ).permitAll()
                         .requestMatchers(GET, "/api/auth/me").authenticated()
                         .requestMatchers(GET, "/api/movies/**", "/api/showtimes/**", "/api/tmdb/**").permitAll()
                         .requestMatchers(POST, "/api/tmdb/**").permitAll()
