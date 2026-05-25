@@ -33,7 +33,6 @@ export default function Navbar({
 
                     <nav className="flex items-center gap-[48px]">
                         <NavbarLink to="/movies">Movies</NavbarLink>
-                        <NavbarLink to="/cinemas">Cinemas</NavbarLink>
                     </nav>
                 </div>
 
