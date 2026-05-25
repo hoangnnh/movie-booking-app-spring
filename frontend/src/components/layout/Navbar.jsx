@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { ChevronDown, LockKeyhole, LogIn, Search } from "lucide-react";
+import { ChevronDown, LockKeyhole, LogIn, Moon, Search, Sun } from "lucide-react";
 import { cn } from "../../utils/cn";
 import Avatar from "../common/Avatar";
 import Button from "../common/Button";
@@ -13,9 +13,12 @@ export default function Navbar({
     onLoginClick,
     onSignUpClick,
     onLogout,
+    theme = "dark",
+    onThemeToggle,
     className = "",
 }) {
     const isLoggedIn = Boolean(user);
+    const nextThemeLabel = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
 
     return (
         <header
@@ -37,6 +40,16 @@ export default function Navbar({
                 </div>
 
                 <div className="flex items-center gap-[32px]">
+                    <Button
+                        variant="text"
+                        size={40}
+                        iconOnly
+                        onClick={onThemeToggle}
+                        aria-label={nextThemeLabel}
+                        title={nextThemeLabel}
+                        rightIcon={theme === "dark" ? <Sun /> : <Moon />}
+                    />
+
                     <Button
                         variant="text"
                         size={40}

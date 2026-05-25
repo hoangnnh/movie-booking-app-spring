@@ -1,9 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import Button from "../common/Button";
 import { heroImage } from "./homeData";
+import { useTheme } from "../../context/useTheme";
 
 export default function HeroSection() {
   const navigate = useNavigate();
+  const { isLightMode } = useTheme();
 
   return (
     <section className="ticketor-container pt-[32px]">
@@ -14,7 +16,13 @@ export default function HeroSection() {
           className="absolute inset-0 h-full w-full object-cover"
         />
 
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/20" />
+        <div
+          className={
+            isLightMode
+              ? "absolute inset-0 bg-gradient-to-r from-[rgba(244,241,232,0.97)] via-[rgba(244,241,232,0.9)] to-[rgba(244,241,232,0.62)]"
+              : "absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/20"
+          }
+        />
 
         <div className="relative z-10 flex min-h-[520px] flex-col items-center justify-center px-[64px] text-center">
           <h1 className="type-display-1 max-w-[780px] uppercase text-app-text">
