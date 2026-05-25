@@ -8,7 +8,6 @@ import CastSection from "../components/movieDetail/CastSection";
 import ReviewsSection from "../components/movieDetail/ReviewsSection";
 import ShowtimesSection from "../components/movieDetail/ShowtimesSection";
 
-import { fallbackBackdrop } from "../components/movieDetail/movieDetailData";
 import { formatDuration, getPosterUrl } from "../components/home/homeUtils";
 
 export default function MovieDetailPage() {
@@ -48,7 +47,7 @@ export default function MovieDetailPage() {
     return {
       ...movie,
       posterUrl: getPosterUrl(movie, 0),
-      backdropUrl: getPosterUrl(movie, 1) || fallbackBackdrop,
+      backdropUrl: movie.backdropUrl || getPosterUrl(movie, 1),
       duration: formatDuration(movie.durationMinutes),
       genres: Array.isArray(movie.genres) ? movie.genres.join(", ") : "Drama",
       rating: movie.rating || "7.9",
@@ -92,7 +91,7 @@ export default function MovieDetailPage() {
       />
 
       <MovieSummarySection movie={computedMovie} />
-      <CastSection />
+      <CastSection cast={computedMovie.cast} />
       <ReviewsSection score={computedMovie.rating} />
       <ShowtimesSection showtimes={showtimes} />
     </div>
