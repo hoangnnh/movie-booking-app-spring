@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { ChevronDown, LockKeyhole, LogIn, Search } from "lucide-react";
+import { ChevronDown, LockKeyhole, LogIn, Moon, Search, Sun } from "lucide-react";
 import { cn } from "../../utils/cn";
 import Avatar from "../common/Avatar";
 import Button from "../common/Button";
@@ -13,9 +13,12 @@ export default function Navbar({
     onLoginClick,
     onSignUpClick,
     onLogout,
+    theme = "dark",
+    onThemeToggle,
     className = "",
 }) {
     const isLoggedIn = Boolean(user);
+    const nextThemeLabel = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
 
     return (
         <header
@@ -33,10 +36,21 @@ export default function Navbar({
 
                     <nav className="flex items-center gap-[48px]">
                         <NavbarLink to="/movies">Movies</NavbarLink>
+                        {isLoggedIn && <NavbarLink to="/favorites">Favorites</NavbarLink>}
                     </nav>
                 </div>
 
                 <div className="flex items-center gap-[32px]">
+                    <Button
+                        variant="text"
+                        size={40}
+                        iconOnly
+                        onClick={onThemeToggle}
+                        aria-label={nextThemeLabel}
+                        title={nextThemeLabel}
+                        rightIcon={theme === "dark" ? <Sun /> : <Moon />}
+                    />
+
                     <Button
                         variant="text"
                         size={40}
@@ -60,6 +74,12 @@ export default function Navbar({
 
                             <div className="invisible absolute right-0 top-full z-30 min-w-[180px] pt-[12px] opacity-0 transition-opacity group-hover:visible group-hover:opacity-100">
                                 <div className="rounded-tk-8 border border-app-border bg-app-surface p-[8px] shadow-xl">
+                                    <Link
+                                        to="/favorites"
+                                        className="block w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text-muted transition-colors hover:bg-app-background hover:text-brand"
+                                    >
+                                        Favorites
+                                    </Link>
                                     <button
                                         type="button"
                                         className="w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text-muted transition-colors hover:bg-app-background hover:text-brand"

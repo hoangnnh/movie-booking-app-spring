@@ -13,6 +13,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -41,4 +43,15 @@ public class AppUser extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private AuthProvider provider = AuthProvider.LOCAL;
+
+    @Column(nullable = false)
+    private boolean emailVerified = false;
+
+    @Column(length = 100)
+    private String verificationToken;
+
+    @Column(length = 100)
+    private String resetPasswordToken;
+
+    private LocalDateTime resetTokenExpiry;
 }

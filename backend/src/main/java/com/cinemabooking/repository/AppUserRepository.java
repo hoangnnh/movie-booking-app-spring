@@ -9,4 +9,6 @@ import com.cinemabooking.entity.AppUser;
 
 public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
     Optional<AppUser> findByEmail(String email);
+    Optional<AppUser> findByVerificationToken(String token);
+    Optional<AppUser> findByResetPasswordToken(String token);
 }

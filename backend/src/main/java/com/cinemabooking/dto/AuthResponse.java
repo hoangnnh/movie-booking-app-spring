@@ -6,6 +6,8 @@ public record AuthResponse(
         UUID userId,
         String fullName,
         String email,
-        String role
+        String role,
+        String provider,
+        String accessToken
 ) {
 }

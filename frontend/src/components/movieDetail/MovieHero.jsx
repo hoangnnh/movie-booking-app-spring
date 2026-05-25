@@ -1,4 +1,4 @@
-import { Bookmark, PlayCircle } from "lucide-react";
+import { Bookmark, Check, PlayCircle } from "lucide-react";
 import Button from "../common/Button";
 import RatingBadge from "../common/RatingBadge";
 
@@ -11,16 +11,24 @@ export default function MovieHero({
   rating = "7.9",
   ageRating = "PG",
   onGetTicket,
+  onToggleFavorite,
+  favoriteButtonLabel = "Add to Favorites",
+  favoriteActive = false,
+  favoriteDisabled = false,
 }) {
   return (
     <section className="ticketor-container pt-[32px]">
       <div className="relative overflow-hidden rounded-card border border-app-border bg-app-background">
         <div className="absolute inset-x-0 top-0 h-[300px]">
-          <img
-            src={backdropUrl}
-            alt={movie.title}
-            className="h-full w-full object-cover opacity-50"
-          />
+          {backdropUrl ? (
+            <img
+              src={backdropUrl}
+              alt={movie.title}
+              className="h-full w-full object-cover opacity-50"
+            />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-br from-app-surface via-app-background to-app-surface" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-app-background/80 to-app-background" />
         </div>
 
@@ -32,21 +40,31 @@ export default function MovieHero({
           <div className="grid grid-cols-12 gap-[24px]">
             <div className="col-span-4">
               <div className="h-[420px] overflow-hidden rounded-card bg-app-surface">
-                <img
-                  src={posterUrl}
-                  alt={movie.title}
-                  className="h-full w-full object-cover"
-                />
+                {posterUrl ? (
+                  <img
+                    src={posterUrl}
+                    alt={movie.title}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center px-[24px] text-center type-h5 text-app-text-muted">
+                    Poster unavailable
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="col-span-8">
               <div className="relative h-[420px] overflow-hidden rounded-card bg-app-surface">
-                <img
-                  src={backdropUrl}
-                  alt={`${movie.title} trailer`}
-                  className="h-full w-full object-cover opacity-80"
-                />
+                {backdropUrl ? (
+                  <img
+                    src={backdropUrl}
+                    alt={`${movie.title} trailer`}
+                    className="h-full w-full object-cover opacity-80"
+                  />
+                ) : (
+                  <div className="h-full w-full bg-gradient-to-br from-neutral-900 via-app-surface to-neutral-800" />
+                )}
 
                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                   <button
@@ -82,11 +100,13 @@ export default function MovieHero({
 
               <Button
                 size={40}
-                variant="outline"
-                tone="base"
-                leftIcon={<Bookmark />}
+                variant={favoriteActive ? "primary" : "outline"}
+                tone={favoriteActive ? "brand" : "base"}
+                leftIcon={favoriteActive ? <Check /> : <Bookmark />}
+                onClick={onToggleFavorite}
+                disabled={favoriteDisabled}
               >
-                Add to Favorites
+                {favoriteButtonLabel}
               </Button>
             </div>
           </div>

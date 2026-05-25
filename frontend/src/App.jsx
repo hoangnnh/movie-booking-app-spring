@@ -3,16 +3,28 @@ import { useState } from "react";
 import AuthModal from "./components/auth/AuthModal";
 import Navbar from "./components/layout/Navbar";
 import { useAuth } from "./context/useAuth";
+import { useTheme } from "./context/useTheme";
 import HomePage from "./pages/HomePage";
 import FoodDrinkPage from "./pages/FoodDrinkPage";
+import MoviesPage from "./pages/MoviesPage";
+import ActorMoviesPage from "./pages/ActorMoviesPage";
 import MovieDetailPage from "./pages/MovieDetailPage";
+import FavoritesPage from "./pages/FavoritesPage";
+import OAuthCallbackPage from "./pages/OAuthCallbackPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import { ContactPage, PrivacyPolicyPage, TermsOfUsePage } from "./pages/InfoPages";
 import SeatSelectionPage from "./pages/SeatSelectionPage";
 import TimeSelectionPage from "./pages/TimeSelectionPage";
 import TmdbImportPage from "./pages/TmdbImportPage";
 
 export default function App() {
-  const { user, logout } = useAuth();
+  const { ready, user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [authMode, setAuthMode] = useState(null);
+
+  if (!ready) {
+    return null;
+  }
 
   return (
     <>
@@ -21,13 +33,28 @@ export default function App() {
         onLoginClick={() => setAuthMode("login")}
         onSignUpClick={() => setAuthMode("signup")}
         onLogout={logout}
+        theme={theme}
+        onThemeToggle={toggleTheme}
       />
 
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/movies" element={<HomePage />} />
-        <Route path="/movies/:movieId" element={<MovieDetailPage />} />
+        <Route path="/movies" element={<MoviesPage />} />
+        <Route
+          path="/movies/:movieId"
+          element={<MovieDetailPage onRequireAuth={() => setAuthMode("login")} />}
+        />
+        <Route
+          path="/favorites"
+          element={<FavoritesPage onRequireAuth={() => setAuthMode("login")} />}
+        />
+        <Route path="/actors/:actorName/movies" element={<ActorMoviesPage />} />
         <Route path="/tmdb" element={<TmdbImportPage />} />
+        <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/terms" element={<TermsOfUsePage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/booking/:showtimeId" element={<TimeSelectionPage />} />
         <Route path="/booking/:showtimeId/seats" element={<SeatSelectionPage />} />
         <Route path="/booking/:showtimeId/food" element={<FoodDrinkPage />} />
