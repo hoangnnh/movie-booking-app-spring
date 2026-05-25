@@ -94,6 +94,7 @@ export default function SeatSelectionPage() {
 
   const totalAmount = selectedSeatIds.length * ticketPrice;
   const selectionComplete = selectedSeatIds.length === ticketCount;
+  const selectedSeatParam = selectedSeatIds.join(",");
 
   function toggleSeat(seat) {
     const seatId = seat.seatId || seat.id;
@@ -252,7 +253,13 @@ export default function SeatSelectionPage() {
                 rightIcon={<ChevronRight />}
                 disabled={!selectionComplete}
                 className="mt-[24px] w-full"
-                onClick={() => {}}
+                onClick={() =>
+                  navigate(
+                    `/booking/${showtimeId}/food?tickets=${ticketCount}&seats=${encodeURIComponent(
+                      selectedSeatParam
+                    )}`
+                  )
+                }
               >
                 Continue
               </Button>
