@@ -76,6 +76,24 @@ export const authApi = {
       body: JSON.stringify(data),
     }),
 
+  resendVerification: (data) =>
+    apiRequest("/auth/resend-verification", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  forgotPassword: (data) =>
+    apiRequest("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  resetPassword: (data) =>
+    apiRequest("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   getSettings: () => apiRequest("/auth/settings"),
 
   getCurrentUser: () => apiRequest("/auth/me"),
@@ -83,6 +101,13 @@ export const authApi = {
 
 export const movieApi = {
   getAll: () => apiRequest("/movies"),
+
+  search: (query) => apiRequest(`/movies?query=${encodeURIComponent(query)}`),
+
+  autocomplete: (query, limit = 6) =>
+    apiRequest(
+      `/movies/autocomplete?query=${encodeURIComponent(query)}&limit=${limit}`
+    ),
 
   getById: (movieId) => apiRequest(`/movies/${movieId}`),
 

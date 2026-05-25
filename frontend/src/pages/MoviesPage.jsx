@@ -4,15 +4,20 @@ import Button from "../components/common/Button";
 import MovieCard from "../components/movie/MovieCard";
 import { movieApi } from "../api/api";
 import { formatDuration, getPosterUrl, isComingSoon } from "../components/home/homeUtils";
+import { useTheme } from "../context/useTheme";
 
 const PAGE_SIZE = 12;
 
 export default function MoviesPage() {
   const navigate = useNavigate();
+  const { isLightMode } = useTheme();
   const [movies, setMovies] = useState([]);
+  const [catalogCount, setCatalogCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [genreFilter, setGenreFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -20,21 +25,83 @@ export default function MoviesPage() {
   const deferredSearchTerm = useDeferredValue(searchTerm);
 
   useEffect(() => {
+    let ignore = false;
+
     async function loadMovies() {
+      const normalizedSearch = deferredSearchTerm.trim();
+
       try {
         setLoading(true);
         setError("");
-        const data = await movieApi.getAll();
-        setMovies(Array.isArray(data) ? data : []);
+        const data =
+          normalizedSearch.length === 0
+            ? await movieApi.getAll()
+            : await movieApi.search(normalizedSearch);
+
+        if (ignore) {
+          return;
+        }
+
+        const nextMovies = Array.isArray(data) ? data : [];
+        setMovies(nextMovies);
+
+        if (normalizedSearch.length === 0) {
+          setCatalogCount(nextMovies.length);
+        }
       } catch {
-        setError("Cannot load movies from server.");
+        if (!ignore) {
+          setError("Cannot load movies from server.");
+        }
       } finally {
-        setLoading(false);
+        if (!ignore) {
+          setLoading(false);
+        }
       }
     }
 
     loadMovies();
-  }, []);
+
+    return () => {
+      ignore = true;
+    };
+  }, [deferredSearchTerm]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadSuggestions() {
+      const normalizedSearch = searchTerm.trim();
+
+      if (normalizedSearch.length === 0) {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+
+      try {
+        const data = await movieApi.autocomplete(normalizedSearch);
+
+        if (ignore) {
+          return;
+        }
+
+        const nextSuggestions = Array.isArray(data) ? data : [];
+        setSuggestions(nextSuggestions);
+        setShowSuggestions(nextSuggestions.length > 0);
+      } catch {
+        if (!ignore) {
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      }
+    }
+
+    loadSuggestions();
+
+    return () => {
+      ignore = true;
+    };
+  }, [searchTerm]);
 
   const availableGenres = useMemo(() => {
     return Array.from(
@@ -47,14 +114,7 @@ export default function MoviesPage() {
   }, [movies]);
 
   const filteredMovies = useMemo(() => {
-    const normalizedSearch = deferredSearchTerm.trim().toLowerCase();
-
     return movies.filter((movie) => {
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        movie.title?.toLowerCase().includes(normalizedSearch) ||
-        movie.description?.toLowerCase().includes(normalizedSearch);
-
       const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "released" && !isComingSoon(movie)) ||
@@ -64,9 +124,9 @@ export default function MoviesPage() {
         genreFilter === "all" ||
         (Array.isArray(movie.genres) && movie.genres.includes(genreFilter));
 
-      return matchesSearch && matchesStatus && matchesGenre;
+      return matchesStatus && matchesGenre;
     });
-  }, [movies, deferredSearchTerm, statusFilter, genreFilter]);
+  }, [movies, statusFilter, genreFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredMovies.length / PAGE_SIZE));
 
@@ -86,7 +146,14 @@ export default function MoviesPage() {
   return (
     <div className="min-h-screen bg-app-background text-app-text">
       <main className="ticketor-container py-[48px]">
-        <section className="overflow-hidden rounded-tk-12 border border-app-border bg-[radial-gradient(circle_at_top_left,_rgba(251,251,30,0.18),_transparent_30%),linear-gradient(135deg,_rgba(53,53,65,1),_rgba(20,20,24,1))] px-[28px] py-[32px]">
+        <section
+          className="overflow-hidden rounded-tk-12 border border-app-border px-[28px] py-[32px]"
+          style={{
+            background: isLightMode
+              ? "radial-gradient(circle at top left, rgba(170,143,0,0.14), transparent 30%), linear-gradient(135deg, rgba(255,253,248,1), rgba(240,234,220,1))"
+              : "radial-gradient(circle at top left, rgba(251,251,30,0.18), transparent 30%), linear-gradient(135deg, rgba(53,53,65,1), rgba(20,20,24,1))",
+          }}
+        >
           <p className="type-label-m text-brand">MOVIE CATALOG</p>
           <h1 className="type-h2 mt-[10px] max-w-[680px] text-app-text">
             Browse your full cinema lineup in one place.
@@ -98,7 +165,7 @@ export default function MoviesPage() {
 
           <div className="mt-[24px] flex flex-wrap gap-[12px] text-app-text-muted">
             <div className="rounded-full border border-app-border bg-black/20 px-[14px] py-[8px] type-body-s">
-              {movies.length} total movies
+              {catalogCount} total movies
             </div>
             <div className="rounded-full border border-app-border bg-black/20 px-[14px] py-[8px] type-body-s">
               {filteredMovies.length} matching now
@@ -108,14 +175,44 @@ export default function MoviesPage() {
 
         <section className="mt-[28px] rounded-tk-12 border border-app-border bg-app-surface p-[20px]">
           <div className="grid gap-[16px] md:grid-cols-[minmax(0,2fr)_180px_180px]">
-            <label className="grid gap-[6px]">
+            <label className="relative grid gap-[6px]">
               <span className="type-body-xs text-app-text-muted">Search</span>
               <input
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
+                onFocus={() => setShowSuggestions(suggestions.length > 0)}
+                onBlur={() => {
+                  window.setTimeout(() => {
+                    setShowSuggestions(false);
+                  }, 120);
+                }}
                 placeholder="Search by title or description"
                 className="h-[48px] rounded-tk-8 border border-app-border bg-app-background px-[16px] type-body-m text-app-text outline-none transition-colors placeholder:text-app-text-muted focus:border-brand"
               />
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-[calc(100%+8px)] z-10 overflow-hidden rounded-tk-8 border border-app-border bg-app-surface shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
+                  {suggestions.map((movie) => (
+                    <button
+                      key={movie.id}
+                      type="button"
+                      onMouseDown={() => {
+                        setSearchTerm(movie.title || "");
+                        setShowSuggestions(false);
+                      }}
+                      className="flex w-full items-center justify-between gap-[16px] border-b border-app-border px-[16px] py-[12px] text-left transition-colors last:border-b-0 hover:bg-app-background"
+                    >
+                      <span className="type-body-s text-app-text">
+                        {movie.title || "Untitled Movie"}
+                      </span>
+                      <span className="type-body-xs text-app-text-muted">
+                        {movie.releaseDate
+                          ? new Date(movie.releaseDate).getFullYear()
+                          : "TBA"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </label>
 
             <label className="grid gap-[6px]">
