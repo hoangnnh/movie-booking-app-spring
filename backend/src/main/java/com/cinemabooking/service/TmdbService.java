@@ -30,6 +30,7 @@ public class TmdbService {
 
     private final MovieRepository movieRepository;
     private final GenreRepository genreRepository;
+    private final ShowtimeSeedService showtimeSeedService;
 
     @Value("${tmdb.api.base-url}")
     private String apiBaseUrl;
@@ -97,7 +98,10 @@ public class TmdbService {
                 .map((genreData) -> getOrCreateGenre(stringValue(genreData, "name", "Drama")))
                 .toList()));
 
-        return toMovieResponse(movieRepository.save(movie));
+        Movie savedMovie = movieRepository.save(movie);
+        showtimeSeedService.createShowtimesForMovieIfMissing(savedMovie);
+
+        return toMovieResponse(savedMovie);
     }
 
     @Transactional

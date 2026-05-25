@@ -42,6 +42,12 @@ export const movieApi = {
   getShowtimes: (movieId) => apiRequest(`/movies/${movieId}/showtimes`),
 };
 
+export const cinemaApi = {
+  getAll: () => apiRequest("/cinemas"),
+
+  getById: (cinemaId) => apiRequest(`/cinemas/${cinemaId}`),
+};
+
 export const tmdbApi = {
   searchMovies: (query) =>
     apiRequest(`/tmdb/movies/search?query=${encodeURIComponent(query)}`),
