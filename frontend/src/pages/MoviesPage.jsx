@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Button from "../components/common/Button";
 import MovieCard from "../components/movie/MovieCard";
 import { movieApi } from "../api/api";
@@ -10,12 +10,13 @@ const PAGE_SIZE = 12;
 
 export default function MoviesPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isLightMode } = useTheme();
   const [movies, setMovies] = useState([]);
   const [catalogCount, setCatalogCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get("query") || "");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -103,6 +104,21 @@ export default function MoviesPage() {
     };
   }, [searchTerm]);
 
+  useEffect(() => {
+    const normalizedSearch = deferredSearchTerm.trim();
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (normalizedSearch) {
+      nextParams.set("query", normalizedSearch);
+    } else {
+      nextParams.delete("query");
+    }
+
+    if (nextParams.toString() !== searchParams.toString()) {
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [deferredSearchTerm, searchParams, setSearchParams]);
+
   const availableGenres = useMemo(() => {
     return Array.from(
       new Set(
@@ -129,19 +145,12 @@ export default function MoviesPage() {
   }, [movies, statusFilter, genreFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredMovies.length / PAGE_SIZE));
-
-  useEffect(() => {
-    setPage(1);
-  }, [deferredSearchTerm, statusFilter, genreFilter]);
-
-  useEffect(() => {
-    setPage((currentPage) => Math.min(currentPage, totalPages));
-  }, [totalPages]);
+  const currentPage = Math.min(page, totalPages);
 
   const visibleMovies = useMemo(() => {
-    const startIndex = (page - 1) * PAGE_SIZE;
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
     return filteredMovies.slice(startIndex, startIndex + PAGE_SIZE);
-  }, [filteredMovies, page]);
+  }, [currentPage, filteredMovies]);
 
   return (
     <div className="min-h-screen bg-app-background text-app-text">
@@ -179,7 +188,10 @@ export default function MoviesPage() {
               <span className="type-body-xs text-app-text-muted">Search</span>
               <input
                 value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
+                onChange={(event) => {
+                  setSearchTerm(event.target.value);
+                  setPage(1);
+                }}
                 onFocus={() => setShowSuggestions(suggestions.length > 0)}
                 onBlur={() => {
                   window.setTimeout(() => {
@@ -219,7 +231,10 @@ export default function MoviesPage() {
               <span className="type-body-xs text-app-text-muted">Status</span>
               <select
                 value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
+                onChange={(event) => {
+                  setStatusFilter(event.target.value);
+                  setPage(1);
+                }}
                 className="h-[48px] rounded-tk-8 border border-app-border bg-app-background px-[14px] type-body-s text-app-text outline-none transition-colors focus:border-brand"
               >
                 <option value="all">All movies</option>
@@ -232,7 +247,10 @@ export default function MoviesPage() {
               <span className="type-body-xs text-app-text-muted">Genre</span>
               <select
                 value={genreFilter}
-                onChange={(event) => setGenreFilter(event.target.value)}
+                onChange={(event) => {
+                  setGenreFilter(event.target.value);
+                  setPage(1);
+                }}
                 className="h-[48px] rounded-tk-8 border border-app-border bg-app-background px-[14px] type-body-s text-app-text outline-none transition-colors focus:border-brand"
               >
                 <option value="all">All genres</option>
@@ -276,6 +294,7 @@ export default function MoviesPage() {
                   setSearchTerm("");
                   setStatusFilter("all");
                   setGenreFilter("all");
+                  setPage(1);
                 }}
               >
                 Reset Filters
@@ -329,8 +348,8 @@ export default function MoviesPage() {
 
             <section className="mt-[32px] flex flex-wrap items-center justify-between gap-[16px] rounded-tk-12 border border-app-border bg-app-surface p-[20px]">
               <p className="type-body-s text-app-text-muted">
-                Showing {(page - 1) * PAGE_SIZE + 1}-
-                {Math.min(page * PAGE_SIZE, filteredMovies.length)} of{" "}
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}-
+                {Math.min(currentPage * PAGE_SIZE, filteredMovies.length)} of{" "}
                 {filteredMovies.length} movies
               </p>
 
@@ -339,18 +358,18 @@ export default function MoviesPage() {
                   size={40}
                   variant="outline"
                   tone="brand"
-                  disabled={page === 1}
+                  disabled={currentPage === 1}
                   onClick={() => setPage((currentPage) => currentPage - 1)}
                 >
                   Previous
                 </Button>
                 <div className="rounded-full border border-app-border px-[14px] py-[10px] type-body-s text-app-text">
-                  Page {page} / {totalPages}
+                  Page {currentPage} / {totalPages}
                 </div>
                 <Button
                   size={40}
                   variant="primary"
-                  disabled={page === totalPages}
+                  disabled={currentPage === totalPages}
                   onClick={() => setPage((currentPage) => currentPage + 1)}
                 >
                   Next
