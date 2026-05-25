@@ -36,6 +36,7 @@ export default function Navbar({
 
                     <nav className="flex items-center gap-[48px]">
                         <NavbarLink to="/movies">Movies</NavbarLink>
+                        {isLoggedIn && <NavbarLink to="/favorites">Favorites</NavbarLink>}
                     </nav>
                 </div>
 
@@ -73,6 +74,12 @@ export default function Navbar({
 
                             <div className="invisible absolute right-0 top-full z-30 min-w-[180px] pt-[12px] opacity-0 transition-opacity group-hover:visible group-hover:opacity-100">
                                 <div className="rounded-tk-8 border border-app-border bg-app-surface p-[8px] shadow-xl">
+                                    <Link
+                                        to="/favorites"
+                                        className="block w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text-muted transition-colors hover:bg-app-background hover:text-brand"
+                                    >
+                                        Favorites
+                                    </Link>
                                     <button
                                         type="button"
                                         className="w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text-muted transition-colors hover:bg-app-background hover:text-brand"

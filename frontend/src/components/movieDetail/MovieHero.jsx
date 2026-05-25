@@ -1,4 +1,4 @@
-import { Bookmark, PlayCircle } from "lucide-react";
+import { Bookmark, Check, PlayCircle } from "lucide-react";
 import Button from "../common/Button";
 import RatingBadge from "../common/RatingBadge";
 
@@ -11,6 +11,10 @@ export default function MovieHero({
   rating = "7.9",
   ageRating = "PG",
   onGetTicket,
+  onToggleFavorite,
+  favoriteButtonLabel = "Add to Favorites",
+  favoriteActive = false,
+  favoriteDisabled = false,
 }) {
   return (
     <section className="ticketor-container pt-[32px]">
@@ -96,11 +100,13 @@ export default function MovieHero({
 
               <Button
                 size={40}
-                variant="outline"
-                tone="base"
-                leftIcon={<Bookmark />}
+                variant={favoriteActive ? "primary" : "outline"}
+                tone={favoriteActive ? "brand" : "base"}
+                leftIcon={favoriteActive ? <Check /> : <Bookmark />}
+                onClick={onToggleFavorite}
+                disabled={favoriteDisabled}
               >
-                Add to Favorites
+                {favoriteButtonLabel}
               </Button>
             </div>
           </div>

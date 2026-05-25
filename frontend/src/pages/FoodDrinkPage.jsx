@@ -236,6 +236,9 @@ export default function FoodDrinkPage() {
   const navigate = useNavigate();
 
   const ticketCount = Math.max(1, Number(searchParams.get("tickets")) || 1);
+  const selectedDateParam = searchParams.get("date") || "";
+  const selectedStartTimeParam = searchParams.get("startTime") || "";
+  const selectedCinemaNameParam = searchParams.get("cinemaName") || "";
   const selectedSeatIds = useMemo(
     () =>
       (searchParams.get("seats") || "")
@@ -292,10 +295,12 @@ export default function FoodDrinkPage() {
   }, [movie]);
 
   const timeView = useMemo(() => {
-    if (!showtime) return null;
+    if (!showtime && !selectedStartTimeParam) return null;
 
-    return formatDateTime(showtime.startTime);
-  }, [showtime]);
+    return formatDateTime(selectedStartTimeParam || showtime.startTime);
+  }, [selectedStartTimeParam, showtime]);
+
+  const displayCinemaName = selectedCinemaNameParam || showtime?.cinemaName || "";
 
   const selectedSeats = useMemo(
     () =>
@@ -362,9 +367,25 @@ export default function FoodDrinkPage() {
         <button
           type="button"
           className="mb-[32px] inline-flex items-center gap-[8px] type-body-s text-app-text-muted transition-colors hover:text-brand"
-          onClick={() =>
-            navigate(`/booking/${showtimeId}/seats?tickets=${ticketCount}`)
-          }
+          onClick={() => {
+            const nextParams = new URLSearchParams({
+              tickets: String(ticketCount),
+            });
+
+            if (selectedDateParam) {
+              nextParams.set("date", selectedDateParam);
+            }
+
+            if (selectedStartTimeParam) {
+              nextParams.set("startTime", selectedStartTimeParam);
+            }
+
+            if (selectedCinemaNameParam) {
+              nextParams.set("cinemaName", selectedCinemaNameParam);
+            }
+
+            navigate(`/booking/${showtimeId}/seats?${nextParams.toString()}`);
+          }}
         >
           <ChevronLeft className="h-[16px] w-[16px]" />
           Back to seat selection
@@ -390,7 +411,7 @@ export default function FoodDrinkPage() {
                 <div className="mt-[18px] grid gap-[12px] text-app-text-muted">
                   <InfoRow icon={<CalendarDays />} label={timeView.date} />
                   <InfoRow icon={<Clock />} label={timeView.time} />
-                  <InfoRow icon={<MapPin />} label={showtime.cinemaName} />
+                  <InfoRow icon={<MapPin />} label={displayCinemaName} />
                 </div>
 
                 <div className="mt-[18px] border-t border-app-border pt-[16px]">
