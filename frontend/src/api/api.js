@@ -156,3 +156,20 @@ export const bookingApi = {
 
   getUserBookings: (userId) => apiRequest(`/users/${userId}/bookings`),
 };
+
+export const favoritesApi = {
+  getUserFavorites: (userId) => apiRequest(`/users/${userId}/favorites`),
+
+  isFavorite: (userId, movieId) =>
+    apiRequest(`/users/${userId}/favorites/${movieId}`),
+
+  addFavorite: (userId, movieId) =>
+    apiRequest(`/users/${userId}/favorites/${movieId}`, {
+      method: "POST",
+    }),
+
+  removeFavorite: (userId, movieId) =>
+    apiRequest(`/users/${userId}/favorites/${movieId}`, {
+      method: "DELETE",
+    }),
+};

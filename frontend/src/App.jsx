@@ -9,6 +9,7 @@ import FoodDrinkPage from "./pages/FoodDrinkPage";
 import MoviesPage from "./pages/MoviesPage";
 import ActorMoviesPage from "./pages/ActorMoviesPage";
 import MovieDetailPage from "./pages/MovieDetailPage";
+import FavoritesPage from "./pages/FavoritesPage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { ContactPage, PrivacyPolicyPage, TermsOfUsePage } from "./pages/InfoPages";
@@ -39,7 +40,14 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/movies" element={<MoviesPage />} />
-        <Route path="/movies/:movieId" element={<MovieDetailPage />} />
+        <Route
+          path="/movies/:movieId"
+          element={<MovieDetailPage onRequireAuth={() => setAuthMode("login")} />}
+        />
+        <Route
+          path="/favorites"
+          element={<FavoritesPage onRequireAuth={() => setAuthMode("login")} />}
+        />
         <Route path="/actors/:actorName/movies" element={<ActorMoviesPage />} />
         <Route path="/tmdb" element={<TmdbImportPage />} />
         <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
