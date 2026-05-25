@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.cinemabooking.dto.AuthResponse;
@@ -30,6 +31,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
+    @Transactional
     public void register(RegisterRequest request) {
         boolean emailExists = appUserRepository.findByEmail(request.email()).isPresent();
         if (emailExists) {
@@ -133,6 +135,7 @@ public class AuthService {
 
 
     // ── Confirm email ─────────────────────────────────────────
+    @Transactional
     public void verifyEmail(String token) {
         AppUser user = appUserRepository.findByVerificationToken(token)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -143,7 +146,30 @@ public class AuthService {
         appUserRepository.save(user);
     }
 
+    @Transactional
+    public void resendVerificationEmail(String email) {
+        AppUser user = appUserRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Email not found"));
+
+        if (user.getProvider() != AuthProvider.LOCAL) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "This account uses " + user.getProvider() + " login. Email verification is not available.");
+        }
+
+        if (user.isEmailVerified()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already verified");
+        }
+
+        String verificationToken = UUID.randomUUID().toString();
+        user.setVerificationToken(verificationToken);
+        appUserRepository.save(user);
+
+        emailService.sendVerificationEmail(user.getEmail(), verificationToken);
+    }
+
     // ── Forgot password ────────────────────────────────────────
+    @Transactional
     public void forgotPassword(String email) {
         AppUser user = appUserRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -163,6 +189,7 @@ public class AuthService {
     }
 
     // ── Reset password ─────────────────────────────────────────
+    @Transactional
     public void resetPassword(ResetPasswordRequest request) {
         AppUser user = appUserRepository.findByResetPasswordToken(request.token())
                 .orElseThrow(() -> new ResponseStatusException(
@@ -171,7 +198,7 @@ public class AuthService {
         if (user.getResetTokenExpiry() == null ||
                 user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Reset createGoogleUser()token has expired");
+                    HttpStatus.BAD_REQUEST, "Reset token has expired");
         }
 
         user.setPassword(passwordEncoder.encode(request.newPassword()));

@@ -59,10 +59,7 @@ export function AuthProvider({ children }) {
   }
 
   async function register(data) {
-    const authResponse = await authApi.register(data);
-    const nextAuth = toAuthState(authResponse);
-    persistAuth(nextAuth);
-    return nextAuth.user;
+    return authApi.register(data);
   }
 
   function loginWithGoogle() {
