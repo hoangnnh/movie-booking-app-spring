@@ -97,7 +97,7 @@ public class TmdbService {
         movie.setGenres(new HashSet<>(genres.stream()
                 .map((genreData) -> getOrCreateGenre(stringValue(genreData, "name", "Drama")))
                 .toList()));
-        movie.setCastMembers(toCastMembers(movie, mapValue(detail, "credits")));
+        replaceCastMembers(movie, toCastMembers(movie, mapValue(detail, "credits")));
 
         Movie savedMovie = movieRepository.save(movie);
         showtimeSeedService.createShowtimesForMovieIfMissing(savedMovie);
@@ -278,7 +278,7 @@ public class TmdbService {
                         imageUrl(stringValue(detail, "backdrop_path", "")),
                         movie.getBackdropUrl()
                 ));
-                movie.setCastMembers(toCastMembers(movie, mapValue(detail, "credits")));
+                replaceCastMembers(movie, toCastMembers(movie, mapValue(detail, "credits")));
                 movieRepository.save(movie);
                 updatedCount++;
             } catch (RuntimeException exception) {
@@ -337,6 +337,11 @@ public class TmdbService {
         }
 
         return castMembers;
+    }
+
+    private void replaceCastMembers(Movie movie, Set<MovieCastMember> castMembers) {
+        movie.getCastMembers().clear();
+        movie.getCastMembers().addAll(castMembers);
     }
 
     @SuppressWarnings("unchecked")
