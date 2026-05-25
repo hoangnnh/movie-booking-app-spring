@@ -46,12 +46,31 @@ function formatDateLabel(value) {
   });
 }
 
+function padNumber(value) {
+  return String(value).padStart(2, "0");
+}
+
+function formatDateKey(date) {
+  return `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}-${padNumber(
+    date.getDate()
+  )}`;
+}
+
+function formatLocalDateTime(date) {
+  return `${formatDateKey(date)}T${padNumber(date.getHours())}:${padNumber(
+    date.getMinutes()
+  )}:${padNumber(date.getSeconds())}`;
+}
+
 function getDateParts(offset, baseValue = new Date()) {
-  const date = new Date(baseValue);
+  const date =
+    typeof baseValue === "string"
+      ? new Date(`${baseValue.slice(0, 10)}T12:00:00`)
+      : new Date(baseValue);
   date.setDate(date.getDate() + offset);
 
   return {
-    key: date.toISOString().slice(0, 10),
+    key: formatDateKey(date),
     day: offset === 0 ? "Today" : date.toLocaleDateString("en-US", { weekday: "short" }),
     date: date.toLocaleDateString("en-US", { day: "2-digit" }),
     month: date.toLocaleDateString("en-US", { month: "short" }).toUpperCase(),
@@ -88,12 +107,12 @@ function getCinemaFormat(cinema, index) {
 
 function makeStartTimeForDate(sourceStartTime, selectedDate, offset) {
   const source = new Date(sourceStartTime);
-  const date = new Date(`${selectedDate}T00:00:00`);
+  const date = new Date(`${selectedDate}T12:00:00`);
 
   date.setHours(source.getHours(), source.getMinutes(), 0, 0);
   date.setMinutes(date.getMinutes() + offset);
 
-  return date.toISOString();
+  return formatLocalDateTime(date);
 }
 
 export default function TimeSelectionPage() {
@@ -148,11 +167,8 @@ export default function TimeSelectionPage() {
   }, [searchParams, showtimeId]);
 
   const dates = useMemo(
-    () =>
-      Array.from({ length: 7 }).map((_, index) =>
-        getDateParts(index, initialShowtime?.startTime || new Date())
-      ),
-    [initialShowtime]
+    () => Array.from({ length: 7 }).map((_, index) => getDateParts(index)),
+    []
   );
 
   const selectedDateLabel = useMemo(
@@ -461,7 +477,20 @@ export default function TimeSelectionPage() {
           onClose={() => setTicketModalOpen(false)}
           onContinue={() => {
             const nextShowtimeId = selectedTime?.showtimeId || showtimeId;
-            navigate(`/booking/${nextShowtimeId}/seats?tickets=${totalTickets}`);
+            const nextParams = new URLSearchParams({
+              tickets: String(totalTickets),
+              date: selectedDate,
+            });
+
+            if (selectedTime?.startTime) {
+              nextParams.set("startTime", selectedTime.startTime);
+            }
+
+            if (selectedTime?.cinemaName) {
+              nextParams.set("cinemaName", selectedTime.cinemaName);
+            }
+
+            navigate(`/booking/${nextShowtimeId}/seats?${nextParams.toString()}`);
           }}
           onUpdateTicketCount={updateTicketCount}
         />

@@ -67,12 +67,16 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponse createBooking(CreateBookingRequest request) {
+    public BookingResponse createBooking(UUID authenticatedUserId, CreateBookingRequest request) {
         if (request.seatIds() == null || request.seatIds().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one seat is required");
         }
 
-        AppUser user = appUserRepository.findById(request.userId())
+        if (request.userId() != null && !request.userId().equals(authenticatedUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only create bookings for yourself");
+        }
+
+        AppUser user = appUserRepository.findById(authenticatedUserId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         Showtime showtime = showtimeRepository.findById(request.showtimeId())

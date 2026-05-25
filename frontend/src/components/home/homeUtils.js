@@ -1,5 +1,3 @@
-import { fallbackPosters } from "./homeData";
-
 export function formatDuration(minutes) {
   if (!minutes) return "2h 2m";
 
@@ -20,7 +18,7 @@ export function getPosterUrl(movie, index = 0) {
     return movie.posterUrl;
   }
 
-  return fallbackPosters[index % fallbackPosters.length];
+  return "";
 }
 
 export function normalizeMovie(movie, index = 0) {
