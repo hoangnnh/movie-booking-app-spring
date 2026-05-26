@@ -13,8 +13,8 @@ export default function ReviewsSection({ score = "7.5", reviews = fallbackReview
     <section className="ticketor-container py-[56px]">
       <SectionHeader title="User Reviews" actionText="View All" />
 
-      <div className="grid grid-cols-12 gap-[24px]">
-        <aside className="col-span-4 rounded-card border border-app-border bg-app-background p-[24px]">
+      <div className="grid gap-[24px] lg:grid-cols-12">
+        <aside className="rounded-card border border-app-border bg-app-background p-[24px] lg:col-span-4">
           <div className="flex items-center gap-[20px]">
             <ScoreBadge value={score} tone="brand" size="lg" />
 
@@ -31,7 +31,7 @@ export default function ReviewsSection({ score = "7.5", reviews = fallbackReview
           </div>
         </aside>
 
-        <div className="col-span-8">
+        <div className="lg:col-span-8">
           <div className="mb-[24px] flex flex-wrap gap-[8px]">
             {tabs.map((tab) => (
               <button
@@ -50,7 +50,7 @@ export default function ReviewsSection({ score = "7.5", reviews = fallbackReview
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-[16px]">
+          <div className="grid gap-[16px] xl:grid-cols-2">
             {reviews.map((review) => (
               <ReviewItem key={`${review.name}-${review.date}`} review={review} />
             ))}

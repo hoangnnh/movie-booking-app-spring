@@ -16,7 +16,7 @@ const stats = [
 export default function StatsSection() {
   return (
     <section className="ticketor-container py-[40px]">
-      <div className="grid grid-cols-3 gap-[16px]">
+      <div className="grid gap-[16px] sm:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
           <div
             key={stat.label}
