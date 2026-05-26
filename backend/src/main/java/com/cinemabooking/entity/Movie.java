@@ -43,6 +43,9 @@ public class Movie extends BaseEntity {
     @Column(name = "backdrop_url")
     private String backdropUrl;
 
+    @Column(name = "trailer_url", length = 500)
+    private String trailerUrl;
+
     @Column(name = "release_date")
     private LocalDate releaseDate;
 

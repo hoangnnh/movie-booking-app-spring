@@ -11,6 +11,8 @@ export default function MovieHero({
   rating = "7.9",
   ageRating = "PG",
   onGetTicket,
+  onPlayTrailer,
+  trailerAvailable = false,
   onToggleFavorite,
   favoriteButtonLabel = "Add to Favorites",
   favoriteActive = false,
@@ -69,7 +71,14 @@ export default function MovieHero({
                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                   <button
                     type="button"
-                    className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-app-background/80 text-brand transition-colors hover:bg-brand hover:text-neutral-900"
+                    onClick={onPlayTrailer}
+                    disabled={!trailerAvailable}
+                    aria-label={
+                      trailerAvailable
+                        ? `Play trailer for ${movie.title}`
+                        : `Trailer unavailable for ${movie.title}`
+                    }
+                    className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-app-background/80 text-brand transition-colors hover:bg-brand hover:text-neutral-900 disabled:cursor-not-allowed disabled:bg-app-background/55 disabled:text-app-text-subtle"
                   >
                     <PlayCircle className="h-[40px] w-[40px]" />
                   </button>
@@ -90,6 +99,12 @@ export default function MovieHero({
 
               <p className="type-body-m mt-[8px] text-app-text-muted">
                 {genres}
+              </p>
+
+              <p className="type-body-s mt-[12px] text-app-text-subtle">
+                {trailerAvailable
+                  ? "Watch the latest trailer before booking your seat."
+                  : "Trailer is not available for this movie yet."}
               </p>
             </div>
 
