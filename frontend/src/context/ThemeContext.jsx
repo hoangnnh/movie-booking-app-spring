@@ -1,8 +1,7 @@
-import { createContext, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ThemeContext } from "./themeContextValue";
 
 const THEME_STORAGE_KEY = "ticketor.theme";
-
-export const ThemeContext = createContext(null);
 
 function resolveInitialTheme() {
   const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);

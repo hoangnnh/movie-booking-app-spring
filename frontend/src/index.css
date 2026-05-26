@@ -464,6 +464,22 @@
         color: var(--color-app-text);
     }
 
+    .admin-input {
+        min-height: 40px;
+        border-radius: var(--radius-tk-4);
+        border: 1px solid var(--color-app-border);
+        background: var(--color-app-background);
+        padding: 8px 10px;
+        color: var(--color-app-text);
+        font-size: var(--text-body-s);
+        line-height: var(--text-body-s--line-height);
+        outline: none;
+    }
+
+    .admin-input:focus {
+        border-color: var(--color-brand);
+    }
+
     .app-button {
         border-radius: var(--radius-button);
         padding: var(--spacing-tk-12) var(--spacing-tk-24);
