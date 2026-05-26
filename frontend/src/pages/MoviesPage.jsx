@@ -12,6 +12,7 @@ export default function MoviesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { isLightMode } = useTheme();
+  const initialStatusFilter = searchParams.get("status");
   const [movies, setMovies] = useState([]);
   const [catalogCount, setCatalogCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -19,7 +20,11 @@ export default function MoviesPage() {
   const [searchTerm, setSearchTerm] = useState(() => searchParams.get("query") || "");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(() => {
+    return initialStatusFilter === "released" || initialStatusFilter === "coming-soon"
+      ? initialStatusFilter
+      : "all";
+  });
   const [genreFilter, setGenreFilter] = useState("all");
   const [page, setPage] = useState(1);
 
@@ -114,10 +119,16 @@ export default function MoviesPage() {
       nextParams.delete("query");
     }
 
+    if (statusFilter !== "all") {
+      nextParams.set("status", statusFilter);
+    } else {
+      nextParams.delete("status");
+    }
+
     if (nextParams.toString() !== searchParams.toString()) {
       setSearchParams(nextParams, { replace: true });
     }
-  }, [deferredSearchTerm, searchParams, setSearchParams]);
+  }, [deferredSearchTerm, searchParams, setSearchParams, statusFilter]);
 
   const availableGenres = useMemo(() => {
     return Array.from(
