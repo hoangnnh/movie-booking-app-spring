@@ -107,6 +107,7 @@ public class SecurityConfig {
                         .requestMatchers(GET, "/api/auth/me").authenticated()
                         .requestMatchers(GET, "/api/movies/**", "/api/showtimes/**", "/api/tmdb/**").permitAll()
                         .requestMatchers(POST, "/api/tmdb/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/bookings", "/api/bookings/**", "/api/users/**").authenticated()
                         .anyRequest().permitAll()
                 )
