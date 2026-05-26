@@ -1,13 +1,14 @@
 package com.cinemabooking.service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.Comparator;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -76,21 +77,30 @@ public class TmdbService {
 
     @Transactional
     public MovieResponse importMovie(Integer tmdbId) {
+        return importMovieResult(tmdbId).movie();
+    }
+
+    @Transactional
+    public ImportMovieResult importMovieResult(Integer tmdbId) {
         if (tmdbId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TMDB movie id is required");
         }
 
-        Map<String, Object> detail = fetchMovieDetail(tmdbId, true);
+        Map<String, Object> detail = fetchMovieDetail(tmdbId, true, true);
+        String title = stringValue(detail, "title", "Untitled Movie");
 
         Movie movie = movieRepository.findByTmdbId(tmdbId)
+                .or(() -> movieRepository.findFirstByTitleIgnoreCaseOrderByCreatedAtAsc(title))
                 .orElseGet(Movie::new);
+        boolean existed = movie.getId() != null;
 
         movie.setTmdbId(tmdbId);
-        movie.setTitle(stringValue(detail, "title", "Untitled Movie"));
+        movie.setTitle(title);
         movie.setDescription(stringValue(detail, "overview", ""));
         movie.setDurationMinutes(intValue(detail, "runtime", 120));
         movie.setPosterUrl(imageUrl(stringValue(detail, "poster_path", "")));
         movie.setBackdropUrl(imageUrl(stringValue(detail, "backdrop_path", "")));
+        movie.setTrailerUrl(extractTrailerUrl(mapValue(detail, "videos")));
         movie.setReleaseDate(dateValue(stringValue(detail, "release_date", "")));
 
         List<Map<String, Object>> genres = listValue(detail, "genres");
@@ -102,30 +112,71 @@ public class TmdbService {
         Movie savedMovie = movieRepository.save(movie);
         showtimeSeedService.createShowtimesForMovieIfMissing(savedMovie);
 
-        return toStoredMovieResponse(savedMovie);
+        return new ImportMovieResult(toStoredMovieResponse(savedMovie), existed ? ImportAction.UPDATED : ImportAction.CREATED);
     }
 
     @Transactional
     public TmdbImportResponse importMoviesByList(String list, int pages) {
         String normalizedList = normalizeListName(list);
         int requestedPages = Math.max(1, Math.min(pages, 5));
+        int targetNewMovies = requestedPages * 20;
+        int maxPagesToScan = Math.max(requestedPages, 10);
+        int scannedPages = 0;
+        List<ImportMovieResult> importResults = new ArrayList<>();
+        Set<Integer> seenTmdbIds = new HashSet<>();
 
-        List<Integer> tmdbIds = java.util.stream.IntStream.rangeClosed(1, requestedPages)
-                .boxed()
-                .flatMap((page) -> fetchMovieList(normalizedList, page).stream())
-                .map((movieData) -> intValue(movieData, "id", null))
-                .filter(java.util.Objects::nonNull)
-                .distinct()
-                .toList();
+        for (int page = 1; page <= maxPagesToScan; page++) {
+            List<Integer> tmdbIds = fetchMovieList(normalizedList, page).stream()
+                    .map((movieData) -> intValue(movieData, "id", null))
+                    .filter(Objects::nonNull)
+                    .filter(seenTmdbIds::add)
+                    .toList();
 
-        List<MovieResponse> importedMovies = tmdbIds.stream()
-                .map(this::importMovie)
+            if (tmdbIds.isEmpty()) {
+                break;
+            }
+
+            scannedPages++;
+
+            for (Integer tmdbId : tmdbIds) {
+                ImportMovieResult result = importMovieResult(tmdbId);
+                importResults.add(result);
+
+                long createdCountSoFar = importResults.stream()
+                        .filter((item) -> item.action() == ImportAction.CREATED)
+                        .count();
+
+                if (createdCountSoFar >= targetNewMovies) {
+                    break;
+                }
+            }
+
+            long createdCountSoFar = importResults.stream()
+                    .filter((item) -> item.action() == ImportAction.CREATED)
+                    .count();
+
+            if (createdCountSoFar >= targetNewMovies) {
+                break;
+            }
+        }
+
+        List<MovieResponse> importedMovies = importResults.stream()
+                .map(ImportMovieResult::movie)
                 .toList();
+        int createdCount = (int) importResults.stream()
+                .filter((result) -> result.action() == ImportAction.CREATED)
+                .count();
+        int updatedCount = (int) importResults.stream()
+                .filter((result) -> result.action() == ImportAction.UPDATED)
+                .count();
 
         return new TmdbImportResponse(
                 normalizedList,
                 requestedPages,
+                scannedPages,
                 importedMovies.size(),
+                createdCount,
+                updatedCount,
                 importedMovies
         );
     }
@@ -226,6 +277,7 @@ public class TmdbService {
                 movie.getDurationMinutes(),
                 posterUrl,
                 backdropUrl,
+                firstNonBlank(movie.getTrailerUrl()),
                 movie.getReleaseDate(),
                 genres,
                 cast
@@ -234,6 +286,77 @@ public class TmdbService {
 
     public MovieResponse toMovieDetailResponse(Movie movie) {
         return toStoredMovieResponse(movie);
+    }
+
+    @Transactional
+    public TrailerBackfillResult backfillTrailersForStoredMovies() {
+        if (readAccessToken == null || readAccessToken.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "TMDB API token is not configured. Set TMDB_API_READ_ACCESS_TOKEN."
+            );
+        }
+
+        int scanned = 0;
+        int updated = 0;
+        int matchedByTitle = 0;
+        int missingTmdbMatch = 0;
+        int missingTrailer = 0;
+
+        List<Movie> movies = movieRepository.findAll()
+                .stream()
+                .sorted(Comparator.comparing(Movie::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+
+        for (Movie movie : movies) {
+            scanned++;
+
+            Integer tmdbId = movie.getTmdbId();
+
+            if (tmdbId == null) {
+                tmdbId = findBestTmdbMatchId(movie);
+
+                if (tmdbId == null) {
+                    missingTmdbMatch++;
+                    continue;
+                }
+
+                matchedByTitle++;
+            }
+
+            try {
+                Map<String, Object> detail = fetchMovieDetail(tmdbId, false, true);
+                String trailerUrl = extractTrailerUrl(mapValue(detail, "videos"));
+
+                if (trailerUrl.isBlank()) {
+                    missingTrailer++;
+                    continue;
+                }
+
+                boolean changed = false;
+
+                if (!tmdbId.equals(movie.getTmdbId())) {
+                    movie.setTmdbId(tmdbId);
+                    changed = true;
+                }
+
+                if (!trailerUrl.equals(firstNonBlank(movie.getTrailerUrl()))) {
+                    movie.setTrailerUrl(trailerUrl);
+                    changed = true;
+                }
+
+                if (changed) {
+                    movieRepository.save(movie);
+                    updated++;
+                }
+            } catch (RuntimeException exception) {
+                System.out.println(
+                        "Skipping trailer backfill for movie '" + movie.getTitle() + "': " + exception.getMessage()
+                );
+            }
+        }
+
+        return new TrailerBackfillResult(scanned, updated, matchedByTitle, missingTmdbMatch, missingTrailer);
     }
 
     public void syncConfiguredLists(List<String> lists, int pages) {
@@ -268,7 +391,7 @@ public class TmdbService {
 
         for (Movie movie : movies) {
             try {
-                Map<String, Object> detail = fetchMovieDetail(movie.getTmdbId(), true);
+                Map<String, Object> detail = fetchMovieDetail(movie.getTmdbId(), true, true);
 
                 movie.setPosterUrl(firstNonBlank(
                         imageUrl(stringValue(detail, "poster_path", "")),
@@ -277,6 +400,10 @@ public class TmdbService {
                 movie.setBackdropUrl(firstNonBlank(
                         imageUrl(stringValue(detail, "backdrop_path", "")),
                         movie.getBackdropUrl()
+                ));
+                movie.setTrailerUrl(firstNonBlank(
+                        extractTrailerUrl(mapValue(detail, "videos")),
+                        movie.getTrailerUrl()
                 ));
                 replaceCastMembers(movie, toCastMembers(movie, mapValue(detail, "credits")));
                 movieRepository.save(movie);
@@ -303,21 +430,144 @@ public class TmdbService {
         return imageBaseUrl + path;
     }
 
-    private Map<String, Object> fetchMovieDetail(Integer tmdbId, boolean includeCredits) {
+    private Integer findBestTmdbMatchId(Movie movie) {
+        if (movie.getTitle() == null || movie.getTitle().isBlank()) {
+            return null;
+        }
+
+        Map<String, Object> body = tmdbClient()
+                .get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/search/movie")
+                        .queryParam("query", movie.getTitle().trim())
+                        .queryParam("include_adult", false)
+                        .queryParam("language", "en-US")
+                        .queryParam("page", 1)
+                        .build())
+                .retrieve()
+                .body(Map.class);
+
+        return listValue(body, "results")
+                .stream()
+                .filter((candidate) -> scoreMovieMatch(movie, candidate) > 0)
+                .max(Comparator.comparingInt((candidate) -> scoreMovieMatch(movie, candidate)))
+                .map((candidate) -> intValue(candidate, "id", null))
+                .orElse(null);
+    }
+
+    private Map<String, Object> fetchMovieDetail(Integer tmdbId, boolean includeCredits, boolean includeVideos) {
         return tmdbClient()
                 .get()
                 .uri(uriBuilder -> {
                     uriBuilder.path("/movie/{tmdbId}")
                             .queryParam("language", "en-US");
 
+                    StringBuilder appendToResponse = new StringBuilder();
+
                     if (includeCredits) {
-                        uriBuilder.queryParam("append_to_response", "credits");
+                        appendToResponse.append("credits");
+                    }
+
+                    if (includeVideos) {
+                        if (!appendToResponse.isEmpty()) {
+                            appendToResponse.append(",");
+                        }
+
+                        appendToResponse.append("videos");
+                    }
+
+                    if (!appendToResponse.isEmpty()) {
+                        uriBuilder.queryParam("append_to_response", appendToResponse.toString());
                     }
 
                     return uriBuilder.build(tmdbId);
                 })
                 .retrieve()
                 .body(Map.class);
+    }
+
+    private String extractTrailerUrl(Map<String, Object> videos) {
+        return listValue(videos, "results")
+                .stream()
+                .max(Comparator.comparingInt(this::scoreVideo))
+                .map(this::toTrailerUrl)
+                .filter((value) -> value != null && !value.isBlank())
+                .orElse("");
+    }
+
+    private int scoreMovieMatch(Movie movie, Map<String, Object> candidate) {
+        int score = 0;
+        String movieTitle = normalizeTitle(movie.getTitle());
+        String candidateTitle = normalizeTitle(stringValue(candidate, "title", ""));
+
+        if (movieTitle.equals(candidateTitle)) {
+            score += 150;
+        } else if (candidateTitle.contains(movieTitle) || movieTitle.contains(candidateTitle)) {
+            score += 80;
+        }
+
+        LocalDate candidateReleaseDate = dateValue(stringValue(candidate, "release_date", ""));
+
+        if (movie.getReleaseDate() != null && candidateReleaseDate != null) {
+            if (movie.getReleaseDate().getYear() == candidateReleaseDate.getYear()) {
+                score += 40;
+            }
+
+            long dayDifference = Math.abs(movie.getReleaseDate().toEpochDay() - candidateReleaseDate.toEpochDay());
+
+            if (dayDifference <= 31) {
+                score += 20;
+            }
+        }
+
+        return score;
+    }
+
+    private int scoreVideo(Map<String, Object> video) {
+        int score = 0;
+        String site = stringValue(video, "site", "");
+        String type = stringValue(video, "type", "");
+
+        if ("YouTube".equalsIgnoreCase(site)) {
+            score += 100;
+        } else if ("Vimeo".equalsIgnoreCase(site)) {
+            score += 50;
+        }
+
+        if ("Trailer".equalsIgnoreCase(type)) {
+            score += 40;
+        } else if ("Teaser".equalsIgnoreCase(type)) {
+            score += 20;
+        }
+
+        if (Boolean.TRUE.equals(video.get("official"))) {
+            score += 20;
+        }
+
+        if (stringValue(video, "iso_639_1", "").equalsIgnoreCase("en")) {
+            score += 10;
+        }
+
+        return score;
+    }
+
+    private String toTrailerUrl(Map<String, Object> video) {
+        String key = stringValue(video, "key", "").trim();
+        String site = stringValue(video, "site", "").trim();
+
+        if (key.isBlank()) {
+            return "";
+        }
+
+        if ("YouTube".equalsIgnoreCase(site)) {
+            return "https://www.youtube.com/watch?v=" + key;
+        }
+
+        if ("Vimeo".equalsIgnoreCase(site)) {
+            return "https://vimeo.com/" + key;
+        }
+
+        return "";
     }
 
     private Set<MovieCastMember> toCastMembers(Movie movie, Map<String, Object> credits) {
@@ -365,6 +615,16 @@ public class TmdbService {
         return "";
     }
 
+    private String normalizeTitle(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        return value.toLowerCase()
+                .replaceAll("[^a-z0-9]+", " ")
+                .trim();
+    }
+
     private LocalDate dateValue(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -407,5 +667,25 @@ public class TmdbService {
         }
 
         return List.of();
+    }
+
+    public record TrailerBackfillResult(
+            int scanned,
+            int updated,
+            int matchedByTitle,
+            int missingTmdbMatch,
+            int missingTrailer
+    ) {
+    }
+
+    public record ImportMovieResult(
+            MovieResponse movie,
+            ImportAction action
+    ) {
+    }
+
+    public enum ImportAction {
+        CREATED,
+        UPDATED
     }
 }

@@ -12,6 +12,7 @@ public record MovieResponse(
         Integer durationMinutes,
         String posterUrl,
         String backdropUrl,
+        String trailerUrl,
         LocalDate releaseDate,
         List<String> genres,
         List<MovieCastMemberResponse> cast

@@ -10,6 +10,7 @@ import ShowtimesSection from "../components/movieDetail/ShowtimesSection";
 
 import { formatDuration, getPosterUrl } from "../components/home/homeUtils";
 import { useAuth } from "../context/useAuth";
+import { getEmbeddedTrailerUrl } from "../components/movieDetail/trailerUtils";
 
 export default function MovieDetailPage({ onRequireAuth }) {
   const { movieId } = useParams();
@@ -22,6 +23,7 @@ export default function MovieDetailPage({ onRequireAuth }) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [favoriteMessage, setFavoriteMessage] = useState("");
+  const [isTrailerOpen, setIsTrailerOpen] = useState(false);
 
   useEffect(() => {
     async function loadMovieDetail() {
@@ -92,8 +94,30 @@ export default function MovieDetailPage({ onRequireAuth }) {
       genres: Array.isArray(movie.genres) ? movie.genres.join(", ") : "Drama",
       rating: movie.rating || "7.9",
       ageRating: movie.ageRating || "PG",
+      trailerEmbedUrl: getEmbeddedTrailerUrl(movie.trailerUrl),
     };
   }, [movie]);
+
+  useEffect(() => {
+    if (!isTrailerOpen) {
+      return undefined;
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setIsTrailerOpen(false);
+      }
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isTrailerOpen]);
 
   if (loading) {
     return (
@@ -156,6 +180,8 @@ export default function MovieDetailPage({ onRequireAuth }) {
             .getElementById("showtimes")
             ?.scrollIntoView({ behavior: "smooth" });
         }}
+        onPlayTrailer={() => setIsTrailerOpen(true)}
+        trailerAvailable={Boolean(computedMovie.trailerEmbedUrl)}
         onToggleFavorite={handleToggleFavorite}
         favoriteButtonLabel={
           !isAuthenticated
@@ -182,6 +208,46 @@ export default function MovieDetailPage({ onRequireAuth }) {
       <CastSection cast={computedMovie.cast} />
       <ReviewsSection score={computedMovie.rating} />
       <ShowtimesSection showtimes={showtimes} />
+
+      {isTrailerOpen && computedMovie.trailerEmbedUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-[20px]"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${computedMovie.title} trailer`}
+          onClick={() => setIsTrailerOpen(false)}
+        >
+          <div
+            className="w-full max-w-[960px] overflow-hidden rounded-card border border-app-border bg-app-surface shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-app-border px-[20px] py-[16px]">
+              <div>
+                <p className="type-label-s text-app-text-subtle">Now playing</p>
+                <h2 className="type-h5 text-app-text">{computedMovie.title}</h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsTrailerOpen(false)}
+                className="rounded-button border border-app-border px-[16px] py-[8px] type-button-m text-app-text transition-colors hover:bg-app-background"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="aspect-video bg-black">
+              <iframe
+                src={computedMovie.trailerEmbedUrl}
+                title={`${computedMovie.title} trailer`}
+                className="h-full w-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
