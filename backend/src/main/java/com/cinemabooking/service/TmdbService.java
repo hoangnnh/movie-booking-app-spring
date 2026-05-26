@@ -26,7 +26,9 @@ import com.cinemabooking.dto.TmdbSearchResponse;
 import com.cinemabooking.entity.Genre;
 import com.cinemabooking.entity.Movie;
 import com.cinemabooking.entity.MovieCastMember;
+import com.cinemabooking.entity.MovieListEntry;
 import com.cinemabooking.repository.GenreRepository;
+import com.cinemabooking.repository.MovieListEntryRepository;
 import com.cinemabooking.repository.MovieRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -38,6 +40,10 @@ public class TmdbService {
     private final MovieRepository movieRepository;
     private final GenreRepository genreRepository;
     private final ShowtimeSeedService showtimeSeedService;
+    private final MovieListEntryRepository movieListEntryRepository;
+
+    private static final String NOW_PLAYING_CATEGORY = "now_playing";
+    private static final String TRENDING_WEEK_CATEGORY = "trending_week";
 
     @Value("${tmdb.api.base-url}")
     private String apiBaseUrl;
@@ -47,6 +53,9 @@ public class TmdbService {
 
     @Value("${tmdb.api.read-access-token}")
     private String readAccessToken;
+
+    @Value("${tmdb.api.region:VN}")
+    private String region;
 
     public TmdbSearchResponse searchMovies(String query) {
         if (query == null || query.isBlank()) {
@@ -102,12 +111,13 @@ public class TmdbService {
         movie.setBackdropUrl(imageUrl(stringValue(detail, "backdrop_path", "")));
         movie.setTrailerUrl(extractTrailerUrl(mapValue(detail, "videos")));
         movie.setReleaseDate(dateValue(stringValue(detail, "release_date", "")));
+        movie.setRating(doubleValue(detail, "vote_average"));
 
         List<Map<String, Object>> genres = listValue(detail, "genres");
         movie.setGenres(new HashSet<>(genres.stream()
                 .map((genreData) -> getOrCreateGenre(stringValue(genreData, "name", "Drama")))
                 .toList()));
-        replaceCastMembers(movie, toCastMembers(movie, mapValue(detail, "credits")));
+        addCastMembersIfMissing(movie, toCastMembers(movie, mapValue(detail, "credits")));
 
         Movie savedMovie = movieRepository.save(movie);
         showtimeSeedService.createShowtimesForMovieIfMissing(savedMovie);
@@ -125,8 +135,9 @@ public class TmdbService {
         List<ImportMovieResult> importResults = new ArrayList<>();
         Set<Integer> seenTmdbIds = new HashSet<>();
 
+<<<<<<< HEAD
         for (int page = 1; page <= maxPagesToScan; page++) {
-            List<Integer> tmdbIds = fetchMovieList(normalizedList, page).stream()
+            List<Integer> tmdbIds = fetchMovieDataForCategoryPage(normalizedList, page).stream()
                     .map((movieData) -> intValue(movieData, "id", null))
                     .filter(Objects::nonNull)
                     .filter(seenTmdbIds::add)
@@ -170,6 +181,8 @@ public class TmdbService {
                 .filter((result) -> result.action() == ImportAction.UPDATED)
                 .count();
 
+        replaceMovieListEntries(normalizedList, importedMovies);
+
         return new TmdbImportResponse(
                 normalizedList,
                 requestedPages,
@@ -186,18 +199,94 @@ public class TmdbService {
         return importMoviesByList(list, pages);
     }
 
+    @Transactional
+    public List<MovieResponse> getNowPlayingMovies(int limit) {
+        return getStoredMoviesByCategory(NOW_PLAYING_CATEGORY, limit);
+    }
+
+    @Transactional
+    public List<MovieResponse> getTrendingMoviesThisWeek(int limit) {
+        return getStoredMoviesByCategory(TRENDING_WEEK_CATEGORY, limit);
+    }
+
     private List<Map<String, Object>> fetchMovieList(String list, int page) {
         Map<String, Object> body = tmdbClient()
                 .get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/movie/{list}")
-                        .queryParam("language", "en-US")
-                        .queryParam("page", page)
-                        .build(list))
+                .uri(uriBuilder -> {
+                    uriBuilder
+                            .path("/movie/{list}")
+                            .queryParam("language", "en-US")
+                            .queryParam("page", page);
+
+                    if (region != null && !region.isBlank()) {
+                        uriBuilder.queryParam("region", region.trim());
+                    }
+
+                    return uriBuilder.build(list);
+                })
                 .retrieve()
                 .body(Map.class);
 
         return listValue(body, "results");
+    }
+
+    private List<Map<String, Object>> fetchTrendingMovies(String timeWindow) {
+        Map<String, Object> body = tmdbClient()
+                .get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/trending/movie/{timeWindow}")
+                        .queryParam("language", "en-US")
+                        .build(timeWindow))
+                .retrieve()
+                .body(Map.class);
+
+        return listValue(body, "results");
+    }
+
+    private List<MovieResponse> getStoredMoviesByCategory(String category, int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 20));
+
+        return movieListEntryRepository.findByCategoryOrderBySortOrderAsc(category)
+                .stream()
+                .limit(safeLimit)
+                .map(MovieListEntry::getMovie)
+                .map(this::toStoredMovieResponse)
+                .toList();
+    }
+
+    private List<Map<String, Object>> fetchMovieDataForCategory(String category, int pages) {
+        if (TRENDING_WEEK_CATEGORY.equals(category)) {
+            return fetchTrendingMovies("week");
+        }
+
+        return java.util.stream.IntStream.rangeClosed(1, pages)
+                .boxed()
+                .flatMap((page) -> fetchMovieList(category, page).stream())
+                .toList();
+    }
+
+    private List<Map<String, Object>> fetchMovieDataForCategoryPage(String category, int page) {
+        if (TRENDING_WEEK_CATEGORY.equals(category)) {
+            return page == 1 ? fetchTrendingMovies("week") : List.of();
+        }
+
+        return fetchMovieList(category, page);
+    }
+
+    private void replaceMovieListEntries(String category, List<MovieResponse> movies) {
+        movieListEntryRepository.deleteByCategory(category);
+
+        for (int index = 0; index < movies.size(); index++) {
+            MovieResponse movieResponse = movies.get(index);
+            Movie movie = movieRepository.findById(movieResponse.id())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Movie not found"));
+
+            MovieListEntry entry = new MovieListEntry();
+            entry.setCategory(category);
+            entry.setMovie(movie);
+            entry.setSortOrder(index);
+            movieListEntryRepository.save(entry);
+        }
     }
 
     private String normalizeListName(String list) {
@@ -207,13 +296,13 @@ public class TmdbService {
 
         String normalized = list.trim().toLowerCase().replace("-", "_");
 
-        if (List.of("now_playing", "popular", "top_rated", "upcoming").contains(normalized)) {
+        if (List.of("now_playing", "popular", "top_rated", "upcoming", TRENDING_WEEK_CATEGORY).contains(normalized)) {
             return normalized;
         }
 
         throw new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
-                "List must be one of: now_playing, popular, top_rated, upcoming"
+                "List must be one of: now_playing, popular, top_rated, upcoming, trending_week"
         );
     }
 
@@ -279,6 +368,7 @@ public class TmdbService {
                 backdropUrl,
                 firstNonBlank(movie.getTrailerUrl()),
                 movie.getReleaseDate(),
+                movie.getRating(),
                 genres,
                 cast
         );
@@ -405,7 +495,8 @@ public class TmdbService {
                         extractTrailerUrl(mapValue(detail, "videos")),
                         movie.getTrailerUrl()
                 ));
-                replaceCastMembers(movie, toCastMembers(movie, mapValue(detail, "credits")));
+                movie.setRating(doubleValue(detail, "vote_average"));
+                addCastMembersIfMissing(movie, toCastMembers(movie, mapValue(detail, "credits")));
                 movieRepository.save(movie);
                 updatedCount++;
             } catch (RuntimeException exception) {
@@ -589,8 +680,11 @@ public class TmdbService {
         return castMembers;
     }
 
-    private void replaceCastMembers(Movie movie, Set<MovieCastMember> castMembers) {
-        movie.getCastMembers().clear();
+    private void addCastMembersIfMissing(Movie movie, Set<MovieCastMember> castMembers) {
+        if (!movie.getCastMembers().isEmpty()) {
+            return;
+        }
+
         movie.getCastMembers().addAll(castMembers);
     }
 

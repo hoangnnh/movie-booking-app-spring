@@ -39,6 +39,12 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final TicketRepository ticketRepository;
 
+    private static final Set<String> SUPPORTED_PAYMENT_METHODS = Set.of(
+            "VNPAY_QR",
+            "MOMO_WALLET",
+            "DEMO_CARD"
+    );
+
     @Transactional(readOnly = true)
     public List<SeatStatusResponse> getSeatStatuses(UUID showtimeId) {
         Showtime showtime = showtimeRepository.findById(showtimeId)
@@ -111,14 +117,22 @@ public class BookingService {
             }
         }
 
-        BigDecimal totalAmount = showtime.getPrice()
+        BigDecimal ticketAmount = showtime.getPrice()
                 .multiply(BigDecimal.valueOf(seats.size()));
+        BigDecimal foodAmount = normalizeFoodAmount(request.foodAmount());
+        BigDecimal totalAmount = ticketAmount.add(foodAmount);
+        String paymentMethod = normalizePaymentMethod(request.paymentMethod());
 
         Booking booking = new Booking();
         booking.setUser(user);
         booking.setShowtime(showtime);
         booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setTicketAmount(ticketAmount);
+        booking.setFoodAmount(foodAmount);
         booking.setTotalAmount(totalAmount);
+        booking.setPaymentMethod(paymentMethod);
+        booking.setPaymentStatus("PAID");
+        booking.setPaymentReference(generatePaymentReference(paymentMethod));
 
         bookingRepository.save(booking);
 
@@ -161,11 +175,45 @@ public class BookingService {
                 booking.getId(),
                 booking.getStatus().name(),
                 booking.getTotalAmount(),
+                booking.getTicketAmount(),
+                booking.getFoodAmount(),
+                booking.getPaymentMethod(),
+                booking.getPaymentStatus(),
+                booking.getPaymentReference(),
                 booking.getShowtime().getId(),
                 booking.getShowtime().getMovie().getTitle(),
                 booking.getShowtime().getStartTime(),
                 ticketResponses
         );
+    }
+
+    private BigDecimal normalizeFoodAmount(BigDecimal value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
+        }
+
+        if (value.compareTo(BigDecimal.ZERO) < 0 || value.compareTo(BigDecimal.valueOf(5_000_000)) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Food amount is invalid");
+        }
+
+        return value;
+    }
+
+    private String normalizePaymentMethod(String value) {
+        if (value == null || value.isBlank()) {
+            return "DEMO_CARD";
+        }
+
+        String normalized = value.trim().toUpperCase();
+        if (!SUPPORTED_PAYMENT_METHODS.contains(normalized)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment method is not supported");
+        }
+
+        return normalized;
+    }
+
+    private String generatePaymentReference(String paymentMethod) {
+        return paymentMethod + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 
     private String generateTicketCode() {

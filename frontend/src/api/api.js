@@ -102,6 +102,11 @@ export const authApi = {
 export const movieApi = {
   getAll: () => apiRequest("/movies"),
 
+  getNowPlaying: (limit = 10) => apiRequest(`/movies/now-playing?limit=${limit}`),
+
+  getTrendingThisWeek: (limit = 10) =>
+    apiRequest(`/movies/trending/week?limit=${limit}`),
+
   search: (query) => apiRequest(`/movies?query=${encodeURIComponent(query)}`),
 
   autocomplete: (query, limit = 6) =>
@@ -139,6 +144,47 @@ export const tmdbApi = {
         method: "POST",
       }
     ),
+};
+
+export const adminApi = {
+  getSummary: () => apiRequest("/admin/summary"),
+
+  getMovies: (query = "") =>
+    apiRequest(
+      query ? `/admin/movies?query=${encodeURIComponent(query)}` : "/admin/movies"
+    ),
+
+  updateMovie: (movieId, data) =>
+    apiRequest(`/admin/movies/${movieId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteMovie: (movieId) =>
+    apiRequest(`/admin/movies/${movieId}`, {
+      method: "DELETE",
+    }),
+
+  getUsers: () => apiRequest("/admin/users"),
+
+  updateUserRole: (userId, role) =>
+    apiRequest(`/admin/users/${userId}/role`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    }),
+
+  deleteUser: (userId) =>
+    apiRequest(`/admin/users/${userId}`, {
+      method: "DELETE",
+    }),
+
+  getBookings: () => apiRequest("/admin/bookings"),
+
+  updateBookingStatus: (bookingId, status) =>
+    apiRequest(`/admin/bookings/${bookingId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
 };
 
 export const showtimeApi = {

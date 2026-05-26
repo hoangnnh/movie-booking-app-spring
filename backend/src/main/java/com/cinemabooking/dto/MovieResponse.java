@@ -14,6 +14,7 @@ public record MovieResponse(
         String backdropUrl,
         String trailerUrl,
         LocalDate releaseDate,
+        Double rating,
         List<String> genres,
         List<MovieCastMemberResponse> cast
 ) {

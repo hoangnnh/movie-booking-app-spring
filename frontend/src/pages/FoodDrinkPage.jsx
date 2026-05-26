@@ -15,15 +15,17 @@ import { bookingApi, movieApi, showtimeApi } from "../api/api";
 import BookingProgress from "../components/booking/BookingProgress";
 import Button from "../components/common/Button";
 import { formatDuration, getPosterUrl } from "../components/home/homeUtils";
+import { useAuth } from "../context/useAuth";
+import { formatVnd } from "../utils/currency";
 
-const ticketPrice = 18.07;
+const ticketPrice = 75000;
 
 const snacks = [
   {
     key: "chicken-taco",
     name: "Chicken Taco",
     description: "Grilled chicken with crisp lettuce and chili sauce.",
-    price: 7,
+    price: 70000,
     palette: ["#f38e30", "#f9c378", "#74cfcf"],
     shape: "taco",
   },
@@ -31,7 +33,7 @@ const snacks = [
     key: "burger",
     name: "Burger",
     description: "Two juicy beef patties with cheese and house sauce.",
-    price: 9.5,
+    price: 95000,
     palette: ["#f5a042", "#34b35b", "#df4e4e"],
     shape: "burger",
   },
@@ -39,7 +41,7 @@ const snacks = [
     key: "fries",
     name: "Fries",
     description: "Crispy salted fries in a classic cinema box.",
-    price: 5,
+    price: 50000,
     palette: ["#df4e4e", "#fdfd82", "#f5a042"],
     shape: "fries",
   },
@@ -47,7 +49,7 @@ const snacks = [
     key: "hot-dog",
     name: "Hot Dog",
     description: "Grilled sausage in a warm bun with mustard.",
-    price: 4.2,
+    price: 42000,
     palette: ["#f9c378", "#df4e4e", "#fbfb1e"],
     shape: "hotdog",
   },
@@ -55,7 +57,7 @@ const snacks = [
     key: "onion-rings",
     name: "Onion Rings",
     description: "Crispy golden onion rings with ranch dip.",
-    price: 6,
+    price: 60000,
     palette: ["#f9c378", "#f5a042", "#f1f1f3"],
     shape: "rings",
   },
@@ -63,7 +65,7 @@ const snacks = [
     key: "taco",
     name: "Taco",
     description: "Crunchy shell with beef, salsa, and fresh greens.",
-    price: 3.5,
+    price: 35000,
     palette: ["#f5a042", "#34b35b", "#df4e4e"],
     shape: "taco",
   },
@@ -71,7 +73,7 @@ const snacks = [
     key: "iced-tea",
     name: "Iced Tea",
     description: "Chilled black tea with lemon over ice.",
-    price: 6.5,
+    price: 65000,
     palette: ["#f38e30", "#f9c378", "#e0e0e4"],
     shape: "cup",
   },
@@ -79,7 +81,7 @@ const snacks = [
     key: "grape-soda",
     name: "Grape Soda",
     description: "Refreshing fizzy grape soda with crushed ice.",
-    price: 5,
+    price: 50000,
     palette: ["#7e4fe3", "#c9b6ff", "#f1f1f3"],
     shape: "cup",
   },
@@ -87,7 +89,7 @@ const snacks = [
     key: "ice-coffee",
     name: "Ice Coffee",
     description: "Cold brew coffee served with sweet cream.",
-    price: 4,
+    price: 40000,
     palette: ["#8a5a37", "#f9c378", "#f1f1f3"],
     shape: "cup",
   },
@@ -95,7 +97,7 @@ const snacks = [
     key: "chocolate-drink",
     name: "Chocolate drink",
     description: "Creamy chocolate milk with shaved cocoa.",
-    price: 4.2,
+    price: 42000,
     palette: ["#6f3f25", "#f9c378", "#f1f1f3"],
     shape: "cup",
   },
@@ -103,7 +105,7 @@ const snacks = [
     key: "popcorn",
     name: "Popcorn",
     description: "Buttery cinema-style popcorn in a striped tub.",
-    price: 7,
+    price: 70000,
     palette: ["#df4e4e", "#f1f1f3", "#fdfd82"],
     shape: "popcorn",
   },
@@ -111,7 +113,7 @@ const snacks = [
     key: "fanta-orange",
     name: "Fanta Orange",
     description: "Fizzy orange soda served ice cold.",
-    price: 5.2,
+    price: 52000,
     palette: ["#f38e30", "#f9c378", "#f1f1f3"],
     shape: "can",
   },
@@ -230,10 +232,11 @@ const snackItems = snacks.map((item) => ({
   imageUrl: createSnackImage(item),
 }));
 
-export default function FoodDrinkPage() {
+export default function FoodDrinkPage({ onRequireAuth }) {
   const { showtimeId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
 
   const ticketCount = Math.max(1, Number(searchParams.get("tickets")) || 1);
   const selectedDateParam = searchParams.get("date") || "";
@@ -255,6 +258,7 @@ export default function FoodDrinkPage() {
     Object.fromEntries(snackItems.map((item) => [item.key, 0]))
   );
   const [cartStatus, setCartStatus] = useState("");
+  const [bookingError, setBookingError] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -322,12 +326,15 @@ export default function FoodDrinkPage() {
     (total, item) => total + item.price * item.quantity,
     0
   );
-  const ticketTotal = ticketCount * ticketPrice;
+  const ticketUnitPrice = Number(showtime?.price) || ticketPrice;
+  const ticketTotal = ticketCount * ticketUnitPrice;
   const grandTotal = ticketTotal + foodTotal;
   const hasSnacks = selectedSnackItems.length > 0;
+  const seatsReady = selectedSeatIds.length === ticketCount;
 
   function updateQuantity(itemKey, direction) {
     setCartStatus("");
+    setBookingError("");
     setQuantities((current) => ({
       ...current,
       [itemKey]: Math.max(0, Math.min(9, (current[itemKey] || 0) + direction)),
@@ -337,6 +344,51 @@ export default function FoodDrinkPage() {
   function skipSnacks() {
     setQuantities(Object.fromEntries(snackItems.map((item) => [item.key, 0])));
     setCartStatus("Food and drink skipped.");
+  }
+
+  function continueToPayment() {
+    setBookingError("");
+    setCartStatus("");
+
+    if (!isAuthenticated || !user?.userId) {
+      setBookingError("Please sign in before payment.");
+      onRequireAuth?.();
+      return;
+    }
+
+    if (!seatsReady) {
+      setBookingError(`Please select ${ticketCount} seat${ticketCount === 1 ? "" : "s"} before confirming.`);
+      return;
+    }
+
+    const nextParams = new URLSearchParams({
+      tickets: String(ticketCount),
+      seats: selectedSeatIds.join(","),
+      foodTotal: foodTotal.toFixed(2),
+    });
+
+    if (selectedSnackItems.length > 0) {
+      nextParams.set(
+        "snacks",
+        selectedSnackItems
+          .map((item) => `${item.key}:${item.quantity}`)
+          .join(",")
+      );
+    }
+
+    if (selectedDateParam) {
+      nextParams.set("date", selectedDateParam);
+    }
+
+    if (selectedStartTimeParam) {
+      nextParams.set("startTime", selectedStartTimeParam);
+    }
+
+    if (selectedCinemaNameParam) {
+      nextParams.set("cinemaName", selectedCinemaNameParam);
+    }
+
+    navigate(`/booking/${showtimeId}/payment?${nextParams.toString()}`);
   }
 
   if (loading) {
@@ -481,14 +533,14 @@ export default function FoodDrinkPage() {
               </div>
 
               <div className="mt-[24px] border-t border-app-border pt-[20px]">
-                <SummaryRow label="Tickets" value={`$${ticketTotal.toFixed(2)}`} />
-                <SummaryRow label="Food & Drink" value={`$${foodTotal.toFixed(2)}`} />
+                <SummaryRow label="Tickets" value={formatVnd(ticketTotal)} />
+                <SummaryRow label="Food & Drink" value={formatVnd(foodTotal)} />
                 <SummaryRow label="Tax included" value="" muted />
 
                 <div className="mt-[16px] flex items-center justify-between">
                   <span className="type-body-s text-app-text-muted">Total Payment</span>
                   <span className="type-h5 text-app-text">
-                    ${grandTotal.toFixed(2)}
+                    {formatVnd(grandTotal)}
                   </span>
                 </div>
               </div>
@@ -496,12 +548,12 @@ export default function FoodDrinkPage() {
               <Button
                 size={48}
                 variant="primary"
-                disabled={!hasSnacks}
+                disabled={!seatsReady}
                 className="mt-[24px] w-full"
                 rightIcon={<ChevronRight />}
-                onClick={() => setCartStatus("Snacks added to cart.")}
+                onClick={continueToPayment}
               >
-                Add To Cart
+                Continue to Payment
               </Button>
               <Button
                 size={48}
@@ -510,12 +562,18 @@ export default function FoodDrinkPage() {
                 className="mt-[10px] w-full"
                 onClick={skipSnacks}
               >
-                Skip
+                Skip Snacks
               </Button>
 
               {cartStatus && (
                 <p className="mt-[12px] rounded-tk-4 border border-app-border bg-app-background px-[10px] py-[8px] type-body-xs text-app-text-muted">
                   {cartStatus}
+                </p>
+              )}
+
+              {bookingError && (
+                <p className="mt-[12px] rounded-tk-4 border border-error-500 bg-app-background px-[10px] py-[8px] type-body-xs text-error-500">
+                  {bookingError}
                 </p>
               )}
 
@@ -549,7 +607,7 @@ function SnackCard({ item, quantity, onUpdate }) {
         </p>
 
         <div className="mt-[10px] flex items-center justify-between gap-[8px]">
-          <span className="type-label-s text-brand">${item.price.toFixed(2)}</span>
+          <span className="type-label-s text-brand">{formatVnd(item.price)}</span>
           <QuantityControl
             label={item.name}
             quantity={quantity}
@@ -568,7 +626,7 @@ function SelectedSnackRow({ item, onUpdate }) {
       <div>
         <p className="type-body-s text-app-text">{item.name}</p>
         <p className="type-body-xs text-app-text-muted">
-          ${item.price.toFixed(2)}
+          {formatVnd(item.price)}
         </p>
       </div>
 
