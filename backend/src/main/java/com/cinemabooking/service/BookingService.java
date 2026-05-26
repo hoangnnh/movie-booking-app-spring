@@ -1,6 +1,7 @@
 package com.cinemabooking.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -33,6 +34,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class BookingService {
 
+    private static final Set<BookingStatus> ACTIVE_BOOKING_STATUSES = Set.of(
+            BookingStatus.PENDING,
+            BookingStatus.CONFIRMED
+    );
+
     private final AppUserRepository appUserRepository;
     private final ShowtimeRepository showtimeRepository;
     private final SeatRepository seatRepository;
@@ -50,7 +56,10 @@ public class BookingService {
         Showtime showtime = showtimeRepository.findById(showtimeId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Showtime not found"));
 
-        List<Ticket> bookedTickets = ticketRepository.findByShowtime_Id(showtimeId);
+        List<Ticket> bookedTickets = ticketRepository.findByShowtime_IdAndBooking_StatusIn(
+                showtimeId,
+                ACTIVE_BOOKING_STATUSES
+        );
 
         Set<UUID> bookedSeatIds = new HashSet<>();
         for (Ticket ticket : bookedTickets) {
@@ -104,9 +113,10 @@ public class BookingService {
                 );
             }
 
-            boolean alreadyBooked = ticketRepository.existsByShowtime_IdAndSeat_Id(
+            boolean alreadyBooked = ticketRepository.existsByShowtime_IdAndSeat_IdAndBooking_StatusIn(
                     showtime.getId(),
-                    seat.getId()
+                    seat.getId(),
+                    ACTIVE_BOOKING_STATUSES
             );
 
             if (alreadyBooked) {
@@ -133,6 +143,7 @@ public class BookingService {
         booking.setPaymentMethod(paymentMethod);
         booking.setPaymentStatus("PAID");
         booking.setPaymentReference(generatePaymentReference(paymentMethod));
+        booking.setSeatSummary(formatSeatSummary(seats));
 
         bookingRepository.save(booking);
 
@@ -156,6 +167,27 @@ public class BookingService {
                 .stream()
                 .map(this::toBookingResponse)
                 .toList();
+    }
+
+    @Transactional
+    public BookingResponse cancelBooking(UUID authenticatedUserId, UUID bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+
+        if (!booking.getUser().getId().equals(authenticatedUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only cancel your own bookings");
+        }
+
+        return cancelBookingInternal(booking, false);
+    }
+
+    @Transactional
+    public Booking cancelBookingAsAdmin(UUID bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+
+        cancelBookingInternal(booking, true);
+        return booking;
     }
 
     private BookingResponse toBookingResponse(Booking booking) {
@@ -182,9 +214,44 @@ public class BookingService {
                 booking.getPaymentReference(),
                 booking.getShowtime().getId(),
                 booking.getShowtime().getMovie().getTitle(),
+                booking.getShowtime().getMovie().getPosterUrl(),
+                booking.getShowtime().getRoom().getCinema().getName(),
+                booking.getShowtime().getRoom().getName(),
                 booking.getShowtime().getStartTime(),
+                booking.getCreatedAt(),
+                booking.getSeatSummary(),
                 ticketResponses
         );
+    }
+
+    private BookingResponse cancelBookingInternal(Booking booking, boolean allowPastShowtimeCancellation) {
+        if (booking.getStatus() == BookingStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This booking has already been cancelled");
+        }
+
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only confirmed bookings can be cancelled");
+        }
+
+        if (!allowPastShowtimeCancellation && !booking.getShowtime().getStartTime().isAfter(LocalDateTime.now())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "This booking can no longer be cancelled because the showtime has started"
+            );
+        }
+
+        booking.setStatus(BookingStatus.CANCELLED);
+        booking.setPaymentStatus("REFUNDED");
+        ticketRepository.deleteByBooking_Id(booking.getId());
+        return toBookingResponse(bookingRepository.save(booking));
+    }
+
+    private String formatSeatSummary(List<Seat> seats) {
+        return seats.stream()
+                .map(Seat::getLabel)
+                .sorted()
+                .reduce((left, right) -> left + ", " + right)
+                .orElse("");
     }
 
     private BigDecimal normalizeFoodAmount(BigDecimal value) {

@@ -7,7 +7,7 @@ import { cn } from "../../utils/cn";
 export default function UserDashboard({
   user,
   upcomingBookings = [],
-  activeMenu = "account",
+  activeMenu = "booking",
   onMenuSelect,
   onViewBookings,
   onViewBookingDetails,
@@ -17,7 +17,7 @@ export default function UserDashboard({
 
   return (
     <div className={cn("ticketor-container py-[48px]", className)}>
-      <h1 className="type-h4 mb-[32px] text-app-text">My Account</h1>
+      <h1 className="type-h4 mb-[32px] text-app-text">My Booking</h1>
 
       <div className="grid grid-cols-12 gap-[16px]">
         <div className="col-span-12 lg:col-span-2">

@@ -16,7 +16,12 @@ public record BookingResponse(
         String paymentReference,
         UUID showtimeId,
         String movieTitle,
+        String posterUrl,
+        String cinemaName,
+        String roomName,
         LocalDateTime startTime,
+        LocalDateTime bookedAt,
+        String seatSummary,
         List<TicketResponse> tickets
 ) {
 }

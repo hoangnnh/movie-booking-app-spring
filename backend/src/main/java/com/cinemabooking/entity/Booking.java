@@ -51,4 +51,7 @@ public class Booking extends BaseEntity {
 
     @Column(name = "payment_reference", length = 80)
     private String paymentReference = "PAY-DEMO";
+
+    @Column(name = "seat_summary", length = 250)
+    private String seatSummary;
 }
