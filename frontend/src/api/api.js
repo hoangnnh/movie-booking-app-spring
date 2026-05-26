@@ -125,6 +125,12 @@ export const movieApi = {
     apiRequest(`/movies/by-actor?actorName=${encodeURIComponent(actorName)}`),
 
   getShowtimes: (movieId) => apiRequest(`/movies/${movieId}/showtimes`),
+
+  getSimilar: (movieId, limit = 8) =>
+    apiRequest(`/movies/${movieId}/similar?limit=${limit}`),
+
+  getRecommendations: (userId, limit = 10) =>
+    apiRequest(`/users/${userId}/recommendations?limit=${limit}`),
 };
 
 export const cinemaApi = {
