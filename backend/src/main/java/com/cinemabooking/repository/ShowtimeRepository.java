@@ -11,6 +11,10 @@ import com.cinemabooking.entity.Showtime;
 public interface ShowtimeRepository extends JpaRepository<Showtime, UUID> {
     List<Showtime> findByMovie_IdOrderByStartTimeAsc(UUID movieId);
 
+    long countByMovie_Id(UUID movieId);
+
+    void deleteByMovie_Id(UUID movieId);
+
     boolean existsByMovie_IdAndRoom_IdAndStartTimeBetween(
             UUID movieId,
             UUID roomId,

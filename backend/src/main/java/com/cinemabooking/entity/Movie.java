@@ -46,6 +46,9 @@ public class Movie extends BaseEntity {
     @Column(name = "release_date")
     private LocalDate releaseDate;
 
+    @Column(name = "rating")
+    private Double rating;
+
     @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<MovieCastMember> castMembers = new LinkedHashSet<>();
 

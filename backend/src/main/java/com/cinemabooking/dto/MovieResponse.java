@@ -13,6 +13,7 @@ public record MovieResponse(
         String posterUrl,
         String backdropUrl,
         LocalDate releaseDate,
+        Double rating,
         List<String> genres,
         List<MovieCastMemberResponse> cast
 ) {

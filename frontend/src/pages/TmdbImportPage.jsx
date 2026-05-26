@@ -13,6 +13,7 @@ export default function TmdbImportPage() {
   const [bulkPages, setBulkPages] = useState(1);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkMessage, setBulkMessage] = useState("");
+  const [homeSectionsLoading, setHomeSectionsLoading] = useState(false);
 
   async function searchMovies(event) {
     event.preventDefault();
@@ -71,6 +72,35 @@ export default function TmdbImportPage() {
     }
   }
 
+  async function importHomeSections() {
+    try {
+      setHomeSectionsLoading(true);
+      setBulkMessage("");
+      setError("");
+
+      const [nowPlaying, trendingWeek] = await Promise.all([
+        tmdbApi.importMovieList({ list: "now_playing", pages: 1 }),
+        tmdbApi.importMovieList({ list: "trending_week", pages: 1 }),
+      ]);
+
+      setBulkMessage(
+        `Home sections refreshed: ${nowPlaying.importedCount} now playing and ${trendingWeek.importedCount} trending movies.`
+      );
+      setImportedIds((current) => {
+        const ids = [nowPlaying, trendingWeek]
+          .flatMap((data) => data.movies || [])
+          .map((movie) => movie.tmdbId)
+          .filter(Boolean);
+
+        return Array.from(new Set([...current, ...ids]));
+      });
+    } catch (err) {
+      setError(cleanError(err));
+    } finally {
+      setHomeSectionsLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-app-background text-app-text">
       <main className="ticketor-container py-[48px]">
@@ -79,9 +109,9 @@ export default function TmdbImportPage() {
             <Database className="h-[22px] w-[22px]" />
           </span>
           <div>
-            <h1 className="type-h3 text-app-text">TMDB Movie Import</h1>
+            <h1 className="type-h3 text-app-text">Admin Movie Dashboard</h1>
             <p className="type-body-s mt-[4px] text-app-text-muted">
-              Search The Movie Database and import movies into your local catalog.
+              Import TMDB movies into your local catalog and refresh home page sections.
             </p>
           </div>
         </div>
@@ -109,14 +139,23 @@ export default function TmdbImportPage() {
           <div className="mb-[16px] flex items-center gap-[10px]">
             <Layers className="h-[20px] w-[20px] text-brand" />
             <div>
-              <h2 className="type-h5 text-app-text">Bulk Import</h2>
+              <h2 className="type-h5 text-app-text">Home Section Import</h2>
               <p className="type-body-xs text-app-text-muted">
-                Seed your catalog from TMDB lists instead of importing one movie at a time.
+                Refresh local home sections from TMDB once, then serve users from your database.
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-end gap-[12px]">
+            <Button
+              size={40}
+              leftIcon={<Download />}
+              disabled={homeSectionsLoading || bulkLoading}
+              onClick={importHomeSections}
+            >
+              {homeSectionsLoading ? "Refreshing" : "Refresh Home Sections"}
+            </Button>
+
             <label className="grid gap-[6px]">
               <span className="type-body-xs text-app-text-muted">Movie list</span>
               <select
@@ -125,6 +164,7 @@ export default function TmdbImportPage() {
                 className="h-[40px] min-w-[180px] rounded-tk-4 border border-app-border bg-app-background px-[12px] type-body-s text-app-text outline-none"
               >
                 <option value="now_playing">Now Playing</option>
+                <option value="trending_week">Trending This Week</option>
                 <option value="popular">Popular</option>
                 <option value="top_rated">Top Rated</option>
                 <option value="upcoming">Upcoming</option>
@@ -147,7 +187,7 @@ export default function TmdbImportPage() {
             <Button
               size={40}
               leftIcon={<Download />}
-              disabled={bulkLoading}
+              disabled={bulkLoading || homeSectionsLoading}
               onClick={importMovieList}
             >
               {bulkLoading ? "Importing" : "Import List"}
