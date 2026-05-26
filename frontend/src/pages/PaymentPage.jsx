@@ -236,7 +236,7 @@ export default function PaymentPage({ onRequireAuth }) {
 
   return (
     <div className="min-h-screen bg-app-background text-app-text">
-      <main className="ticketor-container py-[40px]">
+      <main className="ticketor-container py-[24px] sm:py-[40px]">
         <button
           type="button"
           className="mb-[32px] inline-flex items-center gap-[8px] type-body-s text-app-text-muted transition-colors hover:text-brand"
@@ -246,10 +246,10 @@ export default function PaymentPage({ onRequireAuth }) {
           Back to food and drink
         </button>
 
-        <BookingProgress currentStep={booking ? 3 : 2} className="mb-[56px]" />
+        <BookingProgress currentStep={booking ? 3 : 2} className="mb-[32px] sm:mb-[56px]" />
 
-        <div className="grid grid-cols-12 gap-[24px]">
-          <aside className="col-span-3">
+        <div className="grid gap-[20px] xl:grid-cols-[280px_minmax(0,1fr)_300px]">
+          <aside className="xl:order-1">
             <MovieSummaryCard
               movieView={movieView}
               timeView={timeView}
@@ -259,7 +259,7 @@ export default function PaymentPage({ onRequireAuth }) {
             />
           </aside>
 
-          <section className="col-span-6">
+          <section className="xl:order-2">
             {booking ? (
               <TicketPanel booking={booking} paymentMethod={paymentMethod} />
             ) : (
@@ -270,7 +270,7 @@ export default function PaymentPage({ onRequireAuth }) {
             )}
           </section>
 
-          <aside className="col-span-3">
+          <aside className="xl:order-3">
             <div className="sticky top-[24px] rounded-tk-8 border border-app-border bg-app-surface p-[24px]">
               <div className="flex items-center gap-[10px]">
                 <Ticket className="h-[20px] w-[20px] text-brand" />
@@ -327,9 +327,9 @@ export default function PaymentPage({ onRequireAuth }) {
                   size={48}
                   variant="primary"
                   className="mt-[24px] w-full"
-                  onClick={() => navigate("/")}
+                  onClick={() => navigate("/my-booking")}
                 >
-                  Back Home
+                  View My Booking
                 </Button>
               )}
 

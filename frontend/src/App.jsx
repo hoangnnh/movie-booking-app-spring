@@ -10,6 +10,7 @@ import MoviesPage from "./pages/MoviesPage";
 import ActorMoviesPage from "./pages/ActorMoviesPage";
 import MovieDetailPage from "./pages/MovieDetailPage";
 import FavoritesPage from "./pages/FavoritesPage";
+import MyBookingPage from "./pages/MyBookingPage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { ContactPage, PrivacyPolicyPage, TermsOfUsePage } from "./pages/InfoPages";
@@ -53,6 +54,10 @@ export default function App() {
         <Route
           path="/favorites"
           element={<FavoritesPage onRequireAuth={() => setAuthMode("login")} />}
+        />
+        <Route
+          path="/my-booking"
+          element={<MyBookingPage onRequireAuth={() => setAuthMode("login")} />}
         />
         <Route path="/actors/:actorName/movies" element={<ActorMoviesPage />} />
         <Route path="/tmdb" element={<TmdbImportPage />} />
