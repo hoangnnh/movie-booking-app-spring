@@ -9,4 +9,8 @@ import com.cinemabooking.entity.Booking;
 
 public interface BookingRepository extends JpaRepository<Booking, UUID> {
     List<Booking> findByUser_IdOrderByCreatedAtDesc(UUID userId);
+
+    List<Booking> findAllByOrderByCreatedAtDesc();
+
+    long countByUser_Id(UUID userId);
 }

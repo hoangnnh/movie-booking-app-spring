@@ -13,8 +13,9 @@ import BookingProgress from "../components/booking/BookingProgress";
 import SeatMap from "../components/booking/SeatMap";
 import Button from "../components/common/Button";
 import { formatDuration, getPosterUrl } from "../components/home/homeUtils";
+import { formatVnd } from "../utils/currency";
 
-const ticketPrice = 18.07;
+const ticketPrice = 75000;
 
 function formatDateTime(value) {
   const date = new Date(value);
@@ -253,7 +254,7 @@ export default function SeatSelectionPage() {
                 <div className="flex items-center justify-between">
                   <span className="type-body-s text-app-text-muted">Total</span>
                   <span className="type-h5 text-app-text">
-                    ${totalAmount.toFixed(2)}
+                    {formatVnd(totalAmount)}
                   </span>
                 </div>
               </div>
