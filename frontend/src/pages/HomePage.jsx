@@ -13,36 +13,44 @@ import NewsletterSection from "../components/home/NewsletterSection";
 import { isComingSoon } from "../components/home/homeUtils";
 
 export default function HomePage() {
-  const [movies, setMovies] = useState([]);
+  const [nowPlayingMovies, setNowPlayingMovies] = useState([]);
+  const [topMoviesThisWeek, setTopMoviesThisWeek] = useState([]);
+  const [catalogMovies, setCatalogMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    async function loadMovies() {
+    async function loadHomeMovies() {
       try {
         setLoading(true);
-        const data = await movieApi.getAll();
-        setMovies(data);
+        setError("");
+
+        const [nowPlaying, trendingThisWeek, catalog] = await Promise.all([
+          movieApi.getNowPlaying(10),
+          movieApi.getTrendingThisWeek(10),
+          movieApi.getAll(),
+        ]);
+
+        setNowPlayingMovies(Array.isArray(nowPlaying) ? nowPlaying : []);
+        setTopMoviesThisWeek(
+          Array.isArray(trendingThisWeek) ? trendingThisWeek : []
+        );
+        setCatalogMovies(Array.isArray(catalog) ? catalog : []);
       } catch {
-        setError("Cannot load movies from server.");
+        setError("Cannot load TMDB movie sections from server.");
       } finally {
         setLoading(false);
       }
     }
 
-    loadMovies();
+    loadHomeMovies();
   }, []);
 
-  const releasedMovies = useMemo(
-    () => movies.filter((movie) => !isComingSoon(movie)),
-    [movies]
-  );
-
   const comingSoonMovies = useMemo(() => {
-    const result = movies.filter(isComingSoon);
+    const result = catalogMovies.filter(isComingSoon);
 
-    return result.length > 0 ? result : movies;
-  }, [movies]);
+    return result.length > 0 ? result : catalogMovies;
+  }, [catalogMovies]);
 
   return (
     <div className="bg-app-background text-app-text">
@@ -69,15 +77,15 @@ export default function HomePage() {
           <MovieSection
             title="Currently In Cinemas"
             description="Discover the latest movies now playing in cinemas. Book your tickets today!"
-            movies={releasedMovies}
+            movies={nowPlayingMovies}
             status="released"
             limit={5}
           />
 
           <MovieSection
             title="Top 10 Movies This Week"
-            description="Hot this week: top movies and where to watch them."
-            movies={releasedMovies}
+            description="Trending on TMDB this week, refreshed from the TMDB API."
+            movies={topMoviesThisWeek}
             status="released"
             limit={10}
           />

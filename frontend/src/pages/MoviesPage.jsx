@@ -299,7 +299,7 @@ export default function MoviesPage() {
               >
                 Reset Filters
               </Button>
-              <Button size={40} onClick={() => navigate("/tmdb")}>
+              <Button size={40} onClick={() => navigate("/admin/movies")}>
                 Import Movies
               </Button>
             </div>

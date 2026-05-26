@@ -15,7 +15,9 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { ContactPage, PrivacyPolicyPage, TermsOfUsePage } from "./pages/InfoPages";
 import SeatSelectionPage from "./pages/SeatSelectionPage";
 import TimeSelectionPage from "./pages/TimeSelectionPage";
+import PaymentPage from "./pages/PaymentPage";
 import TmdbImportPage from "./pages/TmdbImportPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
 
 export default function App() {
   const location = useLocation();
@@ -54,6 +56,12 @@ export default function App() {
         />
         <Route path="/actors/:actorName/movies" element={<ActorMoviesPage />} />
         <Route path="/tmdb" element={<TmdbImportPage />} />
+        <Route
+          path="/admin"
+          element={<AdminDashboardPage onRequireAuth={() => setAuthMode("login")} />}
+        />
+        <Route path="/admin/movies" element={<TmdbImportPage />} />
+        <Route path="/admin/imports" element={<TmdbImportPage />} />
         <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/contact" element={<ContactPage />} />
@@ -61,7 +69,14 @@ export default function App() {
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/booking/:showtimeId" element={<TimeSelectionPage />} />
         <Route path="/booking/:showtimeId/seats" element={<SeatSelectionPage />} />
-        <Route path="/booking/:showtimeId/food" element={<FoodDrinkPage />} />
+        <Route
+          path="/booking/:showtimeId/food"
+          element={<FoodDrinkPage onRequireAuth={() => setAuthMode("login")} />}
+        />
+        <Route
+          path="/booking/:showtimeId/payment"
+          element={<PaymentPage onRequireAuth={() => setAuthMode("login")} />}
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 

@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-public record BookingResponse(
+public record AdminBookingResponse(
         UUID id,
         String status,
         BigDecimal totalAmount,
@@ -14,9 +14,15 @@ public record BookingResponse(
         String paymentMethod,
         String paymentStatus,
         String paymentReference,
+        UUID userId,
+        String userName,
+        String userEmail,
         UUID showtimeId,
         String movieTitle,
+        String cinemaName,
+        String roomName,
         LocalDateTime startTime,
+        LocalDateTime createdAt,
         List<TicketResponse> tickets
 ) {
 }

@@ -54,6 +54,7 @@ public class DataSeeder implements CommandLineRunner {
         seedDefaultCinemas();
         ensureRoomsForCinemas();
         seedDemoUser();
+        seedAdminUser();
 
         Genre action = getOrCreateGenre("Action");
         Genre sciFi = getOrCreateGenre("Sci-Fi");
@@ -76,6 +77,21 @@ public class DataSeeder implements CommandLineRunner {
         user.setRole(Role.USER);
         user.setProvider(AuthProvider.LOCAL);
         appUserRepository.save(user);
+    }
+
+    private void seedAdminUser() {
+        if (appUserRepository.findByEmail("admin@example.com").isPresent()) {
+            return;
+        }
+
+        AppUser admin = new AppUser();
+        admin.setFullName("Admin User");
+        admin.setEmail("admin@example.com");
+        admin.setPassword(passwordEncoder.encode("123456"));
+        admin.setRole(Role.ADMIN);
+        admin.setProvider(AuthProvider.LOCAL);
+        admin.setEmailVerified(true);
+        appUserRepository.save(admin);
     }
 
     private void seedFallbackMovies(Genre action, Genre sciFi, Genre drama) {

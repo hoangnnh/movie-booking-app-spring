@@ -23,10 +23,11 @@ import {
   normalizeMovie,
 } from "../components/home/homeUtils";
 import { cn } from "../utils/cn";
+import { formatVnd } from "../utils/currency";
 
 const ticketTypes = [
-  { key: "adult", label: "Adult", price: 18.07 },
-  { key: "child", label: "Child", price: 12.07 },
+  { key: "adult", label: "Adult", price: 75000 },
+  { key: "child", label: "Child", price: 55000 },
 ];
 
 const formatFilters = ["All", "Standard", "3D"];
@@ -627,7 +628,7 @@ function TicketModal({
               <div>
                 <p className="type-body-s text-app-text">{type.label}</p>
                 <p className="type-body-xs text-app-text-muted">
-                  ${type.price.toFixed(2)}
+                  {formatVnd(type.price)}
                 </p>
               </div>
 
@@ -656,8 +657,8 @@ function TicketModal({
 
         <div className="mt-[18px] flex items-center justify-between">
           <div className="type-body-xs text-app-text-muted">
-            {totalTickets} ticket{totalTickets === 1 ? "" : "s"} . $
-            {totalAmount.toFixed(2)}
+            {totalTickets} ticket{totalTickets === 1 ? "" : "s"} .{" "}
+            {formatVnd(totalAmount)}
           </div>
 
           <div className="flex items-center gap-[8px]">
