@@ -38,7 +38,15 @@ export default function MovieSection({
       <SectionHeader
         title={title}
         description={description}
-        onAction={() => navigate("/movies")}
+        onAction={() => {
+          const params = new URLSearchParams();
+
+          if (status === "coming-soon") {
+            params.set("status", "coming-soon");
+          }
+
+          navigate(params.toString() ? `/movies?${params.toString()}` : "/movies");
+        }}
       />
 
       <div className="relative">
@@ -73,7 +81,7 @@ export default function MovieSection({
               }
               className="w-[220px] snap-start"
               onBook={() => navigate(`/movies/${movie.id}`)}
-              onTrailer={() => alert("Trailer feature will be added later.")}
+              onTrailer={() => navigate(`/movies/${movie.id}`)}
             />
           ))}
         </div>
