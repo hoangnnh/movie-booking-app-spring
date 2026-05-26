@@ -135,7 +135,6 @@ public class TmdbService {
         List<ImportMovieResult> importResults = new ArrayList<>();
         Set<Integer> seenTmdbIds = new HashSet<>();
 
-<<<<<<< HEAD
         for (int page = 1; page <= maxPagesToScan; page++) {
             List<Integer> tmdbIds = fetchMovieDataForCategoryPage(normalizedList, page).stream()
                     .map((movieData) -> intValue(movieData, "id", null))

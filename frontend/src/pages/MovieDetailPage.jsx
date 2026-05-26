@@ -3,12 +3,13 @@ import { useParams } from "react-router-dom";
 import { favoritesApi, movieApi } from "../api/api";
 
 import MovieHero from "../components/movieDetail/MovieHero";
+import MovieSection from "../components/home/MovieSection";
 import MovieSummarySection from "../components/movieDetail/MovieSummarySection";
 import CastSection from "../components/movieDetail/CastSection";
 import ReviewsSection from "../components/movieDetail/ReviewsSection";
 import ShowtimesSection from "../components/movieDetail/ShowtimesSection";
 
-import { formatDuration, getPosterUrl } from "../components/home/homeUtils";
+import { formatDuration, getPosterUrl, isComingSoon } from "../components/home/homeUtils";
 import { useAuth } from "../context/useAuth";
 import { getEmbeddedTrailerUrl } from "../components/movieDetail/trailerUtils";
 
@@ -18,6 +19,7 @@ export default function MovieDetailPage({ onRequireAuth }) {
 
   const [movie, setMovie] = useState(null);
   const [showtimes, setShowtimes] = useState([]);
+  const [similarMovies, setSimilarMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
@@ -46,6 +48,35 @@ export default function MovieDetailPage({ onRequireAuth }) {
     }
 
     loadMovieDetail();
+  }, [movieId]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadSimilarMovies() {
+      if (!movieId) {
+        setSimilarMovies([]);
+        return;
+      }
+
+      try {
+        const data = await movieApi.getSimilar(movieId, 8);
+
+        if (!ignore) {
+          setSimilarMovies(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (!ignore) {
+          setSimilarMovies([]);
+        }
+      }
+    }
+
+    loadSimilarMovies();
+
+    return () => {
+      ignore = true;
+    };
   }, [movieId]);
 
   useEffect(() => {
@@ -97,6 +128,10 @@ export default function MovieDetailPage({ onRequireAuth }) {
       trailerEmbedUrl: getEmbeddedTrailerUrl(movie.trailerUrl),
     };
   }, [movie]);
+
+  const visibleSimilarMovies = useMemo(() => {
+    return similarMovies.filter((item) => !isComingSoon(item));
+  }, [similarMovies]);
 
   useEffect(() => {
     if (!isTrailerOpen) {
@@ -208,6 +243,15 @@ export default function MovieDetailPage({ onRequireAuth }) {
       <CastSection cast={computedMovie.cast} />
       <ReviewsSection score={computedMovie.rating} />
       <ShowtimesSection showtimes={showtimes} />
+      {visibleSimilarMovies.length > 0 && (
+        <MovieSection
+          title="More Like This"
+          description="Java-side similarity picks paired with your upgraded recommendation engine."
+          movies={visibleSimilarMovies}
+          status="released"
+          limit={8}
+        />
+      )}
 
       {isTrailerOpen && computedMovie.trailerEmbedUrl && (
         <div

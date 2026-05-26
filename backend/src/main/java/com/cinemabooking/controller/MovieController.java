@@ -17,6 +17,7 @@ import com.cinemabooking.dto.MovieResponse;
 import com.cinemabooking.entity.Movie;
 import com.cinemabooking.repository.MovieRepository;
 import com.cinemabooking.service.MovieSearchService;
+import com.cinemabooking.service.RecommendationService;
 import com.cinemabooking.service.TmdbService;
 
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class MovieController {
     private final MovieRepository movieRepository;
     private final TmdbService tmdbService;
     private final MovieSearchService movieSearchService;
+    private final RecommendationService recommendationService;
 
     @GetMapping
     public List<MovieResponse> getAllMovies(@RequestParam(required = false) String query) {
@@ -72,5 +74,13 @@ public class MovieController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Movie not found"));
 
         return tmdbService.toMovieDetailResponse(movie);
+    }
+
+    @GetMapping("/{id}/similar")
+    public List<MovieResponse> getSimilarMovies(
+            @PathVariable UUID id,
+            @RequestParam(required = false) Integer limit
+    ) {
+        return recommendationService.getSimilarMovies(id, limit);
     }
 }

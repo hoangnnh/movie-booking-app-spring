@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { movieApi } from "../api/api";
+import { useAuth } from "../context/useAuth";
 
 import HeroSection from "../components/home/HeroSection";
 import StatsSection from "../components/home/StatsSection";
@@ -13,9 +14,11 @@ import NewsletterSection from "../components/home/NewsletterSection";
 import { isComingSoon } from "../components/home/homeUtils";
 
 export default function HomePage() {
+  const { user, isAuthenticated } = useAuth();
   const [nowPlayingMovies, setNowPlayingMovies] = useState([]);
   const [topMoviesThisWeek, setTopMoviesThisWeek] = useState([]);
   const [catalogMovies, setCatalogMovies] = useState([]);
+  const [recommendedMovies, setRecommendedMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -46,6 +49,35 @@ export default function HomePage() {
     loadHomeMovies();
   }, []);
 
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadRecommendations() {
+      if (!isAuthenticated || !user?.userId) {
+        setRecommendedMovies([]);
+        return;
+      }
+
+      try {
+        const data = await movieApi.getRecommendations(user.userId, 10);
+
+        if (!ignore) {
+          setRecommendedMovies(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (!ignore) {
+          setRecommendedMovies([]);
+        }
+      }
+    }
+
+    loadRecommendations();
+
+    return () => {
+      ignore = true;
+    };
+  }, [isAuthenticated, user?.userId]);
+
   const comingSoonMovies = useMemo(() => {
     const result = catalogMovies.filter(isComingSoon);
 
@@ -74,6 +106,16 @@ export default function HomePage() {
 
       {!loading && !error && (
         <>
+          {recommendedMovies.length > 0 && (
+            <MovieSection
+              title="Recommended For You"
+              description="DL4J-powered picks based on your favorites and booking history."
+              movies={recommendedMovies}
+              status="released"
+              limit={10}
+            />
+          )}
+
           <MovieSection
             title="Currently In Cinemas"
             description="Discover the latest movies now playing in cinemas. Book your tickets today!"
