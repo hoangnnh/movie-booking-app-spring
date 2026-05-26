@@ -45,9 +45,9 @@ export default function Footer({
                 className
             )}
         >
-            <div className="ticketor-container relative z-10 py-[48px]">
-                <div className="grid grid-cols-12 gap-[16px]">
-                    <div className="col-span-5">
+            <div className="ticketor-container relative z-10 py-[40px] md:py-[48px]">
+                <div className="grid gap-[24px] lg:grid-cols-12">
+                    <div className="lg:col-span-5">
                         <Logo className="mb-[16px]" />
 
                         <p className="type-body-xs max-w-[360px] text-app-text-muted">
@@ -88,7 +88,7 @@ export default function Footer({
                         </p>
                     </div>
 
-                    <div className="col-span-7 grid grid-cols-3 gap-[16px]">
+                    <div className="grid gap-[20px] sm:grid-cols-2 lg:col-span-7 lg:grid-cols-3">
                         {footerColumns.map((column) => (
                             <div key={column.title}>
                                 <h3 className="type-caption-s mb-[12px] text-app-text">

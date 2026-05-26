@@ -6,7 +6,7 @@ export default function NewsletterSection() {
 
   return (
     <section className="ticketor-container py-[64px]">
-      <div className="rounded-card border border-app-border bg-app-surface p-[48px] text-center">
+      <div className="rounded-card border border-app-border bg-app-surface p-[24px] text-center sm:p-[32px] lg:p-[48px]">
         <h2 className="type-h2 text-app-text">Ready to watch & Book Movies?</h2>
 
         <p className="type-body-m mx-auto mt-[12px] max-w-[560px] text-app-text-muted">
@@ -15,7 +15,7 @@ export default function NewsletterSection() {
         </p>
 
         <form
-          className="mx-auto mt-[32px] flex max-w-[520px] gap-[12px]"
+          className="mx-auto mt-[32px] flex max-w-[520px] flex-col gap-[12px] sm:flex-row"
           onSubmit={(event) => {
             event.preventDefault();
             alert(`Subscribed: ${email}`);
@@ -30,7 +30,7 @@ export default function NewsletterSection() {
             className="h-[48px] min-w-0 flex-1 rounded-input border border-app-border bg-app-background px-[16px] type-body-m text-app-text outline-none placeholder:text-app-text-muted focus:border-brand"
           />
 
-          <Button size={48} variant="primary" type="submit">
+          <Button size={48} variant="primary" type="submit" className="w-full sm:w-auto">
             Sign Up
           </Button>
         </form>

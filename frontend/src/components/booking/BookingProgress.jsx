@@ -8,8 +8,8 @@ export default function BookingProgress({
   className = "",
 }) {
   return (
-    <div className={cn("w-full", className)}>
-      <div className="relative flex items-center justify-between">
+    <div className={cn("w-full overflow-x-auto pb-[4px]", className)}>
+      <div className="relative flex min-w-[540px] items-center justify-between gap-[20px]">
         <div className="absolute left-0 right-0 top-[30px] h-px bg-app-border" />
 
         {steps.map((step, index) => {
@@ -19,11 +19,11 @@ export default function BookingProgress({
           return (
             <div
               key={step}
-              className="relative z-10 flex min-w-[120px] flex-col items-center gap-[16px]"
+              className="relative z-10 flex min-w-[120px] flex-col items-center gap-[12px] sm:gap-[16px]"
             >
               <p
                 className={cn(
-                  "type-body-l",
+                  "type-body-s sm:type-body-l",
                   isActive || isCompleted
                     ? "text-app-text"
                     : "text-app-text-muted"

@@ -492,6 +492,40 @@
     }
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
+@media (max-width: 1023px) {
+    :root {
+        --text-display-1: 44px;
+        --text-display-2: 38px;
+        --text-h1: 38px;
+        --text-h2: 34px;
+        --text-h3: 30px;
+        --text-h4: 28px;
+        --text-body-xl: 18px;
+    }
+}
+
+@media (max-width: 767px) {
+    :root {
+        --text-display-1: 32px;
+        --text-display-2: 28px;
+        --text-h1: 30px;
+        --text-h2: 28px;
+        --text-h3: 24px;
+        --text-h4: 22px;
+        --text-h5: 18px;
+        --text-body-xl: 16px;
+        --text-body-l: 16px;
+    }
+
+    .ticketor-container {
+        padding-inline: 16px;
+    }
+}
+
 @layer components {
     .ticketor-container {
         width: 100%;

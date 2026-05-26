@@ -19,9 +19,9 @@ export default function MovieHero({
   favoriteDisabled = false,
 }) {
   return (
-    <section className="ticketor-container pt-[32px]">
+    <section className="ticketor-container pt-[24px] sm:pt-[32px]">
       <div className="relative overflow-hidden rounded-card border border-app-border bg-app-background">
-        <div className="absolute inset-x-0 top-0 h-[300px]">
+        <div className="absolute inset-x-0 top-0 h-[220px] sm:h-[300px]">
           {backdropUrl ? (
             <img
               src={backdropUrl}
@@ -34,14 +34,14 @@ export default function MovieHero({
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-app-background/80 to-app-background" />
         </div>
 
-        <div className="relative z-10 p-[40px]">
-          <h1 className="type-h2 mb-[24px] uppercase text-app-text">
+        <div className="relative z-10 p-[20px] sm:p-[28px] lg:p-[40px]">
+          <h1 className="type-h2 mb-[20px] uppercase text-app-text sm:mb-[24px]">
             {movie.title}
           </h1>
 
-          <div className="grid grid-cols-12 gap-[24px]">
-            <div className="col-span-4">
-              <div className="h-[420px] overflow-hidden rounded-card bg-app-surface">
+          <div className="grid gap-[20px] lg:grid-cols-12 lg:gap-[24px]">
+            <div className="lg:col-span-4">
+              <div className="mx-auto h-[320px] max-w-[260px] overflow-hidden rounded-card bg-app-surface sm:h-[380px] lg:mx-0 lg:h-[420px] lg:max-w-none">
                 {posterUrl ? (
                   <img
                     src={posterUrl}
@@ -56,8 +56,8 @@ export default function MovieHero({
               </div>
             </div>
 
-            <div className="col-span-8">
-              <div className="relative h-[420px] overflow-hidden rounded-card bg-app-surface">
+            <div className="lg:col-span-8">
+              <div className="relative h-[240px] overflow-hidden rounded-card bg-app-surface sm:h-[320px] lg:h-[420px]">
                 {backdropUrl ? (
                   <img
                     src={backdropUrl}
@@ -78,18 +78,18 @@ export default function MovieHero({
                         ? `Play trailer for ${movie.title}`
                         : `Trailer unavailable for ${movie.title}`
                     }
-                    className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-app-background/80 text-brand transition-colors hover:bg-brand hover:text-neutral-900 disabled:cursor-not-allowed disabled:bg-app-background/55 disabled:text-app-text-subtle"
+                    className="flex h-[60px] w-[60px] items-center justify-center rounded-full bg-app-background/80 text-brand transition-colors hover:bg-brand hover:text-neutral-900 disabled:cursor-not-allowed disabled:bg-app-background/55 disabled:text-app-text-subtle sm:h-[72px] sm:w-[72px]"
                   >
-                    <PlayCircle className="h-[40px] w-[40px]" />
+                    <PlayCircle className="h-[34px] w-[34px] sm:h-[40px] sm:w-[40px]" />
                   </button>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-[32px] flex items-center justify-between gap-[24px]">
-            <div>
-              <div className="flex items-center gap-[16px]">
+          <div className="mt-[24px] flex flex-col gap-[20px] lg:mt-[32px] lg:flex-row lg:items-center lg:justify-between lg:gap-[24px]">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-[12px] sm:gap-[16px]">
                 <p className="type-body-m text-app-text-muted">{duration}</p>
                 <span className="rounded-tk-4 border border-app-border px-[8px] py-[4px] type-label-s text-app-text-muted">
                   {ageRating}
@@ -108,8 +108,8 @@ export default function MovieHero({
               </p>
             </div>
 
-            <div className="flex items-center gap-[12px]">
-              <Button size={40} variant="primary" onClick={onGetTicket}>
+            <div className="flex flex-col gap-[12px] sm:flex-row sm:items-center">
+              <Button size={40} variant="primary" className="w-full sm:w-auto" onClick={onGetTicket}>
                 Get Ticket
               </Button>
 
@@ -120,6 +120,7 @@ export default function MovieHero({
                 leftIcon={favoriteActive ? <Check /> : <Bookmark />}
                 onClick={onToggleFavorite}
                 disabled={favoriteDisabled}
+                className="w-full sm:w-auto"
               >
                 {favoriteButtonLabel}
               </Button>

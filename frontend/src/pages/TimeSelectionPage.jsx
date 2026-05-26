@@ -305,7 +305,7 @@ export default function TimeSelectionPage() {
   return (
     <div className="min-h-screen bg-app-background text-app-text">
       <main>
-        <section className="ticketor-container pt-[32px]">
+        <section className="ticketor-container pt-[24px] sm:pt-[32px]">
           <div className="relative overflow-hidden rounded-card border border-app-border bg-app-surface">
             <img
               src={movieView.backdropUrl}
@@ -314,8 +314,8 @@ export default function TimeSelectionPage() {
             />
             <div className="absolute inset-0 bg-gradient-to-r from-app-background via-app-background/85 to-app-background/30" />
 
-            <div className="relative z-10 flex gap-[32px] p-[32px]">
-              <div className="h-[280px] w-[188px] shrink-0 overflow-hidden rounded-tk-8 bg-neutral-700">
+            <div className="relative z-10 flex flex-col gap-[24px] p-[20px] sm:p-[28px] lg:flex-row lg:gap-[32px] lg:p-[32px]">
+              <div className="mx-auto h-[240px] w-[160px] shrink-0 overflow-hidden rounded-tk-8 bg-neutral-700 sm:h-[280px] sm:w-[188px] lg:mx-0">
                 <img
                   src={movieView.posterUrl}
                   alt={movieView.title}
@@ -433,11 +433,12 @@ export default function TimeSelectionPage() {
             </div>
           )}
 
-          <div className="mt-[40px] flex items-center justify-between">
+          <div className="mt-[40px] flex flex-wrap items-center justify-between gap-[12px]">
             <h2 className="type-h5 text-app-text">Coming Soon</h2>
             <button
               type="button"
               className="type-label-s text-app-text-muted hover:text-brand"
+              onClick={() => navigate("/movies?status=coming-soon")}
             >
               View all
             </button>

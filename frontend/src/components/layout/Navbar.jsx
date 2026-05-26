@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { ChevronDown, LockKeyhole, LogIn, Moon, Search, Sun, X } from "lucide-react";
+import { ChevronDown, LockKeyhole, LogIn, Menu, Moon, Search, Sun, X } from "lucide-react";
 import { movieApi } from "../../api/api";
 import { cn } from "../../utils/cn";
 import Avatar from "../common/Avatar";
@@ -26,6 +26,7 @@ export default function Navbar({
     const [searchTerm, setSearchTerm] = useState("");
     const [suggestions, setSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const searchInputRef = useRef(null);
 
     useEffect(() => {
@@ -78,10 +79,15 @@ export default function Navbar({
         setShowSuggestions(false);
     }
 
+    function closeMobileMenu() {
+        setMobileMenuOpen(false);
+    }
+
     function submitSearch(nextQuery = searchTerm) {
         const normalizedQuery = nextQuery.trim();
 
         closeSearch();
+        closeMobileMenu();
 
         if (normalizedQuery.length === 0) {
             navigate("/movies");
@@ -94,45 +100,48 @@ export default function Navbar({
     return (
         <header
             className={cn(
-                "h-[64px] w-full bg-app-background",
+                "w-full bg-app-background",
                 variant === "bordered" && "rounded-card border border-app-border",
                 className
             )}
         >
-            <div className="ticketor-container flex h-full items-center justify-between">
-                <div className="flex items-center gap-[88px]">
-                    <Link to="/">
+            <div className="ticketor-container py-[12px]">
+                <div className="flex items-center justify-between gap-[12px]">
+                    <Link to="/" onClick={closeMobileMenu}>
                         <Logo />
                     </Link>
 
-                    <nav className="flex items-center gap-[48px]">
+                    <nav className="hidden items-center gap-[32px] xl:flex">
                         <NavbarLink to="/movies">Movies</NavbarLink>
+                        {isLoggedIn && <NavbarLink to="/my-booking">My Booking</NavbarLink>}
                         {isLoggedIn && <NavbarLink to="/favorites">Favorites</NavbarLink>}
                         {user?.role === "ADMIN" && <NavbarLink to="/admin">Admin</NavbarLink>}
                     </nav>
-                </div>
 
-                <div className="flex items-center gap-[32px]">
-                    <Button
-                        variant="text"
-                        size={40}
-                        iconOnly
-                        onClick={onThemeToggle}
-                        aria-label={nextThemeLabel}
-                        title={nextThemeLabel}
-                        rightIcon={theme === "dark" ? <Sun /> : <Moon />}
-                    />
-
-                    <div className="relative">
+                    <div className="flex items-center gap-[8px] sm:gap-[12px]">
                         <Button
                             variant="text"
                             size={40}
                             iconOnly
-                            rightIcon={<Search />}
-                            onClick={() => setSearchOpen((current) => !current)}
-                            aria-label="Open movie search"
-                            title="Search movies"
+                            onClick={onThemeToggle}
+                            aria-label={nextThemeLabel}
+                            title={nextThemeLabel}
+                            rightIcon={theme === "dark" ? <Sun /> : <Moon />}
                         />
+
+                        <div className="relative">
+                            <Button
+                                variant="text"
+                                size={40}
+                                iconOnly
+                                rightIcon={<Search />}
+                                onClick={() => {
+                                    setSearchOpen((current) => !current);
+                                    setMobileMenuOpen(false);
+                                }}
+                                aria-label="Open movie search"
+                                title="Search movies"
+                            />
 
                         {searchOpen && (
                             <div className="absolute right-0 top-[calc(100%+12px)] z-40 w-[min(92vw,420px)] rounded-tk-12 border border-app-border bg-app-surface p-[14px] shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
@@ -207,10 +216,10 @@ export default function Navbar({
                         )}
                     </div>
 
-                    <div className="h-[24px] w-px bg-app-border" />
+                        <div className="hidden h-[24px] w-px bg-app-border xl:block" />
 
-                    {isLoggedIn ? (
-                        <div className="group relative">
+                        {isLoggedIn ? (
+                        <div className="group relative hidden xl:block">
                             <button
                                 type="button"
                                 className="flex items-center gap-[12px] text-app-text transition-colors hover:text-brand"
@@ -222,6 +231,12 @@ export default function Navbar({
 
                             <div className="invisible absolute right-0 top-full z-30 min-w-[180px] pt-[12px] opacity-0 transition-opacity group-hover:visible group-hover:opacity-100">
                                 <div className="rounded-tk-8 border border-app-border bg-app-surface p-[8px] shadow-xl">
+                                    <Link
+                                        to="/my-booking"
+                                        className="block w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text-muted transition-colors hover:bg-app-background hover:text-brand"
+                                    >
+                                        My Booking
+                                    </Link>
                                     <Link
                                         to="/favorites"
                                         className="block w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text-muted transition-colors hover:bg-app-background hover:text-brand"
@@ -247,7 +262,7 @@ export default function Navbar({
                             </div>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-[24px]">
+                        <div className="hidden items-center gap-[24px] xl:flex">
                             <button
                                 type="button"
                                 onClick={onLoginClick}
@@ -267,7 +282,90 @@ export default function Navbar({
                             </button>
                         </div>
                     )}
+
+                        <Button
+                            variant="text"
+                            size={40}
+                            iconOnly
+                            className="xl:hidden"
+                            rightIcon={mobileMenuOpen ? <X /> : <Menu />}
+                            onClick={() => {
+                                setMobileMenuOpen((current) => !current);
+                                closeSearch();
+                            }}
+                            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+                            title={mobileMenuOpen ? "Close menu" : "Open menu"}
+                        />
+                    </div>
                 </div>
+
+                {mobileMenuOpen && (
+                    <div className="mt-[12px] rounded-tk-12 border border-app-border bg-app-surface p-[14px] xl:hidden">
+                        <nav className="grid gap-[6px]">
+                            <MobileNavLink to="/movies" onNavigate={closeMobileMenu}>Movies</MobileNavLink>
+                            {isLoggedIn && (
+                                <MobileNavLink to="/my-booking" onNavigate={closeMobileMenu}>My Booking</MobileNavLink>
+                            )}
+                            {isLoggedIn && (
+                                <MobileNavLink to="/favorites" onNavigate={closeMobileMenu}>Favorites</MobileNavLink>
+                            )}
+                            {user?.role === "ADMIN" && (
+                                <MobileNavLink to="/admin" onNavigate={closeMobileMenu}>Admin</MobileNavLink>
+                            )}
+                        </nav>
+
+                        <div className="mt-[12px] border-t border-app-border pt-[12px]">
+                            {isLoggedIn ? (
+                                <div className="grid gap-[10px]">
+                                    <div className="flex items-center gap-[10px] rounded-tk-8 bg-app-background px-[12px] py-[10px]">
+                                        <Avatar size={40} src={avatarSrc} alt={user.fullName} />
+                                        <div className="min-w-0">
+                                            <p className="type-body-s truncate text-app-text">{user.fullName}</p>
+                                            <p className="type-body-xs truncate text-app-text-muted">{user.email}</p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        size={40}
+                                        variant="outline"
+                                        tone="base"
+                                        className="w-full"
+                                        onClick={() => {
+                                            closeMobileMenu();
+                                            onLogout?.();
+                                        }}
+                                    >
+                                        Logout
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="grid gap-[10px] sm:grid-cols-2">
+                                    <Button
+                                        size={40}
+                                        variant="outline"
+                                        tone="base"
+                                        className="w-full"
+                                        onClick={() => {
+                                            closeMobileMenu();
+                                            onLoginClick?.();
+                                        }}
+                                    >
+                                        Login
+                                    </Button>
+                                    <Button
+                                        size={40}
+                                        className="w-full"
+                                        onClick={() => {
+                                            closeMobileMenu();
+                                            onSignUpClick?.();
+                                        }}
+                                    >
+                                        Sign Up
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </header>
     );
@@ -281,6 +379,25 @@ function NavbarLink({ to, children }) {
                 cn(
                     "type-body-m transition-colors",
                     isActive ? "text-brand" : "text-app-text hover:text-brand"
+                )
+            }
+        >
+            {children}
+        </NavLink>
+    );
+}
+
+function MobileNavLink({ to, children, onNavigate }) {
+    return (
+        <NavLink
+            to={to}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+                cn(
+                    "rounded-tk-8 px-[12px] py-[12px] type-body-s transition-colors",
+                    isActive
+                        ? "bg-app-background text-brand"
+                        : "text-app-text-muted hover:bg-app-background hover:text-brand"
                 )
             }
         >

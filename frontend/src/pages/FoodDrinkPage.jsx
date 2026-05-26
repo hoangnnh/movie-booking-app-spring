@@ -415,7 +415,7 @@ export default function FoodDrinkPage({ onRequireAuth }) {
 
   return (
     <div className="min-h-screen bg-app-background text-app-text">
-      <main className="ticketor-container py-[40px]">
+      <main className="ticketor-container py-[24px] sm:py-[40px]">
         <button
           type="button"
           className="mb-[32px] inline-flex items-center gap-[8px] type-body-s text-app-text-muted transition-colors hover:text-brand"
@@ -443,10 +443,10 @@ export default function FoodDrinkPage({ onRequireAuth }) {
           Back to seat selection
         </button>
 
-        <BookingProgress currentStep={1} className="mb-[56px]" />
+        <BookingProgress currentStep={1} className="mb-[32px] sm:mb-[56px]" />
 
-        <div className="grid grid-cols-12 gap-[24px]">
-          <aside className="col-span-3">
+        <div className="grid gap-[20px] xl:grid-cols-[280px_minmax(0,1fr)_300px]">
+          <aside className="xl:order-1">
             <div className="sticky top-[24px] overflow-hidden rounded-tk-8 border border-app-border bg-app-surface">
               <img
                 src={movieView.posterUrl}
@@ -489,13 +489,13 @@ export default function FoodDrinkPage({ onRequireAuth }) {
             </div>
           </aside>
 
-          <section className="col-span-6">
+          <section className="xl:order-2">
             <div className="mb-[20px]">
               <p className="type-label-s text-brand">Food & Drink</p>
               <h2 className="type-h4 mt-[4px] text-app-text">Choose Your Snacks</h2>
             </div>
 
-            <div className="grid grid-cols-3 gap-[12px]">
+            <div className="grid gap-[12px] sm:grid-cols-2 2xl:grid-cols-3">
               {snackItems.map((item) => (
                 <SnackCard
                   key={item.key}
@@ -507,7 +507,7 @@ export default function FoodDrinkPage({ onRequireAuth }) {
             </div>
           </section>
 
-          <aside className="col-span-3">
+          <aside className="xl:order-3">
             <div className="sticky top-[24px] rounded-tk-8 border border-app-border bg-app-surface p-[24px]">
               <div className="flex items-center gap-[10px]">
                 <ShoppingCart className="h-[20px] w-[20px] text-brand" />
