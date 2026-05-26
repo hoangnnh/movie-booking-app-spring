@@ -35,6 +35,16 @@ public class MovieController {
         return movieSearchService.searchMovies(query);
     }
 
+    @GetMapping("/now-playing")
+    public List<MovieResponse> getNowPlayingMovies(@RequestParam(defaultValue = "10") int limit) {
+        return tmdbService.getNowPlayingMovies(limit);
+    }
+
+    @GetMapping("/trending/week")
+    public List<MovieResponse> getTrendingMoviesThisWeek(@RequestParam(defaultValue = "10") int limit) {
+        return tmdbService.getTrendingMoviesThisWeek(limit);
+    }
+
     @GetMapping("/autocomplete")
     public List<MovieAutocompleteResponse> autocompleteMovies(
             @RequestParam String query,
