@@ -55,7 +55,7 @@ export default function TmdbImportPage() {
       });
 
       setBulkMessage(
-        `Imported ${data.importedCount} movie${data.importedCount === 1 ? "" : "s"} from ${formatListName(data.list)}.`
+        buildBulkImportMessage(data)
       );
       setImportedIds((current) => {
         const ids = (data.movies || [])
@@ -138,9 +138,9 @@ export default function TmdbImportPage() {
                 onChange={(event) => setBulkPages(Number(event.target.value))}
                 className="h-[40px] min-w-[120px] rounded-tk-4 border border-app-border bg-app-background px-[12px] type-body-s text-app-text outline-none"
               >
-                <option value={1}>1 page / 20 movies</option>
-                <option value={2}>2 pages / 40 movies</option>
-                <option value={3}>3 pages / 60 movies</option>
+                <option value={1}>Target 20 new movies</option>
+                <option value={2}>Target 40 new movies</option>
+                <option value={3}>Target 60 new movies</option>
               </select>
             </label>
 
@@ -234,6 +234,19 @@ function formatListName(value) {
     .split("_")
     .map((part) => part[0].toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function buildBulkImportMessage(data) {
+  const importedCount = Number(data?.importedCount || 0);
+  const createdCount = Number(data?.createdCount || 0);
+  const updatedCount = Number(data?.updatedCount || 0);
+  const scannedPages = Number(data?.scannedPages || data?.requestedPages || 0);
+  const listName = formatListName(data?.list || "now_playing");
+
+  const summary = `Processed ${importedCount} movie${importedCount === 1 ? "" : "s"} from ${listName} across ${scannedPages} TMDB page${scannedPages === 1 ? "" : "s"}.`;
+  const details = `${createdCount} new, ${updatedCount} updated.`;
+
+  return `${summary} ${details}`;
 }
 
 function cleanError(error) {

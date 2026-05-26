@@ -16,11 +16,14 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
 
     Optional<Movie> findFirstByTitleIgnoreCaseOrderByCreatedAtAsc(String title);
 
+    List<Movie> findAllByOrderByCreatedAtDescTitleAsc();
+
     @Query("""
             select distinct movie
             from Movie movie
             join movie.castMembers castMember
             where lower(castMember.name) = lower(:actorName)
+            order by movie.createdAt desc, movie.title asc
             """)
     List<Movie> findAllByActorName(@Param("actorName") String actorName);
 

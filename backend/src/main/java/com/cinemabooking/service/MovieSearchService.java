@@ -25,9 +25,8 @@ public class MovieSearchService {
 
     public List<MovieResponse> searchMovies(String rawQuery) {
         if (rawQuery == null || rawQuery.isBlank()) {
-            return movieRepository.findAll()
+            return movieRepository.findAllByOrderByCreatedAtDescTitleAsc()
                     .stream()
-                    .sorted(Comparator.comparing(Movie::getTitle))
                     .map(tmdbService::toStoredMovieResponse)
                     .toList();
         }
