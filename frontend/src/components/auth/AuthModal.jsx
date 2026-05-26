@@ -10,6 +10,9 @@ import { cn } from "../../utils/cn";
 export default function AuthModal({ mode = "login", onModeChange, onClose }) {
   const { login, register, loginWithGoogle, googleAuthEnabled } = useAuth();
   const isLogin = mode === "login";
+  const [verifiedFromUrl] = useState(
+    () => new URLSearchParams(window.location.search).get("verified") === "true"
+  );
 
   const [step, setStep] = useState("form");
   const [fullName, setFullName] = useState("");
@@ -18,18 +21,18 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
   const [resetToken, setResetToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState(() =>
+    verifiedFromUrl ? "Email verified! You can now log in." : ""
+  );
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("verified") === "true") {
-      setSuccessMsg("Email verified! You can now log in.");
+    if (verifiedFromUrl) {
       window.history.replaceState({}, "", window.location.pathname);
     }
-  }, []);
+  }, [verifiedFromUrl]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
