@@ -59,8 +59,13 @@ export async function apiRequest(path, options = {}) {
   }
 
   if (response.status === 204) return null;
+  const responseText = await response.text();
 
-  return response.json();
+  if (!responseText) {
+    return null;
+  }
+
+  return JSON.parse(responseText);
 }
 
 export const authApi = {
@@ -201,6 +206,11 @@ export const bookingApi = {
     }),
 
   getUserBookings: (userId) => apiRequest(`/users/${userId}/bookings`),
+
+  cancelBooking: (bookingId) =>
+    apiRequest(`/bookings/${bookingId}/cancel`, {
+      method: "PATCH",
+    }),
 };
 
 export const favoritesApi = {

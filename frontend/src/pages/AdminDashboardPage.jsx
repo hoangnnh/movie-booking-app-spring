@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
@@ -25,6 +25,7 @@ const tabs = [
 ];
 
 const bookingStatuses = ["PENDING", "CONFIRMED", "CANCELLED", "EXPIRED"];
+const ADMIN_PAGE_SIZE = 8;
 
 export default function AdminDashboardPage({ onRequireAuth }) {
   const navigate = useNavigate();
@@ -40,8 +41,26 @@ export default function AdminDashboardPage({ onRequireAuth }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [moviePage, setMoviePage] = useState(1);
+  const [userPage, setUserPage] = useState(1);
+  const [bookingPage, setBookingPage] = useState(1);
 
   const isAdmin = user?.role === "ADMIN";
+  const paginatedMovies = usePaginatedItems(movies, moviePage, ADMIN_PAGE_SIZE);
+  const paginatedUsers = usePaginatedItems(users, userPage, ADMIN_PAGE_SIZE);
+  const paginatedBookings = usePaginatedItems(bookings, bookingPage, ADMIN_PAGE_SIZE);
+
+  useEffect(() => {
+    setMoviePage(1);
+  }, [movies.length]);
+
+  useEffect(() => {
+    setUserPage(1);
+  }, [users.length]);
+
+  useEffect(() => {
+    setBookingPage(1);
+  }, [bookings.length]);
 
   async function loadAdminData() {
     try {
@@ -58,6 +77,9 @@ export default function AdminDashboardPage({ onRequireAuth }) {
       setMovies(Array.isArray(movieData) ? movieData : []);
       setUsers(Array.isArray(userData) ? userData : []);
       setBookings(Array.isArray(bookingData) ? bookingData : []);
+      setMoviePage(1);
+      setUserPage(1);
+      setBookingPage(1);
     } catch (err) {
       setError(cleanError(err));
     } finally {
@@ -114,6 +136,7 @@ export default function AdminDashboardPage({ onRequireAuth }) {
       setError("");
       const data = await adminApi.getMovies(movieQuery.trim());
       setMovies(Array.isArray(data) ? data : []);
+      setMoviePage(1);
     } catch (err) {
       setError(cleanError(err));
     } finally {
@@ -293,6 +316,10 @@ export default function AdminDashboardPage({ onRequireAuth }) {
         {activeTab === "movies" && (
           <MoviesPanel
             movies={movies}
+            currentPage={paginatedMovies.currentPage}
+            totalPages={paginatedMovies.totalPages}
+            visibleMovies={paginatedMovies.visibleItems}
+            onPageChange={setMoviePage}
             query={movieQuery}
             onQueryChange={setMovieQuery}
             onSearch={searchMovies}
@@ -313,6 +340,10 @@ export default function AdminDashboardPage({ onRequireAuth }) {
         {activeTab === "users" && (
           <UsersPanel
             users={users}
+            currentPage={paginatedUsers.currentPage}
+            totalPages={paginatedUsers.totalPages}
+            visibleUsers={paginatedUsers.visibleItems}
+            onPageChange={setUserPage}
             currentUserId={user?.userId}
             onRoleChange={updateUserRole}
             onDelete={deleteUser}
@@ -322,6 +353,10 @@ export default function AdminDashboardPage({ onRequireAuth }) {
         {activeTab === "bookings" && (
           <BookingsPanel
             bookings={bookings}
+            currentPage={paginatedBookings.currentPage}
+            totalPages={paginatedBookings.totalPages}
+            visibleBookings={paginatedBookings.visibleItems}
+            onPageChange={setBookingPage}
             onStatusChange={updateBookingStatus}
           />
         )}
@@ -393,6 +428,10 @@ function OverviewPanel({ summary, onImport }) {
 
 function MoviesPanel({
   movies,
+  visibleMovies,
+  currentPage,
+  totalPages,
+  onPageChange,
   query,
   onQueryChange,
   onSearch,
@@ -434,7 +473,7 @@ function MoviesPanel({
             </tr>
           </thead>
           <tbody>
-            {movies.map((movie) => (
+            {visibleMovies.map((movie) => (
               <tr key={movie.id} className="border-b border-app-border last:border-b-0">
                 <td className="px-[14px] py-[12px]">
                   {editingMovieId === movie.id ? (
@@ -494,14 +533,33 @@ function MoviesPanel({
           </tbody>
         </table>
       </div>
+
+      <PaginationBar
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={ADMIN_PAGE_SIZE}
+        totalItems={movies.length}
+        label="movies"
+        onPageChange={onPageChange}
+      />
     </section>
   );
 }
 
-function UsersPanel({ users, currentUserId, onRoleChange, onDelete }) {
+function UsersPanel({
+  users,
+  visibleUsers,
+  currentPage,
+  totalPages,
+  onPageChange,
+  currentUserId,
+  onRoleChange,
+  onDelete,
+}) {
   return (
-    <TableShell headers={["Name", "Email", "Role", "Provider", "Verified", "Actions"]}>
-      {users.map((item) => (
+    <section className="grid gap-[16px]">
+      <TableShell headers={["Name", "Email", "Role", "Provider", "Verified", "Actions"]}>
+        {visibleUsers.map((item) => (
         <tr key={item.id} className="border-b border-app-border last:border-b-0">
           <td className="px-[14px] py-[12px] type-body-s text-app-text">{item.fullName}</td>
           <td className="px-[14px] py-[12px] type-body-s text-app-text-muted">{item.email}</td>
@@ -519,15 +577,33 @@ function UsersPanel({ users, currentUserId, onRoleChange, onDelete }) {
             </Button>
           </td>
         </tr>
-      ))}
-    </TableShell>
+        ))}
+      </TableShell>
+
+      <PaginationBar
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={ADMIN_PAGE_SIZE}
+        totalItems={users.length}
+        label="users"
+        onPageChange={onPageChange}
+      />
+    </section>
   );
 }
 
-function BookingsPanel({ bookings, onStatusChange }) {
+function BookingsPanel({
+  bookings,
+  visibleBookings,
+  currentPage,
+  totalPages,
+  onPageChange,
+  onStatusChange,
+}) {
   return (
-    <TableShell headers={["Booking", "Customer", "Movie", "Schedule", "Payment", "Total", "Status"]}>
-      {bookings.map((booking) => (
+    <section className="grid gap-[16px]">
+      <TableShell headers={["Booking", "Customer", "Movie", "Schedule", "Payment", "Total", "Status"]}>
+        {visibleBookings.map((booking) => (
         <tr key={booking.id} className="border-b border-app-border last:border-b-0">
           <td className="px-[14px] py-[12px] type-body-s text-app-text">{String(booking.id).slice(0, 8).toUpperCase()}</td>
           <td className="px-[14px] py-[12px]">
@@ -552,8 +628,18 @@ function BookingsPanel({ bookings, onStatusChange }) {
             </select>
           </td>
         </tr>
-      ))}
-    </TableShell>
+        ))}
+      </TableShell>
+
+      <PaginationBar
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={ADMIN_PAGE_SIZE}
+        totalItems={bookings.length}
+        label="bookings"
+        onPageChange={onPageChange}
+      />
+    </section>
   );
 }
 
@@ -572,6 +658,63 @@ function TableShell({ headers, children }) {
       </table>
     </div>
   );
+}
+
+function PaginationBar({
+  currentPage,
+  totalPages,
+  pageSize,
+  totalItems,
+  label,
+  onPageChange,
+}) {
+  const start = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const end = Math.min(currentPage * pageSize, totalItems);
+
+  return (
+    <section className="flex flex-wrap items-center justify-between gap-[16px] rounded-tk-12 border border-app-border bg-app-surface p-[20px]">
+      <p className="type-body-s text-app-text-muted">
+        Showing {start}-{end} of {totalItems} {label}
+      </p>
+
+      <div className="flex items-center gap-[8px]">
+        <Button
+          size={40}
+          variant="outline"
+          tone="brand"
+          disabled={currentPage === 1}
+          onClick={() => onPageChange(currentPage - 1)}
+        >
+          Previous
+        </Button>
+        <div className="rounded-full border border-app-border px-[14px] py-[10px] type-body-s text-app-text">
+          Page {currentPage} / {totalPages}
+        </div>
+        <Button
+          size={40}
+          variant="primary"
+          disabled={currentPage === totalPages}
+          onClick={() => onPageChange(currentPage + 1)}
+        >
+          Next
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function usePaginatedItems(items, page, pageSize) {
+  return useMemo(() => {
+    const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const startIndex = (currentPage - 1) * pageSize;
+
+    return {
+      currentPage,
+      totalPages,
+      visibleItems: items.slice(startIndex, startIndex + pageSize),
+    };
+  }, [items, page, pageSize]);
 }
 
 function formatDateTime(value) {
@@ -598,6 +741,9 @@ function cleanError(error) {
   if (message.includes("403")) return "You need an admin account for this action.";
   if (message.includes("booked tickets")) return "This movie has booked tickets and cannot be deleted.";
   if (message.includes("has bookings")) return "This user has bookings and cannot be deleted.";
+  if (message.includes("constraint") || message.includes("violates foreign key")) {
+    return "This user is still referenced by related data and cannot be deleted yet.";
+  }
 
   return message;
 }

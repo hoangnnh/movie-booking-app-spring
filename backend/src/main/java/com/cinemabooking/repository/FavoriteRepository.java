@@ -16,4 +16,6 @@ public interface FavoriteRepository extends JpaRepository<Favorite, UUID> {
     Optional<Favorite> findByUser_IdAndMovie_Id(UUID userId, UUID movieId);
 
     void deleteByMovie_Id(UUID movieId);
+
+    void deleteByUser_Id(UUID userId);
 }

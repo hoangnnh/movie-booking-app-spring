@@ -39,6 +39,7 @@ import com.cinemabooking.repository.MovieListEntryRepository;
 import com.cinemabooking.repository.MovieRepository;
 import com.cinemabooking.repository.ShowtimeRepository;
 import com.cinemabooking.repository.TicketRepository;
+import com.cinemabooking.service.BookingService;
 import com.cinemabooking.service.TmdbService;
 
 import lombok.RequiredArgsConstructor;
@@ -55,6 +56,7 @@ public class AdminController {
     private final ShowtimeRepository showtimeRepository;
     private final FavoriteRepository favoriteRepository;
     private final MovieListEntryRepository movieListEntryRepository;
+    private final BookingService bookingService;
     private final TmdbService tmdbService;
 
     @GetMapping("/summary")
@@ -166,6 +168,7 @@ public class AdminController {
     }
 
     @DeleteMapping("/users/{userId}")
+    @Transactional
     public void deleteUser(@PathVariable UUID userId) {
         AppUser user = appUserRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -177,6 +180,7 @@ public class AdminController {
             );
         }
 
+        favoriteRepository.deleteByUser_Id(userId);
         appUserRepository.delete(user);
     }
 
@@ -193,10 +197,23 @@ public class AdminController {
             @PathVariable UUID bookingId,
             @RequestBody AdminBookingStatusRequest request
     ) {
+        BookingStatus nextStatus = parseBookingStatus(request.status());
+
+        if (nextStatus == BookingStatus.CANCELLED) {
+            return toBookingResponse(bookingService.cancelBookingAsAdmin(bookingId));
+        }
+
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
 
-        booking.setStatus(parseBookingStatus(request.status()));
+        if (booking.getStatus() == BookingStatus.CANCELLED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Cancelled bookings cannot be changed to another status"
+            );
+        }
+
+        booking.setStatus(nextStatus);
         return toBookingResponse(bookingRepository.save(booking));
     }
 
