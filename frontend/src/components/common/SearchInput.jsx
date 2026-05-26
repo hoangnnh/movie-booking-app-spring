@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { Search } from "lucide-react";
 import { cn } from "../../utils/cn";
 
@@ -14,14 +15,14 @@ const sizeMap = {
   },
 };
 
-export default function SearchInput({
+const SearchInput = forwardRef(function SearchInput({
   value,
   onChange,
   placeholder = "Search here",
   size = 48,
   className = "",
   ...props
-}) {
+}, ref) {
   const selectedSize = sizeMap[size] || sizeMap[48];
 
   return (
@@ -33,6 +34,7 @@ export default function SearchInput({
       )}
     >
       <input
+        ref={ref}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
@@ -54,4 +56,6 @@ export default function SearchInput({
       />
     </div>
   );
-}
+});
+
+export default SearchInput;
