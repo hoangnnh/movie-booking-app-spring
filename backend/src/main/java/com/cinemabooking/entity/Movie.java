@@ -2,14 +2,17 @@ package com.cinemabooking.entity;
 
 import java.time.LocalDate;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -37,8 +40,20 @@ public class Movie extends BaseEntity {
     @Column(name = "poster_url")
     private String posterUrl;
 
+    @Column(name = "backdrop_url")
+    private String backdropUrl;
+
+    @Column(name = "trailer_url", length = 500)
+    private String trailerUrl;
+
     @Column(name = "release_date")
     private LocalDate releaseDate;
+
+    @Column(name = "rating")
+    private Double rating;
+
+    @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<MovieCastMember> castMembers = new LinkedHashSet<>();
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(

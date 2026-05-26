@@ -1,5 +1,3 @@
-import { fallbackPosters } from "./homeData";
-
 export function formatDuration(minutes) {
   if (!minutes) return "2h 2m";
 
@@ -11,7 +9,7 @@ export function formatDuration(minutes) {
   return `${hours}h ${remainingMinutes}m`;
 }
 
-export function getPosterUrl(movie, index = 0) {
+export function getPosterUrl(movie) {
   if (
     movie?.posterUrl &&
     !movie.posterUrl.includes("example.com") &&
@@ -20,18 +18,18 @@ export function getPosterUrl(movie, index = 0) {
     return movie.posterUrl;
   }
 
-  return fallbackPosters[index % fallbackPosters.length];
+  return "";
 }
 
-export function normalizeMovie(movie, index = 0) {
+export function normalizeMovie(movie) {
   return {
     id: movie.id,
     title: movie.title || "Untitled Movie",
     genres: Array.isArray(movie.genres) ? movie.genres.join(", ") : "Drama",
     duration: formatDuration(movie.durationMinutes),
-    rating: movie.rating || "8.5",
+    rating: movie.rating ? Number(movie.rating).toFixed(1) : "8.5",
     ageRating: movie.ageRating || "PG-13",
-    posterUrl: getPosterUrl(movie, index),
+    posterUrl: getPosterUrl(movie),
     releaseDate: movie.releaseDate,
   };
 }

@@ -129,7 +129,12 @@ touch .env.local
 Example local values:
 
 ```env
-TMDB_API_KEY=your_tmdb_api_key_here
+TMDB_API_READ_ACCESS_TOKEN=your_tmdb_read_access_token_here
+JWT_SECRET=replace_with_a_long_random_secret
+JWT_EXPIRATION_MS=86400000
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+APP_FRONTEND_BASE_URL=http://localhost:5173
 ```
 
 Do not commit `.env.local`.
@@ -156,7 +161,9 @@ spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
 
-tmdb.api.key=${TMDB_API_KEY}
+tmdb.api.read-access-token=${TMDB_API_READ_ACCESS_TOKEN}
+jwt.secret=${JWT_SECRET}
+jwt.expiration-ms=${JWT_EXPIRATION_MS}
 ```
 
 Create the database if it does not exist:
@@ -180,7 +187,7 @@ http://localhost:8000
 Test movie API:
 
 ```text
-http://localhost:8000/api/movies
+http://localhost:8080/api/movies
 ```
 
 ---
@@ -208,8 +215,10 @@ touch .env
 Add the backend API URL:
 
 ```env
-VITE_API_BASE_URL=http://localhost:8000/api
+VITE_API_BASE_URL=http://localhost:8080/api
 ```
+
+For Google OAuth, add `http://localhost:8080/login/oauth2/code/google` as an authorized redirect URI in your Google Cloud OAuth client.
 
 Run the frontend:
 

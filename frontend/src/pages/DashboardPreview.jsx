@@ -30,7 +30,7 @@ const demoBookings = [
 ];
 
 export default function DashboardPreview() {
-  const [activeMenu, setActiveMenu] = useState("account");
+  const [activeMenu, setActiveMenu] = useState("booking");
 
   return (
     <div className="min-h-screen bg-app-background text-app-text">

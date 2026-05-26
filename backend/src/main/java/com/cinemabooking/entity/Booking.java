@@ -36,4 +36,22 @@ public class Booking extends BaseEntity {
 
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
+
+    @Column(name = "ticket_amount", precision = 10, scale = 2)
+    private BigDecimal ticketAmount = BigDecimal.ZERO;
+
+    @Column(name = "food_amount", precision = 10, scale = 2)
+    private BigDecimal foodAmount = BigDecimal.ZERO;
+
+    @Column(name = "payment_method", length = 40)
+    private String paymentMethod = "DEMO_CARD";
+
+    @Column(name = "payment_status", length = 30)
+    private String paymentStatus = "PAID";
+
+    @Column(name = "payment_reference", length = 80)
+    private String paymentReference = "PAY-DEMO";
+
+    @Column(name = "seat_summary", length = 250)
+    private String seatSummary;
 }

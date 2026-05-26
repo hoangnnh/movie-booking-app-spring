@@ -13,8 +13,9 @@ import BookingProgress from "../components/booking/BookingProgress";
 import SeatMap from "../components/booking/SeatMap";
 import Button from "../components/common/Button";
 import { formatDuration, getPosterUrl } from "../components/home/homeUtils";
+import { formatVnd } from "../utils/currency";
 
-const ticketPrice = 18.07;
+const ticketPrice = 75000;
 
 function formatDateTime(value) {
   const date = new Date(value);
@@ -38,6 +39,9 @@ export default function SeatSelectionPage() {
   const navigate = useNavigate();
 
   const ticketCount = Math.max(1, Number(searchParams.get("tickets")) || 1);
+  const selectedDateParam = searchParams.get("date") || "";
+  const selectedStartTimeParam = searchParams.get("startTime") || "";
+  const selectedCinemaNameParam = searchParams.get("cinemaName") || "";
 
   const [movie, setMovie] = useState(null);
   const [showtime, setShowtime] = useState(null);
@@ -83,10 +87,12 @@ export default function SeatSelectionPage() {
   }, [movie]);
 
   const timeView = useMemo(() => {
-    if (!showtime) return null;
+    if (!showtime && !selectedStartTimeParam) return null;
 
-    return formatDateTime(showtime.startTime);
-  }, [showtime]);
+    return formatDateTime(selectedStartTimeParam || showtime.startTime);
+  }, [selectedStartTimeParam, showtime]);
+
+  const displayCinemaName = selectedCinemaNameParam || showtime?.cinemaName || "";
 
   const selectedSeats = seats.filter((seat) =>
     selectedSeatIds.includes(seat.seatId || seat.id)
@@ -138,20 +144,26 @@ export default function SeatSelectionPage() {
 
   return (
     <div className="min-h-screen bg-app-background text-app-text">
-      <main className="ticketor-container py-[40px]">
+      <main className="ticketor-container py-[24px] sm:py-[40px]">
         <button
           type="button"
           className="mb-[32px] inline-flex items-center gap-[8px] type-body-s text-app-text-muted transition-colors hover:text-brand"
-          onClick={() => navigate(`/booking/${showtimeId}`)}
+          onClick={() =>
+            navigate(
+              `/booking/${showtimeId}${
+                selectedDateParam ? `?date=${encodeURIComponent(selectedDateParam)}` : ""
+              }`
+            )
+          }
         >
           <ChevronLeft className="h-[16px] w-[16px]" />
           Back to time selection
         </button>
 
-        <BookingProgress currentStep={0} className="mb-[56px]" />
+        <BookingProgress currentStep={0} className="mb-[32px] sm:mb-[56px]" />
 
-        <div className="grid grid-cols-12 gap-[24px]">
-          <aside className="col-span-3">
+        <div className="grid gap-[20px] xl:grid-cols-[280px_minmax(0,1fr)_300px]">
+          <aside className="xl:order-1">
             <div className="sticky top-[24px] overflow-hidden rounded-tk-8 border border-app-border bg-app-surface">
               <img
                 src={movieView.posterUrl}
@@ -168,13 +180,13 @@ export default function SeatSelectionPage() {
                 <div className="mt-[18px] grid gap-[12px] text-app-text-muted">
                   <InfoRow icon={<CalendarDays />} label={timeView.date} />
                   <InfoRow icon={<Clock />} label={timeView.time} />
-                  <InfoRow icon={<MapPin />} label={showtime.cinemaName} />
+                  <InfoRow icon={<MapPin />} label={displayCinemaName} />
                 </div>
               </div>
             </div>
           </aside>
 
-          <section className="col-span-6 rounded-tk-8 border border-app-border bg-app-surface p-[32px]">
+          <section className="xl:order-2 rounded-tk-8 border border-app-border bg-app-surface p-[20px] sm:p-[24px] lg:p-[32px]">
             <div className="mb-[32px] text-center">
               <p className="type-label-s text-brand">Seat Selection</p>
               <h2 className="type-h4 mt-[4px] text-app-text">
@@ -201,7 +213,7 @@ export default function SeatSelectionPage() {
             )}
           </section>
 
-          <aside className="col-span-3">
+          <aside className="xl:order-3">
             <div className="sticky top-[24px] rounded-tk-8 border border-app-border bg-app-surface p-[24px]">
               <div className="flex items-center gap-[10px]">
                 <Ticket className="h-[20px] w-[20px] text-brand" />
@@ -211,7 +223,7 @@ export default function SeatSelectionPage() {
               <div className="mt-[24px] grid gap-[16px]">
                 <SummaryRow label="Movie" value={movieView.title} />
                 <SummaryRow label="Duration" value={movieView.duration} />
-                <SummaryRow label="Cinema" value={showtime.cinemaName} />
+                <SummaryRow label="Cinema" value={displayCinemaName} />
                 <SummaryRow label="Room" value={showtime.roomName} />
                 <SummaryRow label="Tickets" value={String(ticketCount)} />
               </div>
@@ -242,7 +254,7 @@ export default function SeatSelectionPage() {
                 <div className="flex items-center justify-between">
                   <span className="type-body-s text-app-text-muted">Total</span>
                   <span className="type-h5 text-app-text">
-                    ${totalAmount.toFixed(2)}
+                    {formatVnd(totalAmount)}
                   </span>
                 </div>
               </div>
@@ -254,11 +266,26 @@ export default function SeatSelectionPage() {
                 disabled={!selectionComplete}
                 className="mt-[24px] w-full"
                 onClick={() =>
-                  navigate(
-                    `/booking/${showtimeId}/food?tickets=${ticketCount}&seats=${encodeURIComponent(
-                      selectedSeatParam
-                    )}`
-                  )
+                  {
+                    const nextParams = new URLSearchParams({
+                      tickets: String(ticketCount),
+                      seats: selectedSeatParam,
+                    });
+
+                    if (selectedDateParam) {
+                      nextParams.set("date", selectedDateParam);
+                    }
+
+                    if (selectedStartTimeParam) {
+                      nextParams.set("startTime", selectedStartTimeParam);
+                    }
+
+                    if (selectedCinemaNameParam) {
+                      nextParams.set("cinemaName", selectedCinemaNameParam);
+                    }
+
+                    navigate(`/booking/${showtimeId}/food?${nextParams.toString()}`);
+                  }
                 }
               >
                 Continue

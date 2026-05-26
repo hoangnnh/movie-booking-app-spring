@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+:root {
+    color-scheme: dark;
+}
+
 /* ================================
    Ticketor Design Tokens - Colors
    Source: Color Foundation
@@ -212,6 +216,10 @@
 }
 
 @layer base {
+    html[data-theme="light"] {
+        color-scheme: light;
+    }
+
     html {
         font-family: var(--font-manrope);
     }
@@ -220,6 +228,38 @@
         font-family: var(--font-manrope);
         background: var(--color-app-background);
         color: var(--color-app-text);
+        transition: background-color 180ms ease, color 180ms ease;
+    }
+
+    #root {
+        min-height: 100vh;
+        background: var(--color-app-background);
+    }
+
+    html[data-theme="light"] {
+        --color-primary-900: #4f4200;
+        --color-primary-800: #6d5a00;
+        --color-primary-700: #8b7200;
+        --color-primary-600: #aa8f00;
+        --color-primary-500: #bfa317;
+        --color-primary-400: #cfb53e;
+        --color-primary-300: #deca73;
+        --color-primary-200: #ede0ae;
+        --color-primary-100: #f5edcf;
+        --color-primary-50: #fbf6e8;
+        --color-app-background: #f4f1e8;
+        --color-app-surface: #fffdf8;
+        --color-app-surface-soft: #f0eadc;
+        --color-app-border: #d8cfbc;
+        --color-app-text: #171714;
+        --color-app-text-muted: #5f5d56;
+        --color-app-text-subtle: #8e8878;
+        --color-brand: #8b7200;
+        --color-brand-hover: #6d5a00;
+        --color-brand-soft: #fff7c6;
+        --color-brand-dark: #4f4200;
+        --color-info: #216b6b;
+        --color-info-soft: #d7ece7;
     }
 }
 
@@ -424,6 +464,22 @@
         color: var(--color-app-text);
     }
 
+    .admin-input {
+        min-height: 40px;
+        border-radius: var(--radius-tk-4);
+        border: 1px solid var(--color-app-border);
+        background: var(--color-app-background);
+        padding: 8px 10px;
+        color: var(--color-app-text);
+        font-size: var(--text-body-s);
+        line-height: var(--text-body-s--line-height);
+        outline: none;
+    }
+
+    .admin-input:focus {
+        border-color: var(--color-brand);
+    }
+
     .app-button {
         border-radius: var(--radius-button);
         padding: var(--spacing-tk-12) var(--spacing-tk-24);
@@ -433,6 +489,40 @@
         border-radius: var(--radius-modal);
         background: var(--color-app-surface);
         padding: var(--spacing-tk-32);
+    }
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+@media (max-width: 1023px) {
+    :root {
+        --text-display-1: 44px;
+        --text-display-2: 38px;
+        --text-h1: 38px;
+        --text-h2: 34px;
+        --text-h3: 30px;
+        --text-h4: 28px;
+        --text-body-xl: 18px;
+    }
+}
+
+@media (max-width: 767px) {
+    :root {
+        --text-display-1: 32px;
+        --text-display-2: 28px;
+        --text-h1: 30px;
+        --text-h2: 28px;
+        --text-h3: 24px;
+        --text-h4: 22px;
+        --text-h5: 18px;
+        --text-body-xl: 16px;
+        --text-body-l: 16px;
+    }
+
+    .ticketor-container {
+        padding-inline: 16px;
     }
 }
 

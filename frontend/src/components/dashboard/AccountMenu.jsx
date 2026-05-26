@@ -1,11 +1,11 @@
-import { Bookmark, User } from "lucide-react";
+import { Bookmark, Ticket } from "lucide-react";
 import { cn } from "../../utils/cn";
 
 const menuItems = [
   {
-    key: "account",
-    label: "My Account",
-    icon: User,
+    key: "booking",
+    label: "My Booking",
+    icon: Ticket,
   },
   {
     key: "watchlist",
@@ -15,7 +15,7 @@ const menuItems = [
 ];
 
 export default function AccountMenu({
-  activeKey = "account",
+  activeKey = "booking",
   onSelect,
   className = "",
 }) {

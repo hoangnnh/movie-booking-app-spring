@@ -1,10 +1,53 @@
-const API_BASE_URL =
+export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+
+export const AUTH_STORAGE_KEY = "ticketor.auth";
+
+export function loadStoredAuth() {
+  const storedValue = localStorage.getItem(AUTH_STORAGE_KEY);
+
+  if (!storedValue) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(storedValue);
+  } catch {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    return null;
+  }
+}
+
+export function persistStoredAuth(value) {
+  if (!value) {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    return;
+  }
+
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(value));
+}
+
+export function getBackendBaseUrl() {
+  return API_BASE_URL.endsWith("/api")
+    ? API_BASE_URL.slice(0, -4)
+    : API_BASE_URL;
+}
+
+function getAuthHeaders() {
+  const accessToken = loadStoredAuth()?.accessToken;
+
+  return accessToken
+    ? {
+        Authorization: `Bearer ${accessToken}`,
+      }
+    : {};
+}
 
 export async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
       ...(options.headers || {}),
     },
     ...options,
@@ -16,8 +59,13 @@ export async function apiRequest(path, options = {}) {
   }
 
   if (response.status === 204) return null;
+  const responseText = await response.text();
 
-  return response.json();
+  if (!responseText) {
+    return null;
+  }
+
+  return JSON.parse(responseText);
 }
 
 export const authApi = {
@@ -32,14 +80,57 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  resendVerification: (data) =>
+    apiRequest("/auth/resend-verification", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  forgotPassword: (data) =>
+    apiRequest("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  resetPassword: (data) =>
+    apiRequest("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getSettings: () => apiRequest("/auth/settings"),
+
+  getCurrentUser: () => apiRequest("/auth/me"),
 };
 
 export const movieApi = {
   getAll: () => apiRequest("/movies"),
 
+  getNowPlaying: (limit = 10) => apiRequest(`/movies/now-playing?limit=${limit}`),
+
+  getTrendingThisWeek: (limit = 10) =>
+    apiRequest(`/movies/trending/week?limit=${limit}`),
+
+  search: (query) => apiRequest(`/movies?query=${encodeURIComponent(query)}`),
+
+  autocomplete: (query, limit = 6) =>
+    apiRequest(
+      `/movies/autocomplete?query=${encodeURIComponent(query)}&limit=${limit}`
+    ),
+
   getById: (movieId) => apiRequest(`/movies/${movieId}`),
 
+  getByActorName: (actorName) =>
+    apiRequest(`/movies/by-actor?actorName=${encodeURIComponent(actorName)}`),
+
   getShowtimes: (movieId) => apiRequest(`/movies/${movieId}/showtimes`),
+
+  getSimilar: (movieId, limit = 8) =>
+    apiRequest(`/movies/${movieId}/similar?limit=${limit}`),
+
+  getRecommendations: (userId, limit = 10) =>
+    apiRequest(`/users/${userId}/recommendations?limit=${limit}`),
 };
 
 export const cinemaApi = {
@@ -66,6 +157,47 @@ export const tmdbApi = {
     ),
 };
 
+export const adminApi = {
+  getSummary: () => apiRequest("/admin/summary"),
+
+  getMovies: (query = "") =>
+    apiRequest(
+      query ? `/admin/movies?query=${encodeURIComponent(query)}` : "/admin/movies"
+    ),
+
+  updateMovie: (movieId, data) =>
+    apiRequest(`/admin/movies/${movieId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteMovie: (movieId) =>
+    apiRequest(`/admin/movies/${movieId}`, {
+      method: "DELETE",
+    }),
+
+  getUsers: () => apiRequest("/admin/users"),
+
+  updateUserRole: (userId, role) =>
+    apiRequest(`/admin/users/${userId}/role`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    }),
+
+  deleteUser: (userId) =>
+    apiRequest(`/admin/users/${userId}`, {
+      method: "DELETE",
+    }),
+
+  getBookings: () => apiRequest("/admin/bookings"),
+
+  updateBookingStatus: (bookingId, status) =>
+    apiRequest(`/admin/bookings/${bookingId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
+};
+
 export const showtimeApi = {
   getById: (showtimeId) => apiRequest(`/showtimes/${showtimeId}`),
 };
@@ -80,4 +212,26 @@ export const bookingApi = {
     }),
 
   getUserBookings: (userId) => apiRequest(`/users/${userId}/bookings`),
+
+  cancelBooking: (bookingId) =>
+    apiRequest(`/bookings/${bookingId}/cancel`, {
+      method: "PATCH",
+    }),
+};
+
+export const favoritesApi = {
+  getUserFavorites: (userId) => apiRequest(`/users/${userId}/favorites`),
+
+  isFavorite: (userId, movieId) =>
+    apiRequest(`/users/${userId}/favorites/${movieId}`),
+
+  addFavorite: (userId, movieId) =>
+    apiRequest(`/users/${userId}/favorites/${movieId}`, {
+      method: "POST",
+    }),
+
+  removeFavorite: (userId, movieId) =>
+    apiRequest(`/users/${userId}/favorites/${movieId}`, {
+      method: "DELETE",
+    }),
 };

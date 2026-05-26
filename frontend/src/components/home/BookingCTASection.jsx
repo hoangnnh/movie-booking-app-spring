@@ -7,8 +7,8 @@ export default function BookingCTASection() {
 
   return (
     <section className="ticketor-container py-[64px]">
-      <div className="grid grid-cols-12 overflow-hidden rounded-card border border-app-border bg-app-surface">
-        <div className="col-span-5 min-h-[320px]">
+      <div className="overflow-hidden rounded-card border border-app-border bg-app-surface lg:grid lg:grid-cols-12">
+        <div className="min-h-[220px] lg:col-span-5 lg:min-h-[320px]">
           <img
             src={promoImages.cta}
             alt="Book movie online"
@@ -16,7 +16,7 @@ export default function BookingCTASection() {
           />
         </div>
 
-        <div className="col-span-7 flex flex-col justify-center p-[48px]">
+        <div className="flex flex-col justify-center p-[24px] sm:p-[32px] lg:col-span-7 lg:p-[48px]">
           <h2 className="type-h2 max-w-[540px] text-app-text">
             Book tickets to your favorite movies Online
           </h2>
@@ -26,12 +26,12 @@ export default function BookingCTASection() {
             the first to know about the hottest upcoming releases.
           </p>
 
-          <div className="mt-[32px] flex items-center gap-[16px]">
-            <Button size={40} variant="primary" onClick={() => navigate("/movies")}>
+          <div className="mt-[24px] flex flex-col gap-[12px] sm:mt-[32px] sm:flex-row sm:items-center">
+            <Button size={40} variant="primary" className="w-full sm:w-auto" onClick={() => navigate("/movies")}>
               Book Movie Ticket
             </Button>
 
-            <Button size={40} variant="outline" tone="base">
+            <Button size={40} variant="outline" tone="base" className="w-full sm:w-auto">
               Learn More
             </Button>
           </div>

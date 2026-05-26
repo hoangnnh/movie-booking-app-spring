@@ -1,54 +1,121 @@
-import { useState } from "react";
-import { authApi } from "../api/api";
+import { useEffect, useState } from "react";
+import {
+  authApi,
+  AUTH_STORAGE_KEY,
+  getBackendBaseUrl,
+  loadStoredAuth,
+  persistStoredAuth,
+} from "../api/api";
 import { AuthContext } from "./authContextValue";
-
-const AUTH_STORAGE_KEY = "ticketor.auth.user";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem(AUTH_STORAGE_KEY);
+    return loadStoredAuth()?.user || null;
+  });
+  const [accessToken, setAccessToken] = useState(
+    () => loadStoredAuth()?.accessToken || null
+  );
+  const [googleAuthEnabled, setGoogleAuthEnabled] = useState(false);
+  const [ready, setReady] = useState(false);
 
-    if (storedUser) {
+  useEffect(() => {
+    async function hydrateAuth() {
+      const storedAuth = loadStoredAuth();
+
       try {
-        return JSON.parse(storedUser);
+        const settings = await authApi.getSettings();
+        setGoogleAuthEnabled(Boolean(settings.googleOAuthEnabled));
+
+        if (storedAuth?.accessToken) {
+          const nextUser = await authApi.getCurrentUser();
+          persistAuth({
+            accessToken: storedAuth.accessToken,
+            user: toUserState(nextUser),
+          });
+        }
       } catch {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
+        if (storedAuth?.accessToken) {
+          clearAuth();
+        }
+      } finally {
+        setReady(true);
       }
     }
 
-    return null;
-  });
+    hydrateAuth();
+  }, []);
 
-  function persistUser(nextUser) {
-    setUser(nextUser);
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser));
+  function persistAuth(nextAuth) {
+    setUser(nextAuth?.user || null);
+    setAccessToken(nextAuth?.accessToken || null);
+    persistStoredAuth(nextAuth);
   }
 
   async function login(credentials) {
-    const authenticatedUser = await authApi.login(credentials);
-    persistUser(authenticatedUser);
-    return authenticatedUser;
+    const authResponse = await authApi.login(credentials);
+    const nextAuth = toAuthState(authResponse);
+    persistAuth(nextAuth);
+    return nextAuth.user;
   }
 
   async function register(data) {
-    const authenticatedUser = await authApi.register(data);
-    persistUser(authenticatedUser);
-    return authenticatedUser;
+    return authApi.register(data);
+  }
+
+  function loginWithGoogle() {
+    if (!googleAuthEnabled) {
+      throw new Error("Google login is not configured on the server.");
+    }
+
+    window.location.assign(`${getBackendBaseUrl()}/oauth2/authorization/google`);
+  }
+
+  function completeOAuthLogin(authResponse) {
+    const nextAuth = toAuthState(authResponse);
+    persistAuth(nextAuth);
+    return nextAuth.user;
+  }
+
+  function clearAuth() {
+    setUser(null);
+    setAccessToken(null);
+    persistStoredAuth(null);
   }
 
   function logout() {
-    setUser(null);
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+    clearAuth();
   }
 
   const value = {
-    ready: true,
+    ready,
     user,
+    accessToken,
+    googleAuthEnabled,
     login,
     register,
+    loginWithGoogle,
+    completeOAuthLogin,
     logout,
     isAuthenticated: Boolean(user),
+    storageKey: AUTH_STORAGE_KEY,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+function toAuthState(authResponse) {
+  return {
+    accessToken: authResponse.accessToken,
+    user: toUserState(authResponse),
+  };
+}
+
+function toUserState(authResponse) {
+  return {
+    userId: authResponse.userId,
+    fullName: authResponse.fullName,
+    email: authResponse.email,
+    role: authResponse.role,
+    provider: authResponse.provider,
+  };
 }

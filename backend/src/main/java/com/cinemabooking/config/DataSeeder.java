@@ -1,11 +1,11 @@
 package com.cinemabooking.config;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -15,8 +15,6 @@ import com.cinemabooking.entity.Cinema;
 import com.cinemabooking.entity.Genre;
 import com.cinemabooking.entity.Movie;
 import com.cinemabooking.entity.Room;
-import com.cinemabooking.entity.Seat;
-import com.cinemabooking.entity.Showtime;
 import com.cinemabooking.enums.AuthProvider;
 import com.cinemabooking.enums.Role;
 import com.cinemabooking.repository.AppUserRepository;
@@ -24,9 +22,8 @@ import com.cinemabooking.repository.CinemaRepository;
 import com.cinemabooking.repository.GenreRepository;
 import com.cinemabooking.repository.MovieRepository;
 import com.cinemabooking.repository.RoomRepository;
-import com.cinemabooking.repository.SeatRepository;
-import com.cinemabooking.repository.ShowtimeRepository;
 import com.cinemabooking.service.ShowtimeSeedService;
+import com.cinemabooking.service.TmdbService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -39,18 +36,37 @@ public class DataSeeder implements CommandLineRunner {
     private final MovieRepository movieRepository;
     private final CinemaRepository cinemaRepository;
     private final RoomRepository roomRepository;
-    private final SeatRepository seatRepository;
-    private final ShowtimeRepository showtimeRepository;
     private final ShowtimeSeedService showtimeSeedService;
     private final PasswordEncoder passwordEncoder;
+    private final TmdbService tmdbService;
+
+    @Value("${app.seed.tmdb.enabled:true}")
+    private boolean tmdbSeedEnabled;
+
+    @Value("${app.seed.tmdb.lists:now_playing,popular,upcoming}")
+    private String tmdbSeedLists;
+
+    @Value("${app.seed.tmdb.pages-per-list:2}")
+    private int tmdbSeedPagesPerList;
 
     @Override
     public void run(String... args) {
         seedDefaultCinemas();
         ensureRoomsForCinemas();
+        seedDemoUser();
+        seedAdminUser();
 
-        if (movieRepository.count() > 0) {
-            movieRepository.findAll().forEach(showtimeSeedService::createShowtimesForMovieIfMissing);
+        Genre action = getOrCreateGenre("Action");
+        Genre sciFi = getOrCreateGenre("Sci-Fi");
+        Genre drama = getOrCreateGenre("Drama");
+
+        seedFallbackMovies(action, sciFi, drama);
+        importTmdbCatalogIfConfigured();
+        movieRepository.findAll().forEach(showtimeSeedService::createShowtimesForMovieIfMissing);
+    }
+
+    private void seedDemoUser() {
+        if (appUserRepository.findByEmail("user@example.com").isPresent()) {
             return;
         }
 
@@ -61,89 +77,124 @@ public class DataSeeder implements CommandLineRunner {
         user.setRole(Role.USER);
         user.setProvider(AuthProvider.LOCAL);
         appUserRepository.save(user);
+    }
 
-        Genre action = new Genre();
-        action.setName("Action");
-
-        Genre sciFi = new Genre();
-        sciFi.setName("Sci-Fi");
-
-        Genre drama = new Genre();
-        drama.setName("Drama");
-
-        genreRepository.saveAll(List.of(action, sciFi, drama));
-
-        Movie movie1 = new Movie();
-        movie1.setTitle("Interstellar");
-        movie1.setDescription("A science fiction film about space, time, and survival.");
-        movie1.setDurationMinutes(169);
-        movie1.setPosterUrl("https://example.com/interstellar.jpg");
-        movie1.setReleaseDate(LocalDate.of(2014, 11, 7));
-        movie1.setGenres(new HashSet<>(List.of(sciFi, drama)));
-
-        Movie movie2 = new Movie();
-        movie2.setTitle("John Wick");
-        movie2.setDescription("An action thriller about a retired hitman.");
-        movie2.setDurationMinutes(101);
-        movie2.setPosterUrl("https://example.com/john-wick.jpg");
-        movie2.setReleaseDate(LocalDate.of(2014, 10, 24));
-        movie2.setGenres(new HashSet<>(List.of(action)));
-
-        movieRepository.saveAll(List.of(movie1, movie2));
-
-        Cinema cinema = cinemaRepository.findAllByOrderByBrandAscNameAsc()
-                .stream()
-                .findFirst()
-                .orElseGet(() -> {
-                    Cinema fallbackCinema = new Cinema();
-                    fallbackCinema.setName("IE303 Cinema");
-                    fallbackCinema.setBrand("Ticketor");
-                    fallbackCinema.setAddress("University Campus");
-                    fallbackCinema.setDistrict("Thu Duc City");
-                    fallbackCinema.setCity("Ho Chi Minh City");
-                    fallbackCinema.setHotline("1900 0000");
-                    fallbackCinema.setAmenities("Standard, Online booking");
-                    return cinemaRepository.save(fallbackCinema);
-                });
-
-        Room room = new Room();
-        room.setCinema(cinema);
-        room.setName("Room 1");
-        roomRepository.save(room);
-
-        for (String row : List.of("A", "B", "C")) {
-            for (int number = 1; number <= 8; number++) {
-                Seat seat = new Seat();
-                seat.setRoom(room);
-                seat.setRowName(row);
-                seat.setSeatNumber(number);
-                seatRepository.save(seat);
-            }
+    private void seedAdminUser() {
+        if (appUserRepository.findByEmail("admin@example.com").isPresent()) {
+            return;
         }
 
-        LocalDateTime tomorrow19h = LocalDateTime.now()
-                .plusDays(1)
-                .withHour(19)
-                .withMinute(0)
-                .withSecond(0)
-                .withNano(0);
+        AppUser admin = new AppUser();
+        admin.setFullName("Admin User");
+        admin.setEmail("admin@example.com");
+        admin.setPassword(passwordEncoder.encode("123456"));
+        admin.setRole(Role.ADMIN);
+        admin.setProvider(AuthProvider.LOCAL);
+        admin.setEmailVerified(true);
+        appUserRepository.save(admin);
+    }
 
-        Showtime showtime1 = new Showtime();
-        showtime1.setMovie(movie1);
-        showtime1.setRoom(room);
-        showtime1.setStartTime(tomorrow19h);
-        showtime1.setEndTime(tomorrow19h.plusMinutes(movie1.getDurationMinutes()));
-        showtime1.setPrice(new BigDecimal("75000"));
+    private void seedFallbackMovies(Genre action, Genre sciFi, Genre drama) {
+        List.of(
+                upsertMovie(157336, "Interstellar",
+                        "A science fiction film about space, time, and survival.",
+                        169, LocalDate.of(2014, 11, 7), sciFi, drama),
+                upsertMovie(245891, "John Wick",
+                        "An action thriller about a retired hitman seeking vengeance.",
+                        101, LocalDate.of(2014, 10, 24), action, drama),
+                upsertMovie(null, "Oppenheimer",
+                        "The story of J. Robert Oppenheimer and the creation of the atomic bomb.",
+                        180, LocalDate.of(2023, 7, 21), drama),
+                upsertMovie(null, "Dune: Part Two",
+                        "Paul Atreides joins forces with the Fremen to fight for Arrakis.",
+                        166, LocalDate.of(2024, 3, 1), sciFi, drama),
+                upsertMovie(null, "The Batman",
+                        "Batman investigates corruption in Gotham while facing the Riddler.",
+                        176, LocalDate.of(2022, 3, 4), action, drama),
+                upsertMovie(null, "Top Gun: Maverick",
+                        "Maverick returns to train a new generation of elite fighter pilots.",
+                        131, LocalDate.of(2022, 5, 27), action, drama),
+                upsertMovie(null, "Avatar: The Way of Water",
+                        "Jake Sully and Neytiri fight to protect their family and home.",
+                        192, LocalDate.of(2022, 12, 16), sciFi, drama),
+                upsertMovie(null, "Spider-Man: Across the Spider-Verse",
+                        "Miles Morales journeys across the multiverse and meets a team of Spider-People.",
+                        140, LocalDate.of(2023, 6, 2), action, sciFi),
+                upsertMovie(null, "Inception",
+                        "A skilled thief enters dreams to steal secrets and plant an idea.",
+                        148, LocalDate.of(2010, 7, 16), sciFi, action),
+                upsertMovie(null, "Mission: Impossible - Dead Reckoning Part One",
+                        "Ethan Hunt races to stop a terrifying new weapon from falling into the wrong hands.",
+                        163, LocalDate.of(2023, 7, 12), action, drama),
+                upsertMovie(null, "Inside Out 2",
+                        "Riley faces new emotions as she enters her teenage years.",
+                        96, LocalDate.of(2024, 6, 14), drama),
+                upsertMovie(null, "The Wild Robot",
+                        "A robot stranded on an island learns to survive and connect with animals.",
+                        102, LocalDate.of(2024, 9, 27), sciFi, drama)
+        );
+    }
 
-        Showtime showtime2 = new Showtime();
-        showtime2.setMovie(movie2);
-        showtime2.setRoom(room);
-        showtime2.setStartTime(tomorrow19h.plusHours(3));
-        showtime2.setEndTime(tomorrow19h.plusHours(3).plusMinutes(movie2.getDurationMinutes()));
-        showtime2.setPrice(new BigDecimal("70000"));
+    private void importTmdbCatalogIfConfigured() {
+        if (!tmdbSeedEnabled) {
+            return;
+        }
 
-        showtimeRepository.saveAll(List.of(showtime1, showtime2));
-        movieRepository.findAll().forEach(showtimeSeedService::createShowtimesForMovieIfMissing);
+        int pages = Math.max(1, Math.min(tmdbSeedPagesPerList, 5));
+        List<String> lists = parseTmdbSeedLists();
+
+        if (lists.isEmpty()) {
+            return;
+        }
+
+        for (String list : lists) {
+            try {
+                tmdbService.importMoviesByList(list, pages);
+            } catch (RuntimeException exception) {
+                System.out.println("Skipping TMDB seed for list '" + list + "': " + exception.getMessage());
+            }
+        }
+    }
+
+    private List<String> parseTmdbSeedLists() {
+        return java.util.Arrays.stream(tmdbSeedLists.split(","))
+                .map(String::trim)
+                .filter((value) -> !value.isBlank())
+                .distinct()
+                .toList();
+    }
+
+    private Movie upsertMovie(
+            Integer tmdbId,
+            String title,
+            String description,
+            int durationMinutes,
+            LocalDate releaseDate,
+            Genre... genres
+    ) {
+        Movie movie = tmdbId == null
+                ? movieRepository.findFirstByTitleIgnoreCaseOrderByCreatedAtAsc(title).orElseGet(Movie::new)
+                : movieRepository.findByTmdbId(tmdbId)
+                        .or(() -> movieRepository.findFirstByTitleIgnoreCaseOrderByCreatedAtAsc(title))
+                        .orElseGet(Movie::new);
+
+        movie.setTmdbId(tmdbId);
+        movie.setTitle(title);
+        movie.setDescription(description);
+        movie.setDurationMinutes(durationMinutes);
+        movie.setPosterUrl("https://example.com/" + title.toLowerCase().replaceAll("[^a-z0-9]+", "-") + ".jpg");
+        movie.setReleaseDate(releaseDate);
+        movie.setGenres(new HashSet<>(Set.of(genres)));
+        return movieRepository.save(movie);
+    }
+
+    private Genre getOrCreateGenre(String name) {
+        return genreRepository.findByName(name)
+                .orElseGet(() -> {
+                    Genre genre = new Genre();
+                    genre.setName(name);
+                    return genreRepository.save(genre);
+                });
     }
 
     private void seedDefaultCinemas() {

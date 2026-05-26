@@ -23,10 +23,11 @@ import {
   normalizeMovie,
 } from "../components/home/homeUtils";
 import { cn } from "../utils/cn";
+import { formatVnd } from "../utils/currency";
 
 const ticketTypes = [
-  { key: "adult", label: "Adult", price: 18.07 },
-  { key: "child", label: "Child", price: 12.07 },
+  { key: "adult", label: "Adult", price: 75000 },
+  { key: "child", label: "Child", price: 55000 },
 ];
 
 const formatFilters = ["All", "Standard", "3D"];
@@ -46,12 +47,31 @@ function formatDateLabel(value) {
   });
 }
 
+function padNumber(value) {
+  return String(value).padStart(2, "0");
+}
+
+function formatDateKey(date) {
+  return `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}-${padNumber(
+    date.getDate()
+  )}`;
+}
+
+function formatLocalDateTime(date) {
+  return `${formatDateKey(date)}T${padNumber(date.getHours())}:${padNumber(
+    date.getMinutes()
+  )}:${padNumber(date.getSeconds())}`;
+}
+
 function getDateParts(offset, baseValue = new Date()) {
-  const date = new Date(baseValue);
+  const date =
+    typeof baseValue === "string"
+      ? new Date(`${baseValue.slice(0, 10)}T12:00:00`)
+      : new Date(baseValue);
   date.setDate(date.getDate() + offset);
 
   return {
-    key: date.toISOString().slice(0, 10),
+    key: formatDateKey(date),
     day: offset === 0 ? "Today" : date.toLocaleDateString("en-US", { weekday: "short" }),
     date: date.toLocaleDateString("en-US", { day: "2-digit" }),
     month: date.toLocaleDateString("en-US", { month: "short" }).toUpperCase(),
@@ -88,12 +108,12 @@ function getCinemaFormat(cinema, index) {
 
 function makeStartTimeForDate(sourceStartTime, selectedDate, offset) {
   const source = new Date(sourceStartTime);
-  const date = new Date(`${selectedDate}T00:00:00`);
+  const date = new Date(`${selectedDate}T12:00:00`);
 
   date.setHours(source.getHours(), source.getMinutes(), 0, 0);
   date.setMinutes(date.getMinutes() + offset);
 
-  return date.toISOString();
+  return formatLocalDateTime(date);
 }
 
 export default function TimeSelectionPage() {
@@ -148,11 +168,8 @@ export default function TimeSelectionPage() {
   }, [searchParams, showtimeId]);
 
   const dates = useMemo(
-    () =>
-      Array.from({ length: 7 }).map((_, index) =>
-        getDateParts(index, initialShowtime?.startTime || new Date())
-      ),
-    [initialShowtime]
+    () => Array.from({ length: 7 }).map((_, index) => getDateParts(index)),
+    []
   );
 
   const selectedDateLabel = useMemo(
@@ -288,7 +305,7 @@ export default function TimeSelectionPage() {
   return (
     <div className="min-h-screen bg-app-background text-app-text">
       <main>
-        <section className="ticketor-container pt-[32px]">
+        <section className="ticketor-container pt-[24px] sm:pt-[32px]">
           <div className="relative overflow-hidden rounded-card border border-app-border bg-app-surface">
             <img
               src={movieView.backdropUrl}
@@ -297,8 +314,8 @@ export default function TimeSelectionPage() {
             />
             <div className="absolute inset-0 bg-gradient-to-r from-app-background via-app-background/85 to-app-background/30" />
 
-            <div className="relative z-10 flex gap-[32px] p-[32px]">
-              <div className="h-[280px] w-[188px] shrink-0 overflow-hidden rounded-tk-8 bg-neutral-700">
+            <div className="relative z-10 flex flex-col gap-[24px] p-[20px] sm:p-[28px] lg:flex-row lg:gap-[32px] lg:p-[32px]">
+              <div className="mx-auto h-[240px] w-[160px] shrink-0 overflow-hidden rounded-tk-8 bg-neutral-700 sm:h-[280px] sm:w-[188px] lg:mx-0">
                 <img
                   src={movieView.posterUrl}
                   alt={movieView.title}
@@ -416,11 +433,12 @@ export default function TimeSelectionPage() {
             </div>
           )}
 
-          <div className="mt-[40px] flex items-center justify-between">
+          <div className="mt-[40px] flex flex-wrap items-center justify-between gap-[12px]">
             <h2 className="type-h5 text-app-text">Coming Soon</h2>
             <button
               type="button"
               className="type-label-s text-app-text-muted hover:text-brand"
+              onClick={() => navigate("/movies?status=coming-soon")}
             >
               View all
             </button>
@@ -461,7 +479,20 @@ export default function TimeSelectionPage() {
           onClose={() => setTicketModalOpen(false)}
           onContinue={() => {
             const nextShowtimeId = selectedTime?.showtimeId || showtimeId;
-            navigate(`/booking/${nextShowtimeId}/seats?tickets=${totalTickets}`);
+            const nextParams = new URLSearchParams({
+              tickets: String(totalTickets),
+              date: selectedDate,
+            });
+
+            if (selectedTime?.startTime) {
+              nextParams.set("startTime", selectedTime.startTime);
+            }
+
+            if (selectedTime?.cinemaName) {
+              nextParams.set("cinemaName", selectedTime.cinemaName);
+            }
+
+            navigate(`/booking/${nextShowtimeId}/seats?${nextParams.toString()}`);
           }}
           onUpdateTicketCount={updateTicketCount}
         />
@@ -598,7 +629,7 @@ function TicketModal({
               <div>
                 <p className="type-body-s text-app-text">{type.label}</p>
                 <p className="type-body-xs text-app-text-muted">
-                  ${type.price.toFixed(2)}
+                  {formatVnd(type.price)}
                 </p>
               </div>
 
@@ -627,8 +658,8 @@ function TicketModal({
 
         <div className="mt-[18px] flex items-center justify-between">
           <div className="type-body-xs text-app-text-muted">
-            {totalTickets} ticket{totalTickets === 1 ? "" : "s"} . $
-            {totalAmount.toFixed(2)}
+            {totalTickets} ticket{totalTickets === 1 ? "" : "s"} .{" "}
+            {formatVnd(totalAmount)}
           </div>
 
           <div className="flex items-center gap-[8px]">

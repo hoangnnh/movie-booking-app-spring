@@ -33,21 +33,21 @@ const variantClasses = {
         brand:
             "border border-primary-600 bg-primary-600 text-neutral-900 hover:border-primary-500 hover:bg-primary-500 active:border-primary-400 active:bg-primary-400 disabled:border-neutral-400 disabled:bg-neutral-300 disabled:text-neutral-500",
         base:
-            "border border-neutral-50 bg-neutral-50 text-neutral-900 hover:border-primary-50 hover:bg-primary-50 active:border-neutral-100 active:bg-neutral-100 disabled:border-neutral-400 disabled:bg-neutral-300 disabled:text-neutral-500",
+            "border border-app-text bg-app-text text-app-background hover:opacity-90 active:opacity-80 disabled:border-app-border disabled:bg-app-border disabled:text-app-text-subtle",
     },
 
     outline: {
         brand:
             "border border-primary-600 bg-transparent text-primary-600 hover:border-primary-500 hover:text-primary-500 active:border-primary-400 active:text-primary-400 disabled:border-neutral-500 disabled:text-neutral-500",
         base:
-            "border border-neutral-50 bg-transparent text-neutral-50 hover:border-primary-50 hover:text-primary-50 active:border-neutral-100 active:text-neutral-100 disabled:border-neutral-500 disabled:text-neutral-500",
+            "border border-app-border bg-transparent text-app-text hover:border-app-text hover:bg-app-surface-soft active:border-app-text active:text-app-text disabled:border-app-border disabled:text-app-text-subtle",
     },
 
     text: {
         brand:
             "border border-transparent bg-transparent text-primary-600 hover:text-primary-500 active:text-primary-400 disabled:text-neutral-500",
         base:
-            "border border-transparent bg-transparent text-neutral-50 hover:text-primary-50 active:text-neutral-100 disabled:text-neutral-500",
+            "border border-transparent bg-transparent text-app-text hover:text-brand active:text-brand-hover disabled:text-app-text-subtle",
     },
 };
 

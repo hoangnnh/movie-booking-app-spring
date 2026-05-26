@@ -9,9 +9,19 @@ public record BookingResponse(
         UUID id,
         String status,
         BigDecimal totalAmount,
+        BigDecimal ticketAmount,
+        BigDecimal foodAmount,
+        String paymentMethod,
+        String paymentStatus,
+        String paymentReference,
         UUID showtimeId,
         String movieTitle,
+        String posterUrl,
+        String cinemaName,
+        String roomName,
         LocalDateTime startTime,
+        LocalDateTime bookedAt,
+        String seatSummary,
         List<TicketResponse> tickets
 ) {
 }

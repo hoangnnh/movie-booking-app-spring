@@ -15,7 +15,7 @@ export default function EventsOffersSection() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-[24px]">
+      <div className="grid gap-[24px] lg:grid-cols-2">
         <PromotionCard
           imageUrl={promoImages.horror}
           badge="Special Event"
