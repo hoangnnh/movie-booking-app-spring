@@ -129,47 +129,50 @@ touch .env.local
 Example local values:
 
 ```env
+DATABASE_URL=jdbc:postgresql://your-pooler-host.supabase.com:6543/postgres?sslmode=require
+DATABASE_USERNAME=postgres.your-project-ref
+DATABASE_PASSWORD=your-supabase-database-password
+DATABASE_MAX_POOL_SIZE=5
+DATABASE_MIN_IDLE=1
+JPA_DDL_AUTO=update
 TMDB_API_READ_ACCESS_TOKEN=your_tmdb_read_access_token_here
 JWT_SECRET=replace_with_a_long_random_secret
 JWT_EXPIRATION_MS=86400000
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
+APP_BACKEND_BASE_URL=http://localhost:8080
 APP_FRONTEND_BASE_URL=http://localhost:5173
 ```
 
 Do not commit `.env.local`.
 
-Configure PostgreSQL in:
+For Supabase, use the Transaction pooler connection details from Project Settings > Database. The JDBC URL must use port `6543` and include `?sslmode=require`.
+
+Tracked defaults live in:
 
 ```text
 backend/src/main/resources/application.properties
 ```
 
-Example:
+The committed file reads database credentials from environment variables:
 
 ```properties
 spring.application.name=cinema-booking-server
 
-server.port=8000
+server.port=8080
 
-spring.datasource.url=jdbc:postgresql://localhost:5432/cinema_booking
-spring.datasource.username=cinema_user
-spring.datasource.password=cinema123
+spring.datasource.url=${DATABASE_URL:jdbc:postgresql://localhost:5432/cinema_booking}
+spring.datasource.username=${DATABASE_USERNAME:postgres}
+spring.datasource.password=${DATABASE_PASSWORD:postgres}
 spring.datasource.driver-class-name=org.postgresql.Driver
 
-spring.jpa.hibernate.ddl-auto=update
+spring.jpa.hibernate.ddl-auto=${JPA_DDL_AUTO:update}
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
 
 tmdb.api.read-access-token=${TMDB_API_READ_ACCESS_TOKEN}
 jwt.secret=${JWT_SECRET}
 jwt.expiration-ms=${JWT_EXPIRATION_MS}
-```
-
-Create the database if it does not exist:
-
-```sql
-CREATE DATABASE cinema_booking;
 ```
 
 Run the backend:
@@ -181,7 +184,7 @@ mvn spring-boot:run
 Backend should be available at:
 
 ```text
-http://localhost:8000
+http://localhost:8080
 ```
 
 Test movie API:
@@ -209,7 +212,7 @@ npm install
 Create a frontend environment file:
 
 ```bash
-touch .env
+cp .env.example .env
 ```
 
 Add the backend API URL:
@@ -219,6 +222,8 @@ VITE_API_BASE_URL=http://localhost:8080/api
 ```
 
 For Google OAuth, add `http://localhost:8080/login/oauth2/code/google` as an authorized redirect URI in your Google Cloud OAuth client.
+
+See `SUPABASE_SETUP.md` for the full Supabase checklist.
 
 Run the frontend:
 
