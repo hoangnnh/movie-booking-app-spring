@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -274,9 +275,22 @@ public class TmdbService {
 
     private void replaceMovieListEntries(String category, List<MovieResponse> movies) {
         movieListEntryRepository.deleteByCategory(category);
+        movieListEntryRepository.flush();
 
-        for (int index = 0; index < movies.size(); index++) {
-            MovieResponse movieResponse = movies.get(index);
+        List<MovieResponse> uniqueMovies = movies.stream()
+                .filter((movie) -> movie.id() != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        MovieResponse::id,
+                        java.util.function.Function.identity(),
+                        (existing, duplicate) -> existing,
+                        java.util.LinkedHashMap::new
+                ))
+                .values()
+                .stream()
+                .toList();
+
+        for (int index = 0; index < uniqueMovies.size(); index++) {
+            MovieResponse movieResponse = uniqueMovies.get(index);
             Movie movie = movieRepository.findById(movieResponse.id())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Movie not found"));
 
@@ -331,12 +345,29 @@ public class TmdbService {
     }
 
     private Genre getOrCreateGenre(String name) {
-        return genreRepository.findByName(name)
-                .orElseGet(() -> {
-                    Genre genre = new Genre();
-                    genre.setName(name);
-                    return genreRepository.save(genre);
-                });
+        String normalizedName = normalizeGenreName(name);
+
+        return genreRepository.findFirstByNameIgnoreCase(normalizedName)
+                .orElseGet(() -> createGenre(normalizedName));
+    }
+
+    private Genre createGenre(String name) {
+        try {
+            Genre genre = new Genre();
+            genre.setName(name);
+            return genreRepository.saveAndFlush(genre);
+        } catch (DataIntegrityViolationException exception) {
+            return genreRepository.findFirstByNameIgnoreCase(name)
+                    .orElseThrow(() -> exception);
+        }
+    }
+
+    private String normalizeGenreName(String name) {
+        if (name == null || name.isBlank()) {
+            return "Drama";
+        }
+
+        return name.trim();
     }
 
     public MovieResponse toStoredMovieResponse(Movie movie) {

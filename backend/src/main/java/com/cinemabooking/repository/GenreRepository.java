@@ -9,4 +9,6 @@ import com.cinemabooking.entity.Genre;
 
 public interface GenreRepository extends JpaRepository<Genre, UUID> {
     Optional<Genre> findByName(String name);
+
+    Optional<Genre> findFirstByNameIgnoreCase(String name);
 }

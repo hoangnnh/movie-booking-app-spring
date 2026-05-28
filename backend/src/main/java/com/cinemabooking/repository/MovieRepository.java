@@ -19,6 +19,18 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
     List<Movie> findAllByOrderByCreatedAtDescTitleAsc();
 
     @Query("""
+            select movie
+            from Movie movie
+            where not exists (
+                select showtime.id
+                from Showtime showtime
+                where showtime.movie = movie
+            )
+            order by movie.createdAt desc, movie.title asc
+            """)
+    List<Movie> findMoviesWithoutShowtimes(Pageable pageable);
+
+    @Query("""
             select distinct movie
             from Movie movie
             join movie.castMembers castMember

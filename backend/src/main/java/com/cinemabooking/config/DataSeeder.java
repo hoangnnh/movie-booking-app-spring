@@ -7,6 +7,9 @@ import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +31,7 @@ import com.cinemabooking.service.TmdbService;
 import lombok.RequiredArgsConstructor;
 
 @Component
+@ConditionalOnProperty(name = "app.seed.data.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class DataSeeder implements CommandLineRunner {
 
@@ -49,6 +53,9 @@ public class DataSeeder implements CommandLineRunner {
     @Value("${app.seed.tmdb.pages-per-list:2}")
     private int tmdbSeedPagesPerList;
 
+    @Value("${app.seed.showtimes.movie-limit:18}")
+    private int showtimeSeedMovieLimit;
+
     @Override
     public void run(String... args) {
         seedDefaultCinemas();
@@ -62,7 +69,7 @@ public class DataSeeder implements CommandLineRunner {
 
         seedFallbackMovies(action, sciFi, drama);
         importTmdbCatalogIfConfigured();
-        movieRepository.findAll().forEach(showtimeSeedService::createShowtimesForMovieIfMissing);
+        seedShowtimesForMoviesWithoutSchedules();
     }
 
     private void seedDemoUser() {
@@ -164,6 +171,16 @@ public class DataSeeder implements CommandLineRunner {
                 .toList();
     }
 
+    private void seedShowtimesForMoviesWithoutSchedules() {
+        int movieLimit = Math.max(0, showtimeSeedMovieLimit);
+        if (movieLimit == 0) {
+            return;
+        }
+
+        movieRepository.findMoviesWithoutShowtimes(PageRequest.of(0, movieLimit))
+                .forEach(showtimeSeedService::createShowtimesForMovieIfMissing);
+    }
+
     private Movie upsertMovie(
             Integer tmdbId,
             String title,
@@ -189,11 +206,18 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private Genre getOrCreateGenre(String name) {
-        return genreRepository.findByName(name)
+        String normalizedName = name == null || name.isBlank() ? "Drama" : name.trim();
+
+        return genreRepository.findFirstByNameIgnoreCase(normalizedName)
                 .orElseGet(() -> {
-                    Genre genre = new Genre();
-                    genre.setName(name);
-                    return genreRepository.save(genre);
+                    try {
+                        Genre genre = new Genre();
+                        genre.setName(normalizedName);
+                        return genreRepository.saveAndFlush(genre);
+                    } catch (DataIntegrityViolationException exception) {
+                        return genreRepository.findFirstByNameIgnoreCase(normalizedName)
+                                .orElseThrow(() -> exception);
+                    }
                 });
     }
 

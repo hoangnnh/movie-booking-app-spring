@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,27 +36,32 @@ public class ShowtimeSeedService {
     private final SeatRepository seatRepository;
     private final ShowtimeRepository showtimeRepository;
 
+    @Value("${app.seed.showtimes.slots-per-movie:3}")
+    private int slotsPerMovie;
+
     @Transactional
     public void createShowtimesForMovieIfMissing(Movie movie) {
         if (movie == null || movie.getId() == null) {
             return;
         }
 
+        if (showtimeRepository.countByMovie_Id(movie.getId()) > 0) {
+            return;
+        }
+
         List<Room> rooms = roomRepository.findAll()
                 .stream()
-                .limit(8)
+                .limit(Math.max(1, slotsPerMovie))
                 .toList();
 
-        for (int roomIndex = 0; roomIndex < rooms.size(); roomIndex++) {
+        int createdCount = 0;
+
+        for (int roomIndex = 0; roomIndex < rooms.size() && createdCount < slotsPerMovie; roomIndex++) {
             Room room = rooms.get(roomIndex);
             ensureSeats(room);
 
-            for (int dayOffset = 0; dayOffset < 62; dayOffset++) {
+            for (int dayOffset = 0; dayOffset < 14 && createdCount < slotsPerMovie; dayOffset++) {
                 LocalDate date = LocalDate.now().plusDays(dayOffset);
-                if (hasShowtimeOnDate(movie, room, date)) {
-                    continue;
-                }
-
                 LocalTime startTime = START_TIMES.get((roomIndex + dayOffset) % START_TIMES.size());
 
                 Showtime showtime = new Showtime();
@@ -65,17 +71,9 @@ public class ShowtimeSeedService {
                 showtime.setEndTime(showtime.getStartTime().plusMinutes(movie.getDurationMinutes()));
                 showtime.setPrice(priceForRoom(roomIndex));
                 showtimeRepository.save(showtime);
+                createdCount++;
             }
         }
-    }
-
-    private boolean hasShowtimeOnDate(Movie movie, Room room, LocalDate date) {
-        return showtimeRepository.existsByMovie_IdAndRoom_IdAndStartTimeBetween(
-                movie.getId(),
-                room.getId(),
-                date.atStartOfDay(),
-                date.plusDays(1).atStartOfDay()
-        );
     }
 
     public void ensureSeats(Room room) {
