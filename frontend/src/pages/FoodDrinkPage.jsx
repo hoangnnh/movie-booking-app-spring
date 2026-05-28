@@ -238,7 +238,6 @@ export default function FoodDrinkPage({ onRequireAuth }) {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
 
-  const ticketCount = Math.max(1, Number(searchParams.get("tickets")) || 1);
   const selectedDateParam = searchParams.get("date") || "";
   const selectedStartTimeParam = searchParams.get("startTime") || "";
   const selectedCinemaNameParam = searchParams.get("cinemaName") || "";
@@ -327,10 +326,11 @@ export default function FoodDrinkPage({ onRequireAuth }) {
     0
   );
   const ticketUnitPrice = Number(showtime?.price) || ticketPrice;
+  const ticketCount = selectedSeatIds.length;
   const ticketTotal = ticketCount * ticketUnitPrice;
   const grandTotal = ticketTotal + foodTotal;
   const hasSnacks = selectedSnackItems.length > 0;
-  const seatsReady = selectedSeatIds.length === ticketCount;
+  const seatsReady = ticketCount > 0;
 
   function updateQuantity(itemKey, direction) {
     setCartStatus("");
@@ -357,7 +357,7 @@ export default function FoodDrinkPage({ onRequireAuth }) {
     }
 
     if (!seatsReady) {
-      setBookingError(`Please select ${ticketCount} seat${ticketCount === 1 ? "" : "s"} before confirming.`);
+      setBookingError("Please select at least one seat before confirming.");
       return;
     }
 
@@ -422,6 +422,7 @@ export default function FoodDrinkPage({ onRequireAuth }) {
           onClick={() => {
             const nextParams = new URLSearchParams({
               tickets: String(ticketCount),
+              seats: selectedSeatIds.join(","),
             });
 
             if (selectedDateParam) {

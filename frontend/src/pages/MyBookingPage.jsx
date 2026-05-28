@@ -132,12 +132,6 @@ export default function MyBookingPage({ onRequireAuth }) {
     );
   }, [bookings, selectedBookingId]);
 
-  useEffect(() => {
-    if (!selectedBooking && selectedBookingId) {
-      setSelectedBookingId("");
-    }
-  }, [selectedBooking, selectedBookingId]);
-
   async function handleCancelBooking(booking) {
     if (!booking?.id || cancelingBookingId) {
       return;

@@ -15,8 +15,6 @@ import Button from "../components/common/Button";
 import { formatDuration, getPosterUrl } from "../components/home/homeUtils";
 import { formatVnd } from "../utils/currency";
 
-const ticketPrice = 75000;
-
 function formatDateTime(value) {
   const date = new Date(value);
 
@@ -33,20 +31,76 @@ function formatDateTime(value) {
   };
 }
 
+function getSeatId(seat) {
+  return String(seat.seatId || seat.id);
+}
+
+function findSeatSpacingViolation(seats, selectedSeatIds) {
+  const selectedIds = new Set(selectedSeatIds.map(String));
+  const seatsByRow = seats.reduce((rows, seat) => {
+    const rowName = seat.rowName || "";
+    return rows.set(rowName, [...(rows.get(rowName) || []), seat]);
+  }, new Map());
+
+  for (const rowSeats of seatsByRow.values()) {
+    const sortedSeats = [...rowSeats].sort(
+      (left, right) => Number(left.seatNumber) - Number(right.seatNumber)
+    );
+    let gapStart = -1;
+
+    for (let index = 0; index <= sortedSeats.length; index += 1) {
+      const seat = sortedSeats[index];
+      const occupied = seat
+        ? seat.booked || selectedIds.has(getSeatId(seat))
+        : true;
+
+      if (!occupied && gapStart === -1) {
+        gapStart = index;
+      }
+
+      if ((occupied || index === sortedSeats.length) && gapStart !== -1) {
+        const gapEnd = index - 1;
+        const gapLength = gapEnd - gapStart + 1;
+        const leftSeat = sortedSeats[gapStart - 1];
+        const rightSeat = sortedSeats[gapEnd + 1];
+        const touchesSelectedSeat =
+          (leftSeat && selectedIds.has(getSeatId(leftSeat))) ||
+          (rightSeat && selectedIds.has(getSeatId(rightSeat)));
+
+        if (gapLength === 1 && touchesSelectedSeat) {
+          return {
+            type: "single",
+            seatLabel: sortedSeats[gapStart].label,
+          };
+        }
+
+        gapStart = -1;
+      }
+    }
+  }
+
+  return null;
+}
+
 export default function SeatSelectionPage() {
   const { showtimeId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const ticketCount = Math.max(1, Number(searchParams.get("tickets")) || 1);
   const selectedDateParam = searchParams.get("date") || "";
   const selectedStartTimeParam = searchParams.get("startTime") || "";
   const selectedCinemaNameParam = searchParams.get("cinemaName") || "";
+  const selectedSeatParam = searchParams.get("seats") || "";
 
   const [movie, setMovie] = useState(null);
   const [showtime, setShowtime] = useState(null);
   const [seats, setSeats] = useState([]);
-  const [selectedSeatIds, setSelectedSeatIds] = useState([]);
+  const [selectedSeatIds, setSelectedSeatIds] = useState(() =>
+    selectedSeatParam
+      .split(",")
+      .map((seatId) => seatId.trim())
+      .filter(Boolean)
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -95,25 +149,24 @@ export default function SeatSelectionPage() {
   const displayCinemaName = selectedCinemaNameParam || showtime?.cinemaName || "";
 
   const selectedSeats = seats.filter((seat) =>
-    selectedSeatIds.includes(seat.seatId || seat.id)
+    selectedSeatIds.includes(getSeatId(seat))
   );
 
-  const totalAmount = selectedSeatIds.length * ticketPrice;
-  const selectionComplete = selectedSeatIds.length === ticketCount;
-  const selectedSeatParam = selectedSeatIds.join(",");
+  const ticketCount = selectedSeatIds.length;
+  const ticketUnitPrice = Number(showtime?.price) || 0;
+  const totalAmount = ticketCount * ticketUnitPrice;
+  const seatSpacingViolation = findSeatSpacingViolation(seats, selectedSeatIds);
+  const selectionComplete = ticketCount > 0 && !seatSpacingViolation;
+  const nextSelectedSeatParam = selectedSeatIds.join(",");
 
   function toggleSeat(seat) {
-    const seatId = seat.seatId || seat.id;
+    const seatId = getSeatId(seat);
 
     if (seat.booked) return;
 
     setSelectedSeatIds((current) => {
       if (current.includes(seatId)) {
         return current.filter((id) => id !== seatId);
-      }
-
-      if (current.length >= ticketCount) {
-        return current;
       }
 
       return [...current, seatId];
@@ -193,7 +246,7 @@ export default function SeatSelectionPage() {
                 Choose Your Seats
               </h2>
               <p className="type-body-s mt-[8px] text-app-text-muted">
-                Select {ticketCount} seat{ticketCount === 1 ? "" : "s"} for this showtime.
+                Select the seats you want. Ticket quantity is counted from your selected seats.
               </p>
             </div>
 
@@ -205,10 +258,15 @@ export default function SeatSelectionPage() {
               size="lg"
             />
 
-            {!selectionComplete && (
+            {ticketCount === 0 && (
               <p className="type-body-xs mt-[20px] text-center text-app-text-muted">
-                {ticketCount - selectedSeatIds.length} more seat
-                {ticketCount - selectedSeatIds.length === 1 ? "" : "s"} needed.
+                Select at least one seat to continue.
+              </p>
+            )}
+
+            {seatSpacingViolation && (
+              <p className="type-body-xs mt-[20px] rounded-tk-4 border border-error-500 bg-app-background px-[12px] py-[10px] text-center text-error-500">
+                Seat {seatSpacingViolation.seatLabel} cannot be left as a single empty seat next to your selection.
               </p>
             )}
           </section>
@@ -225,7 +283,10 @@ export default function SeatSelectionPage() {
                 <SummaryRow label="Duration" value={movieView.duration} />
                 <SummaryRow label="Cinema" value={displayCinemaName} />
                 <SummaryRow label="Room" value={showtime.roomName} />
-                <SummaryRow label="Tickets" value={String(ticketCount)} />
+                <SummaryRow
+                  label="Tickets"
+                  value={`${ticketCount} x ${formatVnd(ticketUnitPrice)}`}
+                />
               </div>
 
               <div className="mt-[24px] border-t border-app-border pt-[20px]">
@@ -235,7 +296,7 @@ export default function SeatSelectionPage() {
                     <div className="flex flex-wrap gap-[8px]">
                       {selectedSeats.map((seat) => (
                         <span
-                          key={seat.seatId || seat.id}
+                          key={getSeatId(seat)}
                           className="rounded-tk-4 bg-primary-600 px-[10px] py-[5px] type-label-s text-neutral-900"
                         >
                           {seat.label}
@@ -269,7 +330,7 @@ export default function SeatSelectionPage() {
                   {
                     const nextParams = new URLSearchParams({
                       tickets: String(ticketCount),
-                      seats: selectedSeatParam,
+                      seats: nextSelectedSeatParam,
                     });
 
                     if (selectedDateParam) {

@@ -50,18 +50,6 @@ export default function AdminDashboardPage({ onRequireAuth }) {
   const paginatedUsers = usePaginatedItems(users, userPage, ADMIN_PAGE_SIZE);
   const paginatedBookings = usePaginatedItems(bookings, bookingPage, ADMIN_PAGE_SIZE);
 
-  useEffect(() => {
-    setMoviePage(1);
-  }, [movies.length]);
-
-  useEffect(() => {
-    setUserPage(1);
-  }, [users.length]);
-
-  useEffect(() => {
-    setBookingPage(1);
-  }, [bookings.length]);
-
   async function loadAdminData() {
     try {
       setLoading(true);

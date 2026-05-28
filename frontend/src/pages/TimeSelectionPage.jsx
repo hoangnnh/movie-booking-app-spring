@@ -5,10 +5,7 @@ import {
   ChevronRight,
   Filter,
   MapPin,
-  Minus,
-  Plus,
   Star,
-  X,
 } from "lucide-react";
 import { cinemaApi, movieApi, showtimeApi } from "../api/api";
 import Button from "../components/common/Button";
@@ -23,12 +20,6 @@ import {
   normalizeMovie,
 } from "../components/home/homeUtils";
 import { cn } from "../utils/cn";
-import { formatVnd } from "../utils/currency";
-
-const ticketTypes = [
-  { key: "adult", label: "Adult", price: 75000 },
-  { key: "child", label: "Child", price: 55000 },
-];
 
 const formatFilters = ["All", "Standard", "3D"];
 
@@ -78,13 +69,6 @@ function getDateParts(offset, baseValue = new Date()) {
   };
 }
 
-function getTicketTotal(counts) {
-  return ticketTypes.reduce(
-    (total, type) => total + counts[type.key] * type.price,
-    0
-  );
-}
-
 function getCinemaOffsets(index) {
   const presets = [
     [0, 80, 130, 200],
@@ -127,13 +111,7 @@ export default function TimeSelectionPage() {
   const [cinemas, setCinemas] = useState([]);
   const [selectedDate, setSelectedDate] = useState(getDateParts(0).key);
   const [selectedShowtimeId, setSelectedShowtimeId] = useState(showtimeId);
-  const [selectedTime, setSelectedTime] = useState(null);
   const [formatFilter, setFormatFilter] = useState("All");
-  const [ticketCounts, setTicketCounts] = useState({
-    adult: 0,
-    child: 0,
-  });
-  const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -156,7 +134,6 @@ export default function TimeSelectionPage() {
         setCinemas(cinemaData);
         setSelectedDate(searchParams.get("date") || showtime.startTime.slice(0, 10));
         setSelectedShowtimeId("");
-        setSelectedTime(null);
       } catch {
         setError("Cannot load time selection.");
       } finally {
@@ -263,22 +240,21 @@ export default function TimeSelectionPage() {
 
   function openTicketModal(time) {
     setSelectedShowtimeId(time.id);
-    setSelectedTime(time);
-    setTicketModalOpen(true);
-  }
+    const nextShowtimeId = time?.showtimeId || showtimeId;
+    const nextParams = new URLSearchParams({
+      date: selectedDate,
+    });
 
-  function updateTicketCount(type, direction) {
-    setTicketCounts((current) => ({
-      ...current,
-      [type]: Math.max(0, Math.min(9, current[type] + direction)),
-    }));
-  }
+    if (time?.startTime) {
+      nextParams.set("startTime", time.startTime);
+    }
 
-  const totalTickets = Object.values(ticketCounts).reduce(
-    (total, count) => total + count,
-    0
-  );
-  const totalAmount = getTicketTotal(ticketCounts);
+    if (time?.cinemaName) {
+      nextParams.set("cinemaName", time.cinemaName);
+    }
+
+    navigate(`/booking/${nextShowtimeId}/seats?${nextParams.toString()}`);
+  }
 
   if (loading) {
     return (
@@ -377,7 +353,6 @@ export default function TimeSelectionPage() {
                 onClick={() => {
                   setSelectedDate(date.key);
                   setSelectedShowtimeId("");
-                  setSelectedTime(null);
                 }}
               />
             ))}
@@ -395,7 +370,6 @@ export default function TimeSelectionPage() {
                 onClick={() => {
                   setFormatFilter(filter);
                   setSelectedShowtimeId("");
-                  setSelectedTime(null);
                 }}
                 className={cn(
                   "type-label-s transition-colors",
@@ -418,7 +392,6 @@ export default function TimeSelectionPage() {
                 selectedDateLabel={selectedDateLabel}
                 onPickTime={(time) => {
                   setSelectedShowtimeId(time.id);
-                  setSelectedTime(time);
                 }}
                 onContinue={openTicketModal}
               />
@@ -468,35 +441,6 @@ export default function TimeSelectionPage() {
       </main>
 
       <Footer heroImageUrl={heroImage} />
-
-      {ticketModalOpen && (
-        <TicketModal
-          movieTitle={movieView.title}
-          selectedTime={selectedTime}
-          ticketCounts={ticketCounts}
-          totalTickets={totalTickets}
-          totalAmount={totalAmount}
-          onClose={() => setTicketModalOpen(false)}
-          onContinue={() => {
-            const nextShowtimeId = selectedTime?.showtimeId || showtimeId;
-            const nextParams = new URLSearchParams({
-              tickets: String(totalTickets),
-              date: selectedDate,
-            });
-
-            if (selectedTime?.startTime) {
-              nextParams.set("startTime", selectedTime.startTime);
-            }
-
-            if (selectedTime?.cinemaName) {
-              nextParams.set("cinemaName", selectedTime.cinemaName);
-            }
-
-            navigate(`/booking/${nextShowtimeId}/seats?${nextParams.toString()}`);
-          }}
-          onUpdateTicketCount={updateTicketCount}
-        />
-      )}
     </div>
   );
 }
@@ -582,116 +526,5 @@ function CinemaTimeCard({
         </Button>
       </div>
     </article>
-  );
-}
-
-function TicketModal({
-  movieTitle,
-  selectedTime,
-  ticketCounts,
-  totalTickets,
-  totalAmount,
-  onClose,
-  onContinue,
-  onUpdateTicketCount,
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 px-[24px] pt-[12vh]">
-      <div className="w-full max-w-[560px] rounded-tk-8 border border-app-border bg-app-surface p-[24px] shadow-2xl">
-        <div className="flex items-start justify-between gap-[16px]">
-          <div>
-            <div className="flex items-center gap-[8px]">
-              <span className="h-[8px] w-[8px] rounded-sm bg-brand" />
-              <h2 className="type-h6 text-app-text">Choose Tickets For Everyone</h2>
-            </div>
-            <p className="type-body-xs mt-[4px] text-app-text-muted">
-              Select the number of tickets for {movieTitle}
-              {selectedTime ? ` at ${selectedTime.time}` : ""}.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            aria-label="Close"
-            className="text-app-text-muted hover:text-app-text"
-            onClick={onClose}
-          >
-            <X className="h-[18px] w-[18px]" />
-          </button>
-        </div>
-
-        <div className="mt-[20px] grid gap-[8px]">
-          {ticketTypes.map((type) => (
-            <div
-              key={type.key}
-              className="grid grid-cols-[1fr_auto_auto] items-center gap-[16px] rounded-tk-4 border border-app-border bg-app-background px-[12px] py-[10px]"
-            >
-              <div>
-                <p className="type-body-s text-app-text">{type.label}</p>
-                <p className="type-body-xs text-app-text-muted">
-                  {formatVnd(type.price)}
-                </p>
-              </div>
-
-              <div className="type-body-s min-w-[24px] text-center text-app-text">
-                {ticketCounts[type.key]}
-              </div>
-
-              <div className="flex items-center gap-[6px]">
-                <CounterButton
-                  label={`Remove ${type.label}`}
-                  disabled={ticketCounts[type.key] === 0}
-                  onClick={() => onUpdateTicketCount(type.key, -1)}
-                >
-                  <Minus className="h-[14px] w-[14px]" />
-                </CounterButton>
-                <CounterButton
-                  label={`Add ${type.label}`}
-                  onClick={() => onUpdateTicketCount(type.key, 1)}
-                >
-                  <Plus className="h-[14px] w-[14px]" />
-                </CounterButton>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-[18px] flex items-center justify-between">
-          <div className="type-body-xs text-app-text-muted">
-            {totalTickets} ticket{totalTickets === 1 ? "" : "s"} .{" "}
-            {formatVnd(totalAmount)}
-          </div>
-
-          <div className="flex items-center gap-[8px]">
-            <Button size={32} variant="outline" tone="base" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              size={32}
-              variant="primary"
-              rightIcon={<ChevronRight />}
-              disabled={totalTickets === 0}
-              onClick={onContinue}
-            >
-              Continue
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CounterButton({ label, disabled = false, onClick, children }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      disabled={disabled}
-      onClick={onClick}
-      className="flex h-[24px] w-[24px] items-center justify-center rounded-tk-4 border border-app-border text-app-text-muted transition-colors hover:border-brand hover:text-brand disabled:cursor-not-allowed disabled:border-neutral-600 disabled:text-neutral-500"
-    >
-      {children}
-    </button>
   );
 }
