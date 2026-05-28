@@ -39,19 +39,19 @@ const paymentMethods = [
   {
     key: "VNPAY_QR",
     title: "VNPAY QR",
-    label: "Bank app or QR wallet",
+    label: "Redirects to VNPAY sandbox",
     icon: QrCode,
   },
   {
     key: "MOMO_WALLET",
     title: "MoMo Wallet",
-    label: "Mobile wallet checkout",
+    label: "Redirects to MoMo sandbox",
     icon: Wallet,
   },
   {
     key: "DEMO_CARD",
     title: "Demo Card",
-    label: "Sandbox card payment",
+    label: "Local demo confirmation",
     icon: CreditCard,
   },
 ];
@@ -78,7 +78,6 @@ export default function PaymentPage({ onRequireAuth }) {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
 
-  const ticketCount = Math.max(1, Number(searchParams.get("tickets")) || 1);
   const selectedDateParam = searchParams.get("date") || "";
   const selectedStartTimeParam = searchParams.get("startTime") || "";
   const selectedCinemaNameParam = searchParams.get("cinemaName") || "";
@@ -156,8 +155,9 @@ export default function PaymentPage({ onRequireAuth }) {
   );
 
   const displayCinemaName = selectedCinemaNameParam || showtime?.cinemaName || "";
+  const ticketCount = selectedSeatIds.length;
   const ticketUnitPrice = Number(showtime?.price) || 0;
-  const ticketTotal = ticketUnitPrice * selectedSeatIds.length;
+  const ticketTotal = ticketUnitPrice * ticketCount;
   const foodTotal = selectedFoodItems.reduce(
     (total, item) => total + item.price * item.quantity,
     0
@@ -165,7 +165,7 @@ export default function PaymentPage({ onRequireAuth }) {
   const fallbackFoodTotal = Number(searchParams.get("foodTotal")) || 0;
   const payableFoodTotal = foodTotal || fallbackFoodTotal;
   const grandTotal = ticketTotal + payableFoodTotal;
-  const seatsReady = selectedSeatIds.length === ticketCount;
+  const seatsReady = ticketCount > 0;
 
   function goBackToFood() {
     const nextParams = new URLSearchParams({
@@ -190,7 +190,7 @@ export default function PaymentPage({ onRequireAuth }) {
     }
 
     if (!seatsReady) {
-      setBookingError(`Please select ${ticketCount} seat${ticketCount === 1 ? "" : "s"} before payment.`);
+      setBookingError("Please select at least one seat before payment.");
       return;
     }
 
@@ -204,7 +204,12 @@ export default function PaymentPage({ onRequireAuth }) {
         paymentMethod,
       });
 
-      setBooking(response);
+      if (response?.redirectRequired && response?.checkoutUrl) {
+        window.location.assign(response.checkoutUrl);
+        return;
+      }
+
+      setBooking(response?.booking || response);
     } catch (err) {
       setBookingError(cleanBookingError(err));
     } finally {
@@ -318,7 +323,7 @@ export default function PaymentPage({ onRequireAuth }) {
                   disabled={submitting || !seatsReady}
                   onClick={completePayment}
                 >
-                  {submitting ? "Processing..." : "Pay Now"}
+                  {submitting ? "Processing..." : getPaymentButtonLabel(paymentMethod)}
                 </Button>
               )}
 
@@ -342,7 +347,7 @@ export default function PaymentPage({ onRequireAuth }) {
               <div className="mt-[18px] flex items-start gap-[8px] border-t border-app-border pt-[16px] text-app-text-muted">
                 <ShieldCheck className="mt-[1px] h-[16px] w-[16px] text-secondary-600" />
                 <span className="type-body-xs">
-                  Sandbox payment confirms tickets immediately.
+                  {getPaymentHelpText(paymentMethod)}
                 </span>
               </div>
             </div>
@@ -526,6 +531,24 @@ function formatPaymentMethod(value) {
   if (value === "VNPAY_QR") return "VNPAY QR";
   if (value === "MOMO_WALLET") return "MoMo Wallet";
   return "Demo Card";
+}
+
+function getPaymentButtonLabel(value) {
+  if (value === "VNPAY_QR") return "Continue to VNPAY";
+  if (value === "MOMO_WALLET") return "Continue to MoMo";
+  return "Confirm Demo Payment";
+}
+
+function getPaymentHelpText(value) {
+  if (value === "VNPAY_QR") {
+    return "Seats are reserved while VNPAY sandbox confirms the payment.";
+  }
+
+  if (value === "MOMO_WALLET") {
+    return "Seats are reserved while MoMo sandbox confirms the payment.";
+  }
+
+  return "Demo Card confirms locally without an external gateway.";
 }
 
 function cleanBookingError(error) {
