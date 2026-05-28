@@ -42,9 +42,22 @@ JWT_SECRET=replace-with-at-least-32-random-characters
 APP_FRONTEND_BASE_URL=http://localhost:5173
 APP_BACKEND_BASE_URL=http://localhost:8080
 APP_SEED_TMDB_ENABLED=false
+
+PAYMENT_VNPAY_ENABLED=false
+PAYMENT_VNPAY_PAY_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+PAYMENT_VNPAY_TMN_CODE=your-vnpay-tmn-code
+PAYMENT_VNPAY_HASH_SECRET=your-vnpay-hash-secret
+
+PAYMENT_MOMO_ENABLED=false
+PAYMENT_MOMO_CREATE_URL=https://test-payment.momo.vn/v2/gateway/api/create
+PAYMENT_MOMO_PARTNER_CODE=your-momo-partner-code
+PAYMENT_MOMO_ACCESS_KEY=your-momo-access-key
+PAYMENT_MOMO_SECRET_KEY=your-momo-secret-key
 ```
 
 Keep `JPA_DDL_AUTO=update` for local development so Hibernate can create/update the schema in Supabase. For a production deployment, change it to `validate` after the schema is stable and manage schema changes through migrations.
+
+Set `PAYMENT_VNPAY_ENABLED=true` or `PAYMENT_MOMO_ENABLED=true` only after the matching sandbox credentials are filled in. Keep the backend base URL reachable by the gateway callback; for local external callbacks, expose `http://localhost:8080` through a tunnel and use that tunnel URL as `APP_BACKEND_BASE_URL`.
 
 ## 3. Configure the frontend
 
@@ -90,6 +103,14 @@ If startup fails with authentication or connection errors, re-check:
 - The URL includes `?sslmode=require`.
 - The database password is the database password, not the anon key or service-role key.
 - Your Supabase project is active and not paused.
+
+If startup or signup fails with `ERROR: prepared statement "S_..." does not exist`, keep this datasource property enabled:
+
+```properties
+spring.datasource.hikari.data-source-properties.prepareThreshold=0
+```
+
+Supabase's transaction pooler uses PgBouncer, and server-side prepared statements can break when a transaction uses a different pooled connection.
 
 ## 6. Security note
 

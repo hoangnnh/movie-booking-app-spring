@@ -142,9 +142,22 @@ GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 APP_BACKEND_BASE_URL=http://localhost:8080
 APP_FRONTEND_BASE_URL=http://localhost:5173
+
+PAYMENT_VNPAY_ENABLED=false
+PAYMENT_VNPAY_PAY_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+PAYMENT_VNPAY_TMN_CODE=your-vnpay-tmn-code
+PAYMENT_VNPAY_HASH_SECRET=your-vnpay-hash-secret
+
+PAYMENT_MOMO_ENABLED=false
+PAYMENT_MOMO_CREATE_URL=https://test-payment.momo.vn/v2/gateway/api/create
+PAYMENT_MOMO_PARTNER_CODE=your-momo-partner-code
+PAYMENT_MOMO_ACCESS_KEY=your-momo-access-key
+PAYMENT_MOMO_SECRET_KEY=your-momo-secret-key
 ```
 
 Do not commit `.env.local`.
+
+Leave the gateway flags disabled until real sandbox credentials are configured. When testing provider callbacks locally, set `APP_BACKEND_BASE_URL` to a public tunnel URL that forwards to the backend.
 
 For Supabase, use the Transaction pooler connection details from Project Settings > Database. The JDBC URL must use port `6543` and include `?sslmode=require`.
 
