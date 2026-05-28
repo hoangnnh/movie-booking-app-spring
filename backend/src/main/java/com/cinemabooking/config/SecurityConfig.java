@@ -105,6 +105,8 @@ public class SecurityConfig {
                                 "/api/auth/reset-password"
                         ).permitAll()
                         .requestMatchers(GET, "/api/auth/me").authenticated()
+                        .requestMatchers(GET, "/api/payments/**").permitAll()
+                        .requestMatchers(POST, "/api/payments/**").permitAll()
                         .requestMatchers(GET, "/api/movies/**", "/api/showtimes/**", "/api/tmdb/**").permitAll()
                         .requestMatchers(POST, "/api/tmdb/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
