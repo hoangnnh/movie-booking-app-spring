@@ -1,3 +1,15 @@
 {
-    "java.compile.nullAnalysis.mode": "automatic"
+    "java.compile.nullAnalysis.mode": "automatic",
+    "sqltools.connections": [
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 6543,
+            "driver": "PostgreSQL",
+            "database": "cinema_booking",
+            "username": "cinema_user",
+            "name": "movie booking app"
+        }
+    ]
 }
