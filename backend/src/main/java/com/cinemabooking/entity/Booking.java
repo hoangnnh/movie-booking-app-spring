@@ -47,7 +47,7 @@ public class Booking extends BaseEntity {
     private String paymentMethod = "DEMO_CARD";
 
     @Column(name = "payment_status", length = 30)
-    private String paymentStatus = "PAID";
+    private String paymentStatus = "PENDING";
 
     @Column(name = "payment_reference", length = 80)
     private String paymentReference = "PAY-DEMO";

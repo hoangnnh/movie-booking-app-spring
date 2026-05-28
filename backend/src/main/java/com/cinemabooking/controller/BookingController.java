@@ -16,9 +16,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.cinemabooking.dto.BookingResponse;
 import com.cinemabooking.dto.CreateBookingRequest;
+import com.cinemabooking.dto.PaymentCheckoutResponse;
 import com.cinemabooking.security.AuthenticatedUser;
 import com.cinemabooking.service.BookingService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -29,12 +31,13 @@ public class BookingController {
     private final BookingService bookingService;
 
     @PostMapping("/bookings")
-    public BookingResponse createBooking(
+    public PaymentCheckoutResponse createBooking(
             Authentication authentication,
-            @RequestBody CreateBookingRequest request
+            @RequestBody CreateBookingRequest request,
+            HttpServletRequest httpRequest
     ) {
         AuthenticatedUser authenticatedUser = (AuthenticatedUser) authentication.getPrincipal();
-        return bookingService.createBooking(authenticatedUser.userId(), request);
+        return bookingService.createBooking(authenticatedUser.userId(), request, resolveClientIp(httpRequest));
     }
 
     @GetMapping("/users/{userId}/bookings")
@@ -58,5 +61,15 @@ public class BookingController {
     ) {
         AuthenticatedUser authenticatedUser = (AuthenticatedUser) authentication.getPrincipal();
         return bookingService.cancelBooking(authenticatedUser.userId(), bookingId);
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return forwardedFor.split(",")[0].trim();
+        }
+
+        return request.getRemoteAddr();
     }
 }

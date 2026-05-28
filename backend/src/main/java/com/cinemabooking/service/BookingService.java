@@ -2,10 +2,13 @@ package com.cinemabooking.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -14,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.cinemabooking.dto.BookingResponse;
 import com.cinemabooking.dto.CreateBookingRequest;
+import com.cinemabooking.dto.PaymentCheckoutResponse;
 import com.cinemabooking.dto.SeatStatusResponse;
 import com.cinemabooking.dto.TicketResponse;
 import com.cinemabooking.entity.AppUser;
@@ -44,6 +48,7 @@ public class BookingService {
     private final SeatRepository seatRepository;
     private final BookingRepository bookingRepository;
     private final TicketRepository ticketRepository;
+    private final PaymentGatewayService paymentGatewayService;
 
     private static final Set<String> SUPPORTED_PAYMENT_METHODS = Set.of(
             "VNPAY_QR",
@@ -82,7 +87,11 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponse createBooking(UUID authenticatedUserId, CreateBookingRequest request) {
+    public PaymentCheckoutResponse createBooking(
+            UUID authenticatedUserId,
+            CreateBookingRequest request,
+            String clientIpAddress
+    ) {
         if (request.seatIds() == null || request.seatIds().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one seat is required");
         }
@@ -127,6 +136,8 @@ public class BookingService {
             }
         }
 
+        validateSeatSpacing(showtime, seats);
+
         BigDecimal ticketAmount = showtime.getPrice()
                 .multiply(BigDecimal.valueOf(seats.size()));
         BigDecimal foodAmount = normalizeFoodAmount(request.foodAmount());
@@ -136,12 +147,12 @@ public class BookingService {
         Booking booking = new Booking();
         booking.setUser(user);
         booking.setShowtime(showtime);
-        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setStatus("DEMO_CARD".equals(paymentMethod) ? BookingStatus.CONFIRMED : BookingStatus.PENDING);
         booking.setTicketAmount(ticketAmount);
         booking.setFoodAmount(foodAmount);
         booking.setTotalAmount(totalAmount);
         booking.setPaymentMethod(paymentMethod);
-        booking.setPaymentStatus("PAID");
+        booking.setPaymentStatus("DEMO_CARD".equals(paymentMethod) ? "PAID" : "PENDING");
         booking.setPaymentReference(generatePaymentReference(paymentMethod));
         booking.setSeatSummary(formatSeatSummary(seats));
 
@@ -158,7 +169,24 @@ public class BookingService {
             ticketRepository.save(ticket);
         }
 
-        return toBookingResponse(booking);
+        BookingResponse bookingResponse = toBookingResponse(booking);
+
+        if ("DEMO_CARD".equals(paymentMethod)) {
+            return new PaymentCheckoutResponse(
+                    bookingResponse,
+                    "",
+                    false,
+                    "Demo card confirmed locally. Use VNPAY or MoMo for sandbox gateway checkout."
+            );
+        }
+
+        String checkoutUrl = paymentGatewayService.createCheckoutUrl(booking, clientIpAddress);
+        return new PaymentCheckoutResponse(
+                bookingResponse,
+                checkoutUrl,
+                true,
+                "Redirect required to complete payment."
+        );
     }
 
     @Transactional(readOnly = true)
@@ -188,6 +216,35 @@ public class BookingService {
 
         cancelBookingInternal(booking, true);
         return booking;
+    }
+
+    @Transactional
+    public BookingResponse confirmProviderPayment(String paymentReference) {
+        Booking booking = bookingRepository.findByPaymentReference(paymentReference)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+
+        if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.EXPIRED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This booking can no longer be confirmed");
+        }
+
+        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setPaymentStatus("PAID");
+        return toBookingResponse(bookingRepository.save(booking));
+    }
+
+    @Transactional
+    public BookingResponse failProviderPayment(String paymentReference) {
+        Booking booking = bookingRepository.findByPaymentReference(paymentReference)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+
+        if (booking.getStatus() == BookingStatus.CONFIRMED) {
+            return toBookingResponse(booking);
+        }
+
+        booking.setStatus(BookingStatus.EXPIRED);
+        booking.setPaymentStatus("FAILED");
+        ticketRepository.deleteByBooking_Id(booking.getId());
+        return toBookingResponse(bookingRepository.save(booking));
     }
 
     private BookingResponse toBookingResponse(Booking booking) {
@@ -252,6 +309,61 @@ public class BookingService {
                 .sorted()
                 .reduce((left, right) -> left + ", " + right)
                 .orElse("");
+    }
+
+    private void validateSeatSpacing(Showtime showtime, List<Seat> selectedSeats) {
+        Set<UUID> selectedSeatIds = selectedSeats.stream()
+                .map(Seat::getId)
+                .collect(Collectors.toSet());
+        Set<UUID> occupiedSeatIds = new HashSet<>();
+        occupiedSeatIds.addAll(selectedSeatIds);
+        ticketRepository.findByShowtime_IdAndBooking_StatusIn(showtime.getId(), ACTIVE_BOOKING_STATUSES)
+                .forEach(ticket -> {
+                    UUID bookedSeatId = ticket.getSeat().getId();
+                    occupiedSeatIds.add(bookedSeatId);
+                });
+
+        Map<String, List<Seat>> seatsByRow = seatRepository.findByRoom_IdOrderByRowNameAscSeatNumberAsc(
+                        showtime.getRoom().getId()
+                )
+                .stream()
+                .collect(Collectors.groupingBy(Seat::getRowName));
+
+        for (List<Seat> rowSeats : seatsByRow.values()) {
+            List<Seat> sortedSeats = rowSeats.stream()
+                    .sorted(Comparator.comparing(Seat::getSeatNumber))
+                    .toList();
+
+            int gapStart = -1;
+            for (int index = 0; index <= sortedSeats.size(); index++) {
+                boolean occupied = index == sortedSeats.size()
+                        || occupiedSeatIds.contains(sortedSeats.get(index).getId());
+
+                if (!occupied && gapStart == -1) {
+                    gapStart = index;
+                }
+
+                if (occupied && gapStart != -1) {
+                    int gapEnd = index - 1;
+                    int gapLength = gapEnd - gapStart + 1;
+                    Seat leftSeat = gapStart > 0 ? sortedSeats.get(gapStart - 1) : null;
+                    Seat rightSeat = gapEnd + 1 < sortedSeats.size() ? sortedSeats.get(gapEnd + 1) : null;
+                    boolean touchesSelectedSeat =
+                            (leftSeat != null && selectedSeatIds.contains(leftSeat.getId()))
+                                    || (rightSeat != null && selectedSeatIds.contains(rightSeat.getId()));
+
+                    if (gapLength == 1 && touchesSelectedSeat) {
+                        throw new ResponseStatusException(
+                                HttpStatus.BAD_REQUEST,
+                                "Seat " + sortedSeats.get(gapStart).getLabel()
+                                        + " cannot be left as a single empty seat next to your selection"
+                        );
+                    }
+
+                    gapStart = -1;
+                }
+            }
+        }
     }
 
     private BigDecimal normalizeFoodAmount(BigDecimal value) {
