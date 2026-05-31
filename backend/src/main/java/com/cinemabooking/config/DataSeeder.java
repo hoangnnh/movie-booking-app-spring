@@ -26,6 +26,7 @@ import com.cinemabooking.repository.GenreRepository;
 import com.cinemabooking.repository.MovieRepository;
 import com.cinemabooking.repository.RoomRepository;
 import com.cinemabooking.service.ShowtimeSeedService;
+import com.cinemabooking.service.MovieSlugService;
 import com.cinemabooking.service.TmdbService;
 
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ public class DataSeeder implements CommandLineRunner {
     private final ShowtimeSeedService showtimeSeedService;
     private final PasswordEncoder passwordEncoder;
     private final TmdbService tmdbService;
+    private final MovieSlugService movieSlugService;
 
     @Value("${app.seed.tmdb.enabled:true}")
     private boolean tmdbSeedEnabled;
@@ -202,6 +204,7 @@ public class DataSeeder implements CommandLineRunner {
         movie.setPosterUrl("https://example.com/" + title.toLowerCase().replaceAll("[^a-z0-9]+", "-") + ".jpg");
         movie.setReleaseDate(releaseDate);
         movie.setGenres(new HashSet<>(Set.of(genres)));
+        movieSlugService.ensureSlug(movie);
         return movieRepository.save(movie);
     }
 

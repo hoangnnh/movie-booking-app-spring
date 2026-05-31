@@ -12,6 +12,7 @@ import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -19,7 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.cinemabooking.dto.AdminMovieResponse;
 import com.cinemabooking.dto.MovieCastMemberResponse;
+import com.cinemabooking.dto.MovieListItemResponse;
 import com.cinemabooking.dto.MovieResponse;
 import com.cinemabooking.dto.TmdbImportResponse;
 import com.cinemabooking.dto.TmdbMovieResponse;
@@ -28,6 +31,7 @@ import com.cinemabooking.entity.Genre;
 import com.cinemabooking.entity.Movie;
 import com.cinemabooking.entity.MovieCastMember;
 import com.cinemabooking.entity.MovieListEntry;
+import com.cinemabooking.enums.MovieDisplayStatus;
 import com.cinemabooking.repository.GenreRepository;
 import com.cinemabooking.repository.MovieListEntryRepository;
 import com.cinemabooking.repository.MovieRepository;
@@ -42,6 +46,7 @@ public class TmdbService {
     private final GenreRepository genreRepository;
     private final ShowtimeSeedService showtimeSeedService;
     private final MovieListEntryRepository movieListEntryRepository;
+    private final MovieSlugService movieSlugService;
 
     private static final String NOW_PLAYING_CATEGORY = "now_playing";
     private static final String TRENDING_WEEK_CATEGORY = "trending_week";
@@ -71,6 +76,7 @@ public class TmdbService {
                         .queryParam("include_adult", false)
                         .queryParam("language", "en-US")
                         .queryParam("page", 1)
+                        .queryParam("region", region)
                         .build())
                 .retrieve()
                 .body(Map.class);
@@ -119,6 +125,7 @@ public class TmdbService {
                 .map((genreData) -> getOrCreateGenre(stringValue(genreData, "name", "Drama")))
                 .toList()));
         addCastMembersIfMissing(movie, toCastMembers(movie, mapValue(detail, "credits")));
+        movieSlugService.ensureSlug(movie);
 
         Movie savedMovie = movieRepository.save(movie);
         showtimeSeedService.createShowtimesForMovieIfMissing(savedMovie);
@@ -200,13 +207,30 @@ public class TmdbService {
     }
 
     @Transactional
-    public List<MovieResponse> getNowPlayingMovies(int limit) {
-        return getStoredMoviesByCategory(NOW_PLAYING_CATEGORY, limit);
+    public List<MovieListItemResponse> getNowPlayingMovies(int limit) {
+        return getStoredMoviesByDisplayStatus(MovieDisplayStatus.SHOWING_NOW, limit);
     }
 
     @Transactional
-    public List<MovieResponse> getTrendingMoviesThisWeek(int limit) {
+    public List<MovieListItemResponse> getTrendingMoviesThisWeek(int limit) {
         return getStoredMoviesByCategory(TRENDING_WEEK_CATEGORY, limit);
+    }
+
+    @Transactional
+    public List<MovieListItemResponse> getComingSoonMovies(int limit) {
+        return getStoredMoviesByDisplayStatus(MovieDisplayStatus.COMING_SOON, limit);
+    }
+
+    private List<MovieListItemResponse> getStoredMoviesByDisplayStatus(MovieDisplayStatus displayStatus, int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+
+        return movieRepository.findByDisplayStatusOrderByCreatedAtDescTitleAsc(
+                        displayStatus,
+                        PageRequest.of(0, safeLimit)
+                )
+                .stream()
+                .map(this::toMovieListItemResponse)
+                .toList();
     }
 
     private List<Map<String, Object>> fetchMovieList(String list, int page) {
@@ -243,14 +267,16 @@ public class TmdbService {
         return listValue(body, "results");
     }
 
-    private List<MovieResponse> getStoredMoviesByCategory(String category, int limit) {
+    private List<MovieListItemResponse> getStoredMoviesByCategory(String category, int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 20));
 
-        return movieListEntryRepository.findByCategoryOrderBySortOrderAsc(category)
+        return movieListEntryRepository.findByCategoryOrderBySortOrderAsc(
+                        category,
+                        PageRequest.of(0, safeLimit)
+                )
                 .stream()
-                .limit(safeLimit)
                 .map(MovieListEntry::getMovie)
-                .map(this::toStoredMovieResponse)
+                .map(this::toMovieListItemResponse)
                 .toList();
     }
 
@@ -392,6 +418,7 @@ public class TmdbService {
                 movie.getId(),
                 movie.getTmdbId(),
                 movie.getTitle(),
+                movie.getSlug(),
                 movie.getDescription(),
                 movie.getDurationMinutes(),
                 posterUrl,
@@ -399,8 +426,42 @@ public class TmdbService {
                 firstNonBlank(movie.getTrailerUrl()),
                 movie.getReleaseDate(),
                 movie.getRating(),
+                movie.getDisplayStatus() == null ? MovieDisplayStatus.HIDDEN.name() : movie.getDisplayStatus().name(),
                 genres,
                 cast
+        );
+    }
+
+    public MovieListItemResponse toMovieListItemResponse(Movie movie) {
+        return new MovieListItemResponse(
+                movie.getId(),
+                movie.getTitle(),
+                movie.getSlug(),
+                movie.getDurationMinutes(),
+                thumbnailUrl(movie.getPosterUrl(), "w342"),
+                firstNonBlank(movie.getTrailerUrl()),
+                movie.getReleaseDate(),
+                movie.getRating(),
+                movie.getDisplayStatus() == null ? MovieDisplayStatus.HIDDEN.name() : movie.getDisplayStatus().name(),
+                movie.getGenres()
+                        .stream()
+                        .map(Genre::getName)
+                        .sorted()
+                        .toList()
+        );
+    }
+
+    public AdminMovieResponse toAdminMovieResponse(Movie movie) {
+        return new AdminMovieResponse(
+                movie.getId(),
+                movie.getTitle(),
+                movie.getDescription(),
+                movie.getDurationMinutes(),
+                firstNonBlank(movie.getPosterUrl()),
+                firstNonBlank(movie.getBackdropUrl()),
+                movie.getReleaseDate(),
+                movie.getRating(),
+                movie.getDisplayStatus() == null ? MovieDisplayStatus.HIDDEN.name() : movie.getDisplayStatus().name()
         );
     }
 
@@ -549,6 +610,10 @@ public class TmdbService {
         }
 
         return imageBaseUrl + path;
+    }
+
+    private String thumbnailUrl(String url, String size) {
+        return firstNonBlank(url).replaceFirst("/t/p/(?:original|w\\d+)/", "/t/p/" + size + "/");
     }
 
     private Integer findBestTmdbMatchId(Movie movie) {

@@ -8,21 +8,32 @@ import java.util.Set;
 import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
+import jakarta.persistence.Index;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.BatchSize;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import com.cinemabooking.enums.MovieDisplayStatus;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "movies")
+@Table(
+        name = "movies",
+        indexes = @Index(
+                name = "idx_movies_display_status_created_at_title",
+                columnList = "display_status, created_at DESC, title"
+        )
+)
 public class Movie extends BaseEntity {
 
     @Column(name = "tmdb_id", unique = true)
@@ -30,6 +41,9 @@ public class Movie extends BaseEntity {
 
     @Column(nullable = false, length = 200)
     private String title;
+
+    @Column(unique = true, length = 240)
+    private String slug;
 
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -52,10 +66,16 @@ public class Movie extends BaseEntity {
     @Column(name = "rating")
     private Double rating;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "display_status", nullable = false, length = 30, columnDefinition = "VARCHAR(30) DEFAULT 'HIDDEN'")
+    private MovieDisplayStatus displayStatus = MovieDisplayStatus.HIDDEN;
+
     @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 50)
     private Set<MovieCastMember> castMembers = new LinkedHashSet<>();
 
-    @ManyToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
     @JoinTable(
             name = "movie_genres",
             joinColumns = @JoinColumn(name = "movie_id"),

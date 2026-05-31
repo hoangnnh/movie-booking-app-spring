@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.cinemabooking.dto.SeatStatusResponse;
 import com.cinemabooking.dto.ShowtimeResponse;
 import com.cinemabooking.entity.Showtime;
+import com.cinemabooking.enums.MovieDisplayStatus;
 import com.cinemabooking.repository.ShowtimeRepository;
 import com.cinemabooking.service.BookingService;
 
@@ -30,6 +31,7 @@ public class ShowtimeController {
     public List<ShowtimeResponse> getShowtimesByMovie(@PathVariable UUID movieId) {
         return showtimeRepository.findByMovie_IdOrderByStartTimeAsc(movieId)
                 .stream()
+                .filter((showtime) -> showtime.getMovie().getDisplayStatus() == MovieDisplayStatus.SHOWING_NOW)
                 .map(this::toResponse)
                 .toList();
     }
@@ -38,6 +40,10 @@ public class ShowtimeController {
     public ShowtimeResponse getShowtimeById(@PathVariable UUID showtimeId) {
         Showtime showtime = showtimeRepository.findById(showtimeId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Showtime not found"));
+
+        if (showtime.getMovie().getDisplayStatus() != MovieDisplayStatus.SHOWING_NOW) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This movie is not currently available for booking");
+        }
 
         return toResponse(showtime);
     }

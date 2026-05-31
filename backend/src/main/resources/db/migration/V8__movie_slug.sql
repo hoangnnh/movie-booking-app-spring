@@ -1,0 +1,5 @@
+ALTER TABLE movies
+    ADD COLUMN IF NOT EXISTS slug VARCHAR(240);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_movies_slug
+    ON movies(slug);

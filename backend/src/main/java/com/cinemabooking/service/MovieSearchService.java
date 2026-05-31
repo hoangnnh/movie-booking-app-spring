@@ -1,14 +1,15 @@
 package com.cinemabooking.service;
 
-import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import com.cinemabooking.dto.MovieAutocompleteResponse;
-import com.cinemabooking.dto.MovieResponse;
-import com.cinemabooking.entity.Movie;
+import com.cinemabooking.dto.MovieListItemResponse;
+import com.cinemabooking.dto.PageResponse;
+import com.cinemabooking.enums.MovieDisplayStatus;
 import com.cinemabooking.repository.MovieRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -23,31 +24,31 @@ public class MovieSearchService {
     private final MovieRepository movieRepository;
     private final TmdbService tmdbService;
 
-    public List<MovieResponse> searchMovies(String rawQuery) {
-        if (rawQuery == null || rawQuery.isBlank()) {
-            return movieRepository.findAllByOrderByCreatedAtDescTitleAsc()
-                    .stream()
-                    .map(tmdbService::toStoredMovieResponse)
-                    .toList();
-        }
+    public PageResponse<MovieListItemResponse> searchMovies(
+            MovieDisplayStatus displayStatus,
+            String rawQuery,
+            String rawGenre,
+            int page,
+            int size
+    ) {
+        String query = rawQuery == null ? "" : rawQuery.trim();
+        String genre = rawGenre == null ? "" : rawGenre.trim();
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, Math.min(size, 48));
+        PageRequest pageRequest = PageRequest.of(
+                safePage,
+                safeSize,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("title"))
+        );
 
-        String trimmedQuery = rawQuery.trim();
-        String tsQuery = MovieSearchQueryFormatter.buildPrefixTsQuery(trimmedQuery);
-        String prefixPattern = MovieSearchQueryFormatter.buildPrefixLikePattern(trimmedQuery);
+        return PageResponse.from(
+                movieRepository.findCatalogMovies(displayStatus, query, genre, pageRequest),
+                tmdbService::toMovieListItemResponse
+        );
+    }
 
-        if (tsQuery.isBlank()) {
-            return List.of();
-        }
-
-        return movieRepository.searchByQuery(
-                        trimmedQuery,
-                        tsQuery,
-                        prefixPattern,
-                        TRIGRAM_SIMILARITY_THRESHOLD
-                )
-                .stream()
-                .map(tmdbService::toStoredMovieResponse)
-                .toList();
+    public List<String> getGenres(MovieDisplayStatus displayStatus) {
+        return movieRepository.findGenreNamesByDisplayStatus(displayStatus);
     }
 
     public List<MovieAutocompleteResponse> autocompleteMovies(String rawQuery, Integer limit) {
