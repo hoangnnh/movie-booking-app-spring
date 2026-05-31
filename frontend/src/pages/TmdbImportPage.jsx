@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Database, Download, Layers, Search } from "lucide-react";
+import { Check, ChevronDown, Database, Download, Layers, Search } from "lucide-react";
 import { tmdbApi } from "../api/api";
 import Button from "../components/common/Button";
 
@@ -158,30 +158,36 @@ export default function TmdbImportPage() {
 
             <label className="grid gap-[6px]">
               <span className="type-body-xs text-app-text-muted">Movie list</span>
-              <select
-                value={bulkList}
-                onChange={(event) => setBulkList(event.target.value)}
-                className="h-[40px] min-w-[180px] rounded-tk-4 border border-app-border bg-app-background px-[12px] type-body-s text-app-text outline-none"
-              >
-                <option value="now_playing">Now Playing</option>
-                <option value="trending_week">Trending This Week</option>
-                <option value="popular">Popular</option>
-                <option value="top_rated">Top Rated</option>
-                <option value="upcoming">Upcoming</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={bulkList}
+                  onChange={(event) => setBulkList(event.target.value)}
+                  className="h-[40px] min-w-[180px] appearance-none rounded-tk-4 border border-app-border bg-app-background pl-[12px] pr-[38px] type-body-s text-app-text outline-none"
+                >
+                  <option value="now_playing">Now Playing</option>
+                  <option value="trending_week">Trending This Week</option>
+                  <option value="popular">Popular</option>
+                  <option value="top_rated">Top Rated</option>
+                  <option value="upcoming">Upcoming</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-[12px] top-1/2 h-[16px] w-[16px] -translate-y-1/2 text-app-text-muted" />
+              </div>
             </label>
 
             <label className="grid gap-[6px]">
               <span className="type-body-xs text-app-text-muted">Pages</span>
-              <select
-                value={bulkPages}
-                onChange={(event) => setBulkPages(Number(event.target.value))}
-                className="h-[40px] min-w-[120px] rounded-tk-4 border border-app-border bg-app-background px-[12px] type-body-s text-app-text outline-none"
-              >
-                <option value={1}>Target 20 new movies</option>
-                <option value={2}>Target 40 new movies</option>
-                <option value={3}>Target 60 new movies</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={bulkPages}
+                  onChange={(event) => setBulkPages(Number(event.target.value))}
+                  className="h-[40px] min-w-[120px] appearance-none rounded-tk-4 border border-app-border bg-app-background pl-[12px] pr-[38px] type-body-s text-app-text outline-none"
+                >
+                  <option value={1}>Target 20 new movies</option>
+                  <option value={2}>Target 40 new movies</option>
+                  <option value={3}>Target 60 new movies</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-[12px] top-1/2 h-[16px] w-[16px] -translate-y-1/2 text-app-text-muted" />
+              </div>
             </label>
 
             <Button

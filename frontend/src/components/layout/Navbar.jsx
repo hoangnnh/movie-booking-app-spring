@@ -90,35 +90,61 @@ export default function Navbar({
         closeMobileMenu();
 
         if (normalizedQuery.length === 0) {
-            navigate("/movies");
+            navigate("/movies/showing-now");
             return;
         }
 
-        navigate(`/movies?query=${encodeURIComponent(normalizedQuery)}`);
+        navigate(`/movies/showing-now?query=${encodeURIComponent(normalizedQuery)}`);
     }
 
     return (
         <header
             className={cn(
-                "w-full bg-app-background",
+                variant === "overlay"
+                    ? "absolute left-0 top-0 z-30 w-full bg-transparent"
+                    : "w-full bg-app-background",
                 variant === "bordered" && "rounded-card border border-app-border",
                 className
             )}
         >
-            <div className="ticketor-container py-[12px]">
-                <div className="flex items-center justify-between gap-[12px]">
+            <div className={cn("ticketor-container py-[12px]", variant === "overlay" && "pt-[18px]")}>
+                <div
+                    className={cn(
+                        "flex items-center justify-between gap-[12px]",
+                        variant === "overlay" &&
+                            "ticketor-overlay-nav mx-auto max-w-[980px] rounded-tk-8 border px-[22px] py-[8px] shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-md",
+                        variant === "overlay" &&
+                            (theme === "light"
+                                ? "ticketor-overlay-nav-light border-[#d8cfbc]/90 bg-[#fffdf8]/92"
+                                : "border-white/10 bg-[#03040a]/95")
+                    )}
+                >
                     <Link to="/" onClick={closeMobileMenu}>
                         <Logo />
                     </Link>
 
-                    <nav className="hidden items-center gap-[32px] xl:flex">
-                        <NavbarLink to="/movies">Movies</NavbarLink>
+                    <nav className="hidden items-center gap-[28px] xl:flex">
+                        <NavbarDropdown
+                            label="Movies"
+                            items={[
+                                { label: "Showing Now", to: "/movies/showing-now" },
+                                { label: "Coming Soon", to: "/movies/coming-soon" },
+                            ]}
+                        />
+                        <NavbarDropdown
+                            label="Cinemas"
+                            to="/cinemas"
+                            items={[
+                                { label: "All Theaters", to: "/cinemas" },
+                                { label: "3D Theaters", to: "/cinemas?type=3d" },
+                                { label: "Special Theaters", to: "/cinemas?type=special" },
+                            ]}
+                        />
                         {isLoggedIn && <NavbarLink to="/my-booking">My Booking</NavbarLink>}
-                        {isLoggedIn && <NavbarLink to="/favorites">Favorites</NavbarLink>}
                         {user?.role === "ADMIN" && <NavbarLink to="/admin">Admin</NavbarLink>}
                     </nav>
 
-                    <div className="flex items-center gap-[8px] sm:gap-[12px]">
+                    <div className="flex items-center gap-[8px] sm:gap-[14px]">
                         <Button
                             variant="text"
                             size={40}
@@ -222,10 +248,12 @@ export default function Navbar({
                         <div className="group relative hidden xl:block">
                             <button
                                 type="button"
-                                className="flex items-center gap-[12px] text-app-text transition-colors hover:text-brand"
+                                className="flex max-w-[220px] items-center gap-[12px] text-app-text transition-colors hover:text-brand"
                             >
                                 <Avatar size={40} src={avatarSrc} alt={user.fullName} />
-                                <span className="type-body-m">{user.fullName}</span>
+                                <span className="type-body-m truncate whitespace-nowrap">
+                                    Hello, {user.fullName}
+                                </span>
                                 <ChevronDown className="h-[20px] w-[20px]" />
                             </button>
 
@@ -236,12 +264,6 @@ export default function Navbar({
                                         className="block w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text-muted transition-colors hover:bg-app-background hover:text-brand"
                                     >
                                         My Booking
-                                    </Link>
-                                    <Link
-                                        to="/favorites"
-                                        className="block w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text-muted transition-colors hover:bg-app-background hover:text-brand"
-                                    >
-                                        Favorites
                                     </Link>
                                     {user?.role === "ADMIN" && (
                                         <Link
@@ -302,12 +324,14 @@ export default function Navbar({
                 {mobileMenuOpen && (
                     <div className="mt-[12px] rounded-tk-12 border border-app-border bg-app-surface p-[14px] xl:hidden">
                         <nav className="grid gap-[6px]">
-                            <MobileNavLink to="/movies" onNavigate={closeMobileMenu}>Movies</MobileNavLink>
+                            <MobileMenuLabel>Movies</MobileMenuLabel>
+                            <MobileNavLink to="/movies/showing-now" onNavigate={closeMobileMenu}>Showing Now</MobileNavLink>
+                            <MobileNavLink to="/movies/coming-soon" onNavigate={closeMobileMenu}>Coming Soon</MobileNavLink>
+                            <MobileNavLink to="/cinemas" onNavigate={closeMobileMenu}>Cinemas</MobileNavLink>
+                            <MobileNavLink to="/cinemas?type=3d" onNavigate={closeMobileMenu}>3D Theaters</MobileNavLink>
+                            <MobileNavLink to="/cinemas?type=special" onNavigate={closeMobileMenu}>Special Theaters</MobileNavLink>
                             {isLoggedIn && (
                                 <MobileNavLink to="/my-booking" onNavigate={closeMobileMenu}>My Booking</MobileNavLink>
-                            )}
-                            {isLoggedIn && (
-                                <MobileNavLink to="/favorites" onNavigate={closeMobileMenu}>Favorites</MobileNavLink>
                             )}
                             {user?.role === "ADMIN" && (
                                 <MobileNavLink to="/admin" onNavigate={closeMobileMenu}>Admin</MobileNavLink>
@@ -377,13 +401,63 @@ function NavbarLink({ to, children }) {
             to={to}
             className={({ isActive }) =>
                 cn(
-                    "type-body-m transition-colors",
+                    "cursor-pointer type-body-m transition-colors",
+                    "whitespace-nowrap",
                     isActive ? "text-brand" : "text-app-text hover:text-brand"
                 )
             }
         >
             {children}
         </NavLink>
+    );
+}
+
+function NavbarDropdown({ label, to, items }) {
+    return (
+        <div className="group relative">
+            {to ? (
+                <NavLink
+                    to={to}
+                    className={({ isActive }) =>
+                        cn(
+                            "cursor-pointer whitespace-nowrap type-body-m transition-colors",
+                            isActive ? "text-brand" : "text-app-text hover:text-brand"
+                        )
+                    }
+                >
+                    {label}
+                </NavLink>
+            ) : (
+                <button
+                    type="button"
+                    className="cursor-default whitespace-nowrap type-body-m text-app-text transition-colors group-hover:text-brand"
+                >
+                    {label}
+                </button>
+            )}
+
+            <div className="invisible absolute left-1/2 top-full z-40 w-[196px] -translate-x-1/2 pt-[16px] opacity-0 transition-opacity duration-150 group-hover:visible group-hover:opacity-100">
+                <div className="rounded-tk-4 border border-[#565669] bg-[#24242c] p-[6px] shadow-[0_18px_40px_rgba(0,0,0,0.36)]">
+                    {items.map((item) => (
+                        <Link
+                            key={item.to}
+                            to={item.to}
+                            className="block cursor-pointer rounded-tk-4 px-[12px] py-[10px] type-body-s font-bold text-[#f1f1f3] transition-colors hover:bg-white/10 hover:text-[#fbfb1e]"
+                        >
+                            {item.label}
+                        </Link>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function MobileMenuLabel({ children }) {
+    return (
+        <p className="px-[12px] pt-[8px] type-label-s text-app-text-subtle">
+            {children}
+        </p>
     );
 }
 
@@ -394,7 +468,7 @@ function MobileNavLink({ to, children, onNavigate }) {
             onClick={onNavigate}
             className={({ isActive }) =>
                 cn(
-                    "rounded-tk-8 px-[12px] py-[12px] type-body-s transition-colors",
+                    "cursor-pointer rounded-tk-8 px-[12px] py-[12px] type-body-s transition-colors",
                     isActive
                         ? "bg-app-background text-brand"
                         : "text-app-text-muted hover:bg-app-background hover:text-brand"

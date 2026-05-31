@@ -105,21 +105,35 @@ export const authApi = {
 };
 
 export const movieApi = {
-  getAll: () => apiRequest("/movies"),
+  getCatalog: ({ status, query = "", genre = "", page = 0, size = 12 }) => {
+    const params = new URLSearchParams({
+      status,
+      page: String(page),
+      size: String(size),
+    });
+
+    if (query) params.set("query", query);
+    if (genre && genre !== "all") params.set("genre", genre);
+
+    return apiRequest(`/movies?${params.toString()}`);
+  },
 
   getNowPlaying: (limit = 10) => apiRequest(`/movies/now-playing?limit=${limit}`),
+
+  getComingSoon: (limit = 10) => apiRequest(`/movies/coming-soon?limit=${limit}`),
 
   getTrendingThisWeek: (limit = 10) =>
     apiRequest(`/movies/trending/week?limit=${limit}`),
 
-  search: (query) => apiRequest(`/movies?query=${encodeURIComponent(query)}`),
+  getGenres: (status) =>
+    apiRequest(`/movies/genres?status=${encodeURIComponent(status)}`),
 
   autocomplete: (query, limit = 6) =>
     apiRequest(
       `/movies/autocomplete?query=${encodeURIComponent(query)}&limit=${limit}`
     ),
 
-  getById: (movieId) => apiRequest(`/movies/${movieId}`),
+  getById: (movieRef) => apiRequest(`/movies/${movieRef}`),
 
   getByActorName: (actorName) =>
     apiRequest(`/movies/by-actor?actorName=${encodeURIComponent(actorName)}`),
@@ -160,10 +174,16 @@ export const tmdbApi = {
 export const adminApi = {
   getSummary: () => apiRequest("/admin/summary"),
 
-  getMovies: (query = "") =>
-    apiRequest(
-      query ? `/admin/movies?query=${encodeURIComponent(query)}` : "/admin/movies"
-    ),
+  getMovies: ({ query = "", page = 0, size = 20 } = {}) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(size),
+    });
+
+    if (query) params.set("query", query);
+
+    return apiRequest(`/admin/movies?${params.toString()}`);
+  },
 
   updateMovie: (movieId, data) =>
     apiRequest(`/admin/movies/${movieId}`, {
@@ -176,7 +196,10 @@ export const adminApi = {
       method: "DELETE",
     }),
 
-  getUsers: () => apiRequest("/admin/users"),
+  getUsers: ({ page = 0, size = 20 } = {}) =>
+    apiRequest(`/admin/users?page=${page}&size=${size}`),
+
+  getRecentUsers: () => apiRequest("/admin/users/recent"),
 
   updateUserRole: (userId, role) =>
     apiRequest(`/admin/users/${userId}/role`, {
@@ -189,12 +212,14 @@ export const adminApi = {
       method: "DELETE",
     }),
 
-  getBookings: () => apiRequest("/admin/bookings"),
+  getBookings: ({ page = 0, size = 20 } = {}) =>
+    apiRequest(`/admin/bookings?page=${page}&size=${size}`),
 
-  updateBookingStatus: (bookingId, status) =>
-    apiRequest(`/admin/bookings/${bookingId}/status`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
+  getRecentBookings: () => apiRequest("/admin/bookings/recent"),
+
+  deleteBooking: (bookingId) =>
+    apiRequest(`/admin/bookings/${bookingId}`, {
+      method: "DELETE",
     }),
 };
 
@@ -216,22 +241,5 @@ export const bookingApi = {
   cancelBooking: (bookingId) =>
     apiRequest(`/bookings/${bookingId}/cancel`, {
       method: "PATCH",
-    }),
-};
-
-export const favoritesApi = {
-  getUserFavorites: (userId) => apiRequest(`/users/${userId}/favorites`),
-
-  isFavorite: (userId, movieId) =>
-    apiRequest(`/users/${userId}/favorites/${movieId}`),
-
-  addFavorite: (userId, movieId) =>
-    apiRequest(`/users/${userId}/favorites/${movieId}`, {
-      method: "POST",
-    }),
-
-  removeFavorite: (userId, movieId) =>
-    apiRequest(`/users/${userId}/favorites/${movieId}`, {
-      method: "DELETE",
     }),
 };

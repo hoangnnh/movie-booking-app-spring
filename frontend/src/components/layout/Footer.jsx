@@ -7,9 +7,8 @@ const footerColumns = [
     {
         title: "Find a Movie",
         links: [
-            { label: "In Theaters", to: "/movies" },
-            { label: "Top Movies", to: "/movies" },
-            { label: "Coming Soon", to: "/movies" },
+            { label: "Showing Now", to: "/movies/showing-now" },
+            { label: "Coming Soon", to: "/movies/coming-soon" },
         ],
     },
     {

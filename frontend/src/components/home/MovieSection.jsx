@@ -1,11 +1,10 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import Button from "../common/Button";
 import MovieCard from "../movie/MovieCard";
 import SectionHeader from "./SectionHeader";
 import { normalizeMovie } from "./homeUtils";
-import { cn } from "../../utils/cn";
+import { getMovieDetailPath } from "../../utils/moviePath";
 
 export default function MovieSection({
   title,
@@ -16,22 +15,56 @@ export default function MovieSection({
 }) {
   const navigate = useNavigate();
   const carouselRef = useRef(null);
+  const [startIndex, setStartIndex] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(1);
 
   const visibleMovies = movies.slice(0, limit).map(normalizeMovie);
+  const maxStartIndex = Math.max(0, visibleMovies.length - visibleCount);
 
-  if (visibleMovies.length === 0) return null;
-
-  function scrollCarousel(direction) {
+  useEffect(() => {
     const carousel = carouselRef.current;
 
-    if (!carousel) return;
+    if (!carousel) return undefined;
 
-    const cardWidth = carousel.querySelector("article")?.offsetWidth || 220;
-    carousel.scrollBy({
-      left: direction * (cardWidth * 3 + 48),
+    function updateVisibleCount() {
+      const firstCard = carousel.querySelector("article");
+
+      if (!firstCard) return;
+
+      const styles = window.getComputedStyle(carousel);
+      const gap = Number.parseFloat(styles.columnGap || styles.gap) || 0;
+      const nextVisibleCount = Math.max(
+        1,
+        Math.floor((carousel.clientWidth + gap) / (firstCard.offsetWidth + gap))
+      );
+
+      setVisibleCount(nextVisibleCount);
+      setStartIndex((current) =>
+        Math.min(current, Math.max(0, visibleMovies.length - nextVisibleCount))
+      );
+    }
+
+    updateVisibleCount();
+
+    const resizeObserver = new ResizeObserver(updateVisibleCount);
+    resizeObserver.observe(carousel);
+
+    return () => resizeObserver.disconnect();
+  }, [visibleMovies.length]);
+
+  useEffect(() => {
+    const carousel = carouselRef.current;
+    const targetCard = carousel?.querySelectorAll("article")[startIndex];
+
+    if (!carousel || !targetCard) return;
+
+    carousel.scrollTo({
+      left: targetCard.offsetLeft,
       behavior: "smooth",
     });
-  }
+  }, [startIndex]);
+
+  if (visibleMovies.length === 0) return null;
 
   return (
     <section className="ticketor-container py-[56px]">
@@ -39,23 +72,25 @@ export default function MovieSection({
         title={title}
         description={description}
         onAction={() => {
-          const params = new URLSearchParams();
-
-          if (status === "coming-soon") {
-            params.set("status", "coming-soon");
-          }
-
-          navigate(params.toString() ? `/movies?${params.toString()}` : "/movies");
+          navigate(status === "coming-soon" ? "/movies/coming-soon" : "/movies/showing-now");
         }}
       />
 
       <div className="relative">
+        {startIndex > 0 && (
+          <button
+            type="button"
+            aria-label={`Show previous ${title.toLowerCase()} movie`}
+            onClick={() => setStartIndex((current) => Math.max(0, current - 1))}
+            className="absolute left-[-18px] top-[132px] z-10 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-error-600 text-white shadow-[0_8px_22px_rgba(0,0,0,0.32)] transition-colors hover:bg-error-500"
+          >
+            <ChevronLeft className="h-[34px] w-[34px]" />
+          </button>
+        )}
+
         <div
           ref={carouselRef}
-          className={cn(
-            "flex snap-x snap-mandatory gap-[24px] overflow-x-auto pb-[12px] scroll-smooth",
-            "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          )}
+          className="flex gap-[24px] overflow-hidden pb-[12px] scroll-smooth"
         >
           {visibleMovies.map((movie) => (
             <MovieCard
@@ -66,6 +101,7 @@ export default function MovieSection({
               rating={movie.rating}
               ageRating={movie.ageRating}
               posterUrl={movie.posterUrl}
+              trailerUrl={movie.trailerUrl}
               status={status}
               releaseText={
                 movie.releaseDate
@@ -80,31 +116,23 @@ export default function MovieSection({
                   : "Releases March 15, 2025"
               }
               className="w-[220px] snap-start"
-              onBook={() => navigate(`/movies/${movie.id}`)}
-              onTrailer={() => navigate(`/movies/${movie.id}`)}
+              onBook={() => navigate(getMovieDetailPath(movie))}
+              onOpenDetails={() => navigate(getMovieDetailPath(movie))}
             />
           ))}
         </div>
 
-        {visibleMovies.length > 5 && (
-          <div className="mt-[20px] flex justify-end gap-[8px]">
-            <Button
-              size={40}
-              variant="outline"
-              tone="brand"
-              iconOnly
-              rightIcon={<ChevronLeft />}
-              onClick={() => scrollCarousel(-1)}
-            />
-
-            <Button
-              size={40}
-              variant="primary"
-              iconOnly
-              rightIcon={<ChevronRight />}
-              onClick={() => scrollCarousel(1)}
-            />
-          </div>
+        {startIndex < maxStartIndex && (
+          <button
+            type="button"
+            aria-label={`Show next ${title.toLowerCase()} movie`}
+            onClick={() =>
+              setStartIndex((current) => Math.min(maxStartIndex, current + 1))
+            }
+            className="absolute right-[-18px] top-[132px] z-10 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-error-600 text-white shadow-[0_8px_22px_rgba(0,0,0,0.32)] transition-colors hover:bg-error-500"
+          >
+            <ChevronRight className="h-[34px] w-[34px]" />
+          </button>
         )}
       </div>
     </section>

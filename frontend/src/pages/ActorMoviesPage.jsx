@@ -8,6 +8,7 @@ import {
   getPosterUrl,
   isComingSoon,
 } from "../components/home/homeUtils";
+import { getMovieDetailPath } from "../utils/moviePath";
 
 export default function ActorMoviesPage() {
   const navigate = useNavigate();
@@ -110,6 +111,7 @@ export default function ActorMoviesPage() {
                 rating={movie.rating || "8.5"}
                 ageRating={movie.ageRating || "PG-13"}
                 posterUrl={movie.posterUrl}
+                trailerUrl={movie.trailerUrl}
                 status={movie.comingSoon ? "coming-soon" : "released"}
                 releaseText={
                   movie.releaseDate
@@ -124,8 +126,8 @@ export default function ActorMoviesPage() {
                     : "Release date coming soon"
                 }
                 className="w-full"
-                onBook={() => navigate(`/movies/${movie.id}`)}
-                onTrailer={() => navigate(`/movies/${movie.id}`)}
+                onBook={() => navigate(getMovieDetailPath(movie))}
+                onOpenDetails={() => navigate(getMovieDetailPath(movie))}
               />
             ))}
           </section>

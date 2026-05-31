@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Clock, Play, Star } from "lucide-react";
 import Button from "../common/Button";
 import { cn } from "../../utils/cn";
+import { getEmbeddedTrailerUrl } from "../movieDetail/trailerUtils";
+import TrailerDialog from "./TrailerDialog";
 
 export default function MovieCard({
     title = "The Dark Knight",
@@ -9,18 +12,42 @@ export default function MovieCard({
     rating = "8.5",
     ageRating = "PG-13",
     posterUrl = "",
-    status = "released", // released | coming-soon
+    trailerUrl = "",
+    status = "released", // released | coming-soon | hidden
     releaseText = "Releases March 15, 2025",
     onBook,
-    onTrailer,
+    onOpenDetails,
     className = "",
 }) {
+    const [isTrailerOpen, setIsTrailerOpen] = useState(false);
     const isComingSoon = status === "coming-soon";
+    const isHidden = status === "hidden";
+    const trailerAvailable = Boolean(getEmbeddedTrailerUrl(trailerUrl));
+
+    function openDetails(event) {
+        if (event?.target.closest("button")) return;
+
+        onOpenDetails?.();
+    }
+
+    function handleCardKeyDown(event) {
+        if (
+            event.target === event.currentTarget &&
+            (event.key === "Enter" || event.key === " ")
+        ) {
+            event.preventDefault();
+            openDetails();
+        }
+    }
 
     return (
         <article
+            role="link"
+            tabIndex={0}
+            onClick={openDetails}
+            onKeyDown={handleCardKeyDown}
             className={cn(
-                "group w-[172px] shrink-0 overflow-hidden bg-app-background text-app-text",
+                "group w-[172px] shrink-0 cursor-pointer overflow-hidden bg-app-background text-app-text outline-none transition-transform focus-visible:ring-2 focus-visible:ring-brand",
                 className
             )}
         >
@@ -29,6 +56,8 @@ export default function MovieCard({
                     <img
                         src={posterUrl}
                         alt={title}
+                        loading="lazy"
+                        decoding="async"
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                 ) : (
@@ -40,21 +69,38 @@ export default function MovieCard({
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-80" />
 
                 <div className="absolute bottom-[8px] left-[8px] right-[8px] flex flex-col gap-[8px] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                    {!isComingSoon && (
-                        <Button size={28} variant="primary" className="w-full" onClick={onBook}>
+                    {!isComingSoon && !isHidden && (
+                        <Button
+                            size={28}
+                            variant="primary"
+                            className="w-full"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onBook?.();
+                            }}
+                        >
                             Book Now
                         </Button>
                     )}
 
                     <Button
                         size={28}
-                        variant={isComingSoon ? "primary" : "text"}
-                        tone={isComingSoon ? "brand" : "base"}
-                        className="w-full"
+                        variant={isComingSoon || isHidden ? "primary" : "text"}
+                        tone={isComingSoon || isHidden ? "brand" : "base"}
+                        disabled={!trailerAvailable}
+                        className={cn(
+                            "w-full",
+                            !isComingSoon &&
+                                !isHidden &&
+                                "bg-black/55 text-white hover:bg-black/75 hover:text-white"
+                        )}
                         leftIcon={<Play />}
-                        onClick={onTrailer}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            setIsTrailerOpen(true);
+                        }}
                     >
-                        Watch Trailer
+                        {trailerAvailable ? "Watch Trailer" : "Trailer Unavailable"}
                     </Button>
                 </div>
             </div>
@@ -68,7 +114,7 @@ export default function MovieCard({
                         </p>
                     </div>
 
-                    {!isComingSoon && (
+                    {!isComingSoon && !isHidden && (
                         <div className="flex shrink-0 items-center gap-[4px]">
                             <Star className="h-[12px] w-[12px] fill-brand text-brand" />
                             <span className="type-body-xs text-app-text">{rating}</span>
@@ -76,9 +122,9 @@ export default function MovieCard({
                     )}
                 </div>
 
-                {isComingSoon ? (
+                {isComingSoon || isHidden ? (
                     <p className="type-body-xs mt-[8px] text-app-text-muted">
-                        {releaseText}
+                        {isHidden ? "Currently unavailable" : releaseText}
                     </p>
                 ) : (
                     <div className="mt-[8px] flex items-center justify-between">
@@ -93,6 +139,14 @@ export default function MovieCard({
                     </div>
                 )}
             </div>
+
+            {isTrailerOpen && (
+                <TrailerDialog
+                    title={title}
+                    trailerUrl={trailerUrl}
+                    onClose={() => setIsTrailerOpen(false)}
+                />
+            )}
         </article>
     );
 }

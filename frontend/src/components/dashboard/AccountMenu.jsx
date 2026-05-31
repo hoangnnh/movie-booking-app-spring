@@ -1,4 +1,4 @@
-import { Bookmark, Ticket } from "lucide-react";
+import { Ticket } from "lucide-react";
 import { cn } from "../../utils/cn";
 
 const menuItems = [
@@ -6,11 +6,6 @@ const menuItems = [
     key: "booking",
     label: "My Booking",
     icon: Ticket,
-  },
-  {
-    key: "watchlist",
-    label: "My Watchlist",
-    icon: Bookmark,
   },
 ];
 

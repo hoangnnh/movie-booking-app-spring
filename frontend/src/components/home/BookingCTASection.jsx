@@ -27,7 +27,7 @@ export default function BookingCTASection() {
           </p>
 
           <div className="mt-[24px] flex flex-col gap-[12px] sm:mt-[32px] sm:flex-row sm:items-center">
-            <Button size={40} variant="primary" className="w-full sm:w-auto" onClick={() => navigate("/movies")}>
+            <Button size={40} variant="primary" className="w-full sm:w-auto" onClick={() => navigate("/movies/showing-now")}>
               Book Movie Ticket
             </Button>
 

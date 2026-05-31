@@ -1,4 +1,4 @@
-import { Bookmark, Check, PlayCircle } from "lucide-react";
+import { PlayCircle } from "lucide-react";
 import Button from "../common/Button";
 import RatingBadge from "../common/RatingBadge";
 
@@ -13,10 +13,7 @@ export default function MovieHero({
   onGetTicket,
   onPlayTrailer,
   trailerAvailable = false,
-  onToggleFavorite,
-  favoriteButtonLabel = "Add to Favorites",
-  favoriteActive = false,
-  favoriteDisabled = false,
+  bookingAvailable = true,
 }) {
   return (
     <section className="ticketor-container pt-[24px] sm:pt-[32px]">
@@ -109,21 +106,16 @@ export default function MovieHero({
             </div>
 
             <div className="flex flex-col gap-[12px] sm:flex-row sm:items-center">
-              <Button size={40} variant="primary" className="w-full sm:w-auto" onClick={onGetTicket}>
-                Get Ticket
-              </Button>
+              {bookingAvailable ? (
+                <Button size={40} variant="primary" className="w-full sm:w-auto" onClick={onGetTicket}>
+                  Get Ticket
+                </Button>
+              ) : (
+                <span className="rounded-tk-4 border border-app-border px-[16px] py-[10px] type-body-s text-app-text-muted">
+                  Currently unavailable for booking
+                </span>
+              )}
 
-              <Button
-                size={40}
-                variant={favoriteActive ? "primary" : "outline"}
-                tone={favoriteActive ? "brand" : "base"}
-                leftIcon={favoriteActive ? <Check /> : <Bookmark />}
-                onClick={onToggleFavorite}
-                disabled={favoriteDisabled}
-                className="w-full sm:w-auto"
-              >
-                {favoriteButtonLabel}
-              </Button>
             </div>
           </div>
         </div>

@@ -23,9 +23,10 @@ export default function CardsPreview() {
               duration="2h 2m"
               rating="8.5"
               ageRating="PG-13"
+              trailerUrl="https://www.youtube.com/watch?v=EXeTwQWrcwY"
               status="released"
               onBook={() => alert("Book Now")}
-              onTrailer={() => alert("Watch Trailer")}
+              onOpenDetails={() => alert("Open Details")}
             />
 
             <MovieCard
@@ -35,9 +36,10 @@ export default function CardsPreview() {
               duration="2h 2m"
               rating="8.5"
               ageRating="PG-13"
+              trailerUrl="https://www.youtube.com/watch?v=EXeTwQWrcwY"
               status="coming-soon"
               releaseText="Releases March 15, 2025"
-              onTrailer={() => alert("Watch Trailer")}
+              onOpenDetails={() => alert("Open Details")}
             />
           </div>
         </section>

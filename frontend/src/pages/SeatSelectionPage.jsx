@@ -14,6 +14,7 @@ import SeatMap from "../components/booking/SeatMap";
 import Button from "../components/common/Button";
 import { formatDuration, getPosterUrl } from "../components/home/homeUtils";
 import { formatVnd } from "../utils/currency";
+import { getMovieBookingPath } from "../utils/moviePath";
 
 function formatDateTime(value) {
   const date = new Date(value);
@@ -203,14 +204,14 @@ export default function SeatSelectionPage() {
           className="mb-[32px] inline-flex items-center gap-[8px] type-body-s text-app-text-muted transition-colors hover:text-brand"
           onClick={() =>
             navigate(
-              `/booking/${showtimeId}${
+              `${getMovieBookingPath(movie)}${
                 selectedDateParam ? `?date=${encodeURIComponent(selectedDateParam)}` : ""
               }`
             )
           }
         >
           <ChevronLeft className="h-[16px] w-[16px]" />
-          Back to time selection
+          Back to movie showtimes
         </button>
 
         <BookingProgress currentStep={0} className="mb-[32px] sm:mb-[56px]" />

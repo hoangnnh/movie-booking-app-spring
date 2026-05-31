@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
-import { favoritesApi, movieApi } from "../api/api";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { movieApi } from "../api/api";
 
 import MovieHero from "../components/movieDetail/MovieHero";
 import MovieSection from "../components/home/MovieSection";
@@ -10,21 +10,19 @@ import ReviewsSection from "../components/movieDetail/ReviewsSection";
 import ShowtimesSection from "../components/movieDetail/ShowtimesSection";
 
 import { formatDuration, getPosterUrl, isComingSoon } from "../components/home/homeUtils";
-import { useAuth } from "../context/useAuth";
 import { getEmbeddedTrailerUrl } from "../components/movieDetail/trailerUtils";
+import { getMovieDetailPath } from "../utils/moviePath";
 
-export default function MovieDetailPage({ onRequireAuth }) {
-  const { movieId } = useParams();
-  const { user, isAuthenticated } = useAuth();
+export default function MovieDetailPage() {
+  const { movieRef } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [movie, setMovie] = useState(null);
   const [showtimes, setShowtimes] = useState([]);
   const [similarMovies, setSimilarMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [favoriteLoading, setFavoriteLoading] = useState(false);
-  const [favoriteMessage, setFavoriteMessage] = useState("");
   const [isTrailerOpen, setIsTrailerOpen] = useState(false);
 
   useEffect(() => {
@@ -33,10 +31,8 @@ export default function MovieDetailPage({ onRequireAuth }) {
         setLoading(true);
         setError("");
 
-        const [movieData, showtimeData] = await Promise.all([
-          movieApi.getById(movieId),
-          movieApi.getShowtimes(movieId),
-        ]);
+        const movieData = await movieApi.getById(movieRef);
+        const showtimeData = await movieApi.getShowtimes(movieData.id);
 
         setMovie(movieData);
         setShowtimes(showtimeData);
@@ -48,19 +44,19 @@ export default function MovieDetailPage({ onRequireAuth }) {
     }
 
     loadMovieDetail();
-  }, [movieId]);
+  }, [movieRef]);
 
   useEffect(() => {
     let ignore = false;
 
     async function loadSimilarMovies() {
-      if (!movieId) {
+      if (!movie?.id) {
         setSimilarMovies([]);
         return;
       }
 
       try {
-        const data = await movieApi.getSimilar(movieId, 8);
+        const data = await movieApi.getSimilar(movie.id, 8);
 
         if (!ignore) {
           setSimilarMovies(Array.isArray(data) ? data : []);
@@ -77,42 +73,7 @@ export default function MovieDetailPage({ onRequireAuth }) {
     return () => {
       ignore = true;
     };
-  }, [movieId]);
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadFavoriteState() {
-      if (!isAuthenticated || !user?.userId || !movieId) {
-        setIsFavorite(false);
-        setFavoriteMessage("");
-        return;
-      }
-
-      try {
-        setFavoriteLoading(true);
-        const response = await favoritesApi.isFavorite(user.userId, movieId);
-
-        if (!ignore) {
-          setIsFavorite(Boolean(response.favorite));
-        }
-      } catch {
-        if (!ignore) {
-          setFavoriteMessage("Cannot load your favorite status right now.");
-        }
-      } finally {
-        if (!ignore) {
-          setFavoriteLoading(false);
-        }
-      }
-    }
-
-    loadFavoriteState();
-
-    return () => {
-      ignore = true;
-    };
-  }, [isAuthenticated, movieId, user?.userId]);
+  }, [movie?.id]);
 
   const computedMovie = useMemo(() => {
     if (!movie) return null;
@@ -132,6 +93,19 @@ export default function MovieDetailPage({ onRequireAuth }) {
   const visibleSimilarMovies = useMemo(() => {
     return similarMovies.filter((item) => !isComingSoon(item));
   }, [similarMovies]);
+  const bookingAvailable = computedMovie?.displayStatus === "SHOWING_NOW";
+
+  useEffect(() => {
+    if (!computedMovie) return;
+
+    const canonicalPath = getMovieDetailPath(computedMovie);
+
+    if (location.pathname !== canonicalPath) {
+      navigate(`${canonicalPath}${location.search}${location.hash}`, {
+        replace: true,
+      });
+    }
+  }, [computedMovie, location.hash, location.pathname, location.search, navigate]);
 
   useEffect(() => {
     if (!isTrailerOpen) {
@@ -172,34 +146,6 @@ export default function MovieDetailPage({ onRequireAuth }) {
     );
   }
 
-  async function handleToggleFavorite() {
-    if (!isAuthenticated || !user?.userId) {
-      onRequireAuth?.();
-      return;
-    }
-
-    try {
-      setFavoriteLoading(true);
-      setFavoriteMessage("");
-
-      const response = isFavorite
-        ? await favoritesApi.removeFavorite(user.userId, movieId)
-        : await favoritesApi.addFavorite(user.userId, movieId);
-
-      const nextFavoriteState = Boolean(response.favorite);
-      setIsFavorite(nextFavoriteState);
-      setFavoriteMessage(
-        nextFavoriteState
-          ? "Added to your favorites."
-          : "Removed from your favorites."
-      );
-    } catch {
-      setFavoriteMessage("We couldn't update favorites right now.");
-    } finally {
-      setFavoriteLoading(false);
-    }
-  }
-
   return (
     <div className="bg-app-background text-app-text">
       <MovieHero
@@ -217,32 +163,13 @@ export default function MovieDetailPage({ onRequireAuth }) {
         }}
         onPlayTrailer={() => setIsTrailerOpen(true)}
         trailerAvailable={Boolean(computedMovie.trailerEmbedUrl)}
-        onToggleFavorite={handleToggleFavorite}
-        favoriteButtonLabel={
-          !isAuthenticated
-            ? "Sign In to Save"
-            : favoriteLoading
-              ? "Saving..."
-              : isFavorite
-                ? "Saved"
-                : "Add to Favorites"
-        }
-        favoriteActive={isFavorite}
-        favoriteDisabled={favoriteLoading}
+        bookingAvailable={bookingAvailable}
       />
-
-      {favoriteMessage && (
-        <div className="ticketor-container pt-[16px]">
-          <div className="rounded-card border border-app-border bg-app-surface px-[16px] py-[12px] type-body-s text-app-text-muted">
-            {favoriteMessage}
-          </div>
-        </div>
-      )}
 
       <MovieSummarySection movie={computedMovie} />
       <CastSection cast={computedMovie.cast} />
       <ReviewsSection score={computedMovie.rating} />
-      <ShowtimesSection showtimes={showtimes} />
+      <ShowtimesSection showtimes={showtimes} bookingAvailable={bookingAvailable} />
       {visibleSimilarMovies.length > 0 && (
         <MovieSection
           title="More Like This"

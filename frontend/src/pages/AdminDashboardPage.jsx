@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
+  CalendarClock,
+  ChevronDown,
+  CircleDollarSign,
   Download,
+  EyeOff,
   Film,
   RefreshCw,
   Save,
@@ -24,8 +28,13 @@ const tabs = [
   { key: "bookings", label: "Bookings", icon: Ticket },
 ];
 
-const bookingStatuses = ["PENDING", "CONFIRMED", "CANCELLED", "EXPIRED"];
+const movieDisplayStatuses = ["SHOWING_NOW", "COMING_SOON", "HIDDEN"];
 const ADMIN_PAGE_SIZE = 8;
+const EMPTY_PAGE = {
+  totalItems: 0,
+  totalPages: 1,
+  page: 0,
+};
 
 export default function AdminDashboardPage({ onRequireAuth }) {
   const navigate = useNavigate();
@@ -35,7 +44,13 @@ export default function AdminDashboardPage({ onRequireAuth }) {
   const [movies, setMovies] = useState([]);
   const [users, setUsers] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [recentUsers, setRecentUsers] = useState([]);
+  const [recentBookings, setRecentBookings] = useState([]);
+  const [movieMeta, setMovieMeta] = useState(EMPTY_PAGE);
+  const [userMeta, setUserMeta] = useState(EMPTY_PAGE);
+  const [bookingMeta, setBookingMeta] = useState(EMPTY_PAGE);
   const [movieQuery, setMovieQuery] = useState("");
+  const [appliedMovieQuery, setAppliedMovieQuery] = useState("");
   const [editingMovieId, setEditingMovieId] = useState(null);
   const [movieDraft, setMovieDraft] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -46,89 +61,116 @@ export default function AdminDashboardPage({ onRequireAuth }) {
   const [bookingPage, setBookingPage] = useState(1);
 
   const isAdmin = user?.role === "ADMIN";
-  const paginatedMovies = usePaginatedItems(movies, moviePage, ADMIN_PAGE_SIZE);
-  const paginatedUsers = usePaginatedItems(users, userPage, ADMIN_PAGE_SIZE);
-  const paginatedBookings = usePaginatedItems(bookings, bookingPage, ADMIN_PAGE_SIZE);
 
-  async function loadAdminData() {
+  const loadOverviewData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
-      const [summaryData, movieData, userData, bookingData] = await Promise.all([
+      const [summaryData, userData, bookingData] = await Promise.all([
         adminApi.getSummary(),
-        adminApi.getMovies(movieQuery),
-        adminApi.getUsers(),
-        adminApi.getBookings(),
+        adminApi.getRecentUsers(),
+        adminApi.getRecentBookings(),
       ]);
 
       setSummary(summaryData);
-      setMovies(Array.isArray(movieData) ? movieData : []);
-      setUsers(Array.isArray(userData) ? userData : []);
-      setBookings(Array.isArray(bookingData) ? bookingData : []);
-      setMoviePage(1);
-      setUserPage(1);
-      setBookingPage(1);
+      setRecentUsers(Array.isArray(userData) ? userData : []);
+      setRecentBookings(Array.isArray(bookingData) ? bookingData : []);
     } catch (err) {
       setError(cleanError(err));
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  useEffect(() => {
-    if (!isAuthenticated || !isAdmin) {
-      return undefined;
-    }
-
-    let ignore = false;
-
-    async function loadInitialAdminData() {
-      try {
-        setLoading(true);
-        setError("");
-        const [summaryData, movieData, userData, bookingData] = await Promise.all([
-          adminApi.getSummary(),
-          adminApi.getMovies(),
-          adminApi.getUsers(),
-          adminApi.getBookings(),
-        ]);
-
-        if (!ignore) {
-          setSummary(summaryData);
-          setMovies(Array.isArray(movieData) ? movieData : []);
-          setUsers(Array.isArray(userData) ? userData : []);
-          setBookings(Array.isArray(bookingData) ? bookingData : []);
-        }
-      } catch (err) {
-        if (!ignore) {
-          setError(cleanError(err));
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadInitialAdminData();
-
-    return () => {
-      ignore = true;
-    };
-  }, [isAuthenticated, isAdmin]);
-
-  async function searchMovies(event) {
-    event.preventDefault();
+  const loadMoviesPage = useCallback(async (nextPage = moviePage, nextQuery = appliedMovieQuery) => {
     try {
       setLoading(true);
       setError("");
-      const data = await adminApi.getMovies(movieQuery.trim());
-      setMovies(Array.isArray(data) ? data : []);
-      setMoviePage(1);
+      const data = await adminApi.getMovies({
+        query: nextQuery,
+        page: nextPage - 1,
+        size: ADMIN_PAGE_SIZE,
+      });
+      setMovies(Array.isArray(data?.items) ? data.items : []);
+      setMovieMeta(normalizePageMeta(data));
     } catch (err) {
       setError(cleanError(err));
     } finally {
       setLoading(false);
+    }
+  }, [appliedMovieQuery, moviePage]);
+
+  const loadUsersPage = useCallback(async (nextPage = userPage) => {
+    try {
+      setLoading(true);
+      setError("");
+      const data = await adminApi.getUsers({
+        page: nextPage - 1,
+        size: ADMIN_PAGE_SIZE,
+      });
+      setUsers(Array.isArray(data?.items) ? data.items : []);
+      setUserMeta(normalizePageMeta(data));
+    } catch (err) {
+      setError(cleanError(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [userPage]);
+
+  const loadBookingsPage = useCallback(async (nextPage = bookingPage) => {
+    try {
+      setLoading(true);
+      setError("");
+      const data = await adminApi.getBookings({
+        page: nextPage - 1,
+        size: ADMIN_PAGE_SIZE,
+      });
+      setBookings(Array.isArray(data?.items) ? data.items : []);
+      setBookingMeta(normalizePageMeta(data));
+    } catch (err) {
+      setError(cleanError(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [bookingPage]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isAdmin) return;
+
+    const timeoutId = window.setTimeout(() => {
+      if (activeTab === "overview") loadOverviewData();
+      if (activeTab === "movies") loadMoviesPage();
+      if (activeTab === "users") loadUsersPage();
+      if (activeTab === "bookings") loadBookingsPage();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    activeTab,
+    isAuthenticated,
+    isAdmin,
+    loadBookingsPage,
+    loadMoviesPage,
+    loadOverviewData,
+    loadUsersPage,
+  ]);
+
+  async function loadAdminData() {
+    if (activeTab === "overview") await loadOverviewData();
+    if (activeTab === "movies") await loadMoviesPage();
+    if (activeTab === "users") await loadUsersPage();
+    if (activeTab === "bookings") await loadBookingsPage();
+  }
+
+  async function searchMovies(event) {
+    event.preventDefault();
+    const nextQuery = movieQuery.trim();
+    const shouldReloadDirectly = nextQuery === appliedMovieQuery && moviePage === 1;
+    setAppliedMovieQuery(nextQuery);
+    setMoviePage(1);
+
+    if (shouldReloadDirectly) {
+      await loadMoviesPage(1, nextQuery);
     }
   }
 
@@ -142,6 +184,7 @@ export default function AdminDashboardPage({ onRequireAuth }) {
       backdropUrl: movie.backdropUrl || "",
       releaseDate: movie.releaseDate || "",
       rating: movie.rating || "",
+      displayStatus: movie.displayStatus || "HIDDEN",
     });
   }
 
@@ -172,7 +215,7 @@ export default function AdminDashboardPage({ onRequireAuth }) {
       setError("");
       setMessage("");
       await adminApi.deleteMovie(movieId);
-      setMovies((current) => current.filter((movie) => movie.id !== movieId));
+      await loadMoviesPage();
       setMessage("Movie deleted.");
     } catch (err) {
       setError(cleanError(err));
@@ -196,21 +239,19 @@ export default function AdminDashboardPage({ onRequireAuth }) {
     try {
       setError("");
       await adminApi.deleteUser(userId);
-      setUsers((current) => current.filter((item) => item.id !== userId));
+      await loadUsersPage();
       setMessage("User deleted.");
     } catch (err) {
       setError(cleanError(err));
     }
   }
 
-  async function updateBookingStatus(bookingId, status) {
+  async function deleteBooking(bookingId) {
     try {
       setError("");
-      const updated = await adminApi.updateBookingStatus(bookingId, status);
-      setBookings((current) =>
-        current.map((booking) => (booking.id === bookingId ? updated : booking))
-      );
-      setMessage("Booking status updated.");
+      await adminApi.deleteBooking(bookingId);
+      await loadBookingsPage();
+      setMessage("Booking removed.");
     } catch (err) {
       setError(cleanError(err));
     }
@@ -304,9 +345,9 @@ export default function AdminDashboardPage({ onRequireAuth }) {
         {activeTab === "movies" && (
           <MoviesPanel
             movies={movies}
-            currentPage={paginatedMovies.currentPage}
-            totalPages={paginatedMovies.totalPages}
-            visibleMovies={paginatedMovies.visibleItems}
+            currentPage={moviePage}
+            totalPages={movieMeta.totalPages}
+            totalItems={movieMeta.totalItems}
             onPageChange={setMoviePage}
             query={movieQuery}
             onQueryChange={setMovieQuery}
@@ -328,9 +369,9 @@ export default function AdminDashboardPage({ onRequireAuth }) {
         {activeTab === "users" && (
           <UsersPanel
             users={users}
-            currentPage={paginatedUsers.currentPage}
-            totalPages={paginatedUsers.totalPages}
-            visibleUsers={paginatedUsers.visibleItems}
+            currentPage={userPage}
+            totalPages={userMeta.totalPages}
+            totalItems={userMeta.totalItems}
             onPageChange={setUserPage}
             currentUserId={user?.userId}
             onRoleChange={updateUserRole}
@@ -341,17 +382,20 @@ export default function AdminDashboardPage({ onRequireAuth }) {
         {activeTab === "bookings" && (
           <BookingsPanel
             bookings={bookings}
-            currentPage={paginatedBookings.currentPage}
-            totalPages={paginatedBookings.totalPages}
-            visibleBookings={paginatedBookings.visibleItems}
+            currentPage={bookingPage}
+            totalPages={bookingMeta.totalPages}
+            totalItems={bookingMeta.totalItems}
             onPageChange={setBookingPage}
-            onStatusChange={updateBookingStatus}
+            onDelete={deleteBooking}
           />
         )}
 
         {activeTab === "overview" && (
           <OverviewPanel
             summary={summary}
+            users={recentUsers}
+            bookings={recentBookings}
+            onOpenTab={setActiveTab}
             onImport={() => navigate("/admin/imports")}
           />
         )}
@@ -381,44 +425,207 @@ function AdminGate({ title, description, actionLabel, onAction }) {
   );
 }
 
-function OverviewPanel({ summary, onImport }) {
+function OverviewPanel({ summary, users, bookings, onOpenTab, onImport }) {
   const metrics = [
-    { label: "Movies", value: summary?.movieCount || 0 },
-    { label: "Users", value: summary?.userCount || 0 },
-    { label: "Bookings", value: summary?.bookingCount || 0 },
-    { label: "Revenue", value: formatVnd(summary?.revenue || 0) },
+    { label: "Movies", value: summary?.movieCount || 0, icon: Film },
+    { label: "Users", value: summary?.userCount || 0, icon: Users },
+    { label: "Bookings", value: summary?.bookingCount || 0, icon: Ticket },
+    { label: "Revenue", value: formatVnd(summary?.revenue || 0), icon: CircleDollarSign },
   ];
+  const availability = [
+    {
+      label: "Showing now",
+      value: summary?.showingNowMovieCount || 0,
+      icon: Film,
+      className: "text-success-500",
+    },
+    {
+      label: "Coming soon",
+      value: summary?.comingSoonMovieCount || 0,
+      icon: CalendarClock,
+      className: "text-brand",
+    },
+    {
+      label: "Hidden",
+      value: summary?.hiddenMovieCount || 0,
+      icon: EyeOff,
+      className: "text-app-text-muted",
+    },
+  ];
+  const recentBookings = [...bookings]
+    .sort((left, right) => getSortTime(right.createdAt || right.startTime) - getSortTime(left.createdAt || left.startTime))
+    .slice(0, 5);
+  const recentUsers = [...users]
+    .sort((left, right) => getSortTime(right.createdAt) - getSortTime(left.createdAt))
+    .slice(0, 5);
 
   return (
     <section className="grid gap-[16px]">
       <div className="grid gap-[16px] md:grid-cols-4">
-        {metrics.map((metric) => (
+        {metrics.map((metric) => {
+          const Icon = metric.icon;
+
+          return (
           <div key={metric.label} className="rounded-tk-8 border border-app-border bg-app-surface p-[18px]">
-            <p className="type-body-xs text-app-text-muted">{metric.label}</p>
-            <p className="type-h4 mt-[8px] text-app-text">{metric.value}</p>
+            <div className="flex items-start justify-between gap-[12px]">
+              <div>
+                <p className="type-body-xs text-app-text-muted">{metric.label}</p>
+                <p className="type-h4 mt-[8px] text-app-text">{metric.value}</p>
+              </div>
+              <Icon className="h-[20px] w-[20px] text-brand" />
+            </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
-      <div className="rounded-tk-8 border border-app-border bg-app-surface p-[20px]">
-        <h2 className="type-h5 text-app-text">Home catalog workflow</h2>
-        <p className="type-body-s mt-[8px] max-w-[760px] text-app-text-muted">
-          Refresh TMDB lists from the import tool, then public home sections read
-          local database rows instead of calling TMDB on every page load.
-        </p>
-        <Button className="mt-[16px]" leftIcon={<Download />} onClick={onImport}>
-          Open Import Tools
-        </Button>
+      <div className="grid gap-[16px] lg:grid-cols-[minmax(0,1fr)_320px]">
+        <DashboardSection
+          title="Recent bookings"
+          actionLabel="View all bookings"
+          onAction={() => onOpenTab("bookings")}
+        >
+          {recentBookings.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] border-collapse text-left">
+                <thead className="border-y border-app-border type-body-xs text-app-text-muted">
+                  <tr>
+                    <th className="py-[10px] pr-[12px] font-normal">Customer</th>
+                    <th className="px-[12px] py-[10px] font-normal">Movie</th>
+                    <th className="px-[12px] py-[10px] font-normal">Total</th>
+                    <th className="py-[10px] pl-[12px] font-normal">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentBookings.map((booking) => (
+                    <tr key={booking.id} className="border-b border-app-border last:border-b-0">
+                      <td className="py-[12px] pr-[12px]">
+                        <p className="type-body-s text-app-text">{booking.userName || "Unknown customer"}</p>
+                        <p className="type-body-xs mt-[3px] text-app-text-muted">{formatDateTime(booking.startTime)}</p>
+                      </td>
+                      <td className="px-[12px] py-[12px] type-body-s text-app-text-muted">{booking.movieTitle || "Unknown movie"}</td>
+                      <td className="px-[12px] py-[12px] type-body-s text-app-text-muted">{formatVnd(booking.totalAmount)}</td>
+                      <td className="py-[12px] pl-[12px]">
+                        <StatusBadge status={booking.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <DashboardEmptyState text="No bookings have been created yet." />
+          )}
+        </DashboardSection>
+
+        <DashboardSection
+          title="Catalog availability"
+          actionLabel="Manage movies"
+          onAction={() => onOpenTab("movies")}
+        >
+          <div className="grid gap-[12px]">
+            {availability.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <div key={item.label} className="flex items-center justify-between gap-[16px] border-b border-app-border pb-[12px] last:border-b-0 last:pb-0">
+                  <div className="flex items-center gap-[10px]">
+                    <Icon className={cn("h-[18px] w-[18px]", item.className)} />
+                    <span className="type-body-s text-app-text-muted">{item.label}</span>
+                  </div>
+                  <span className="type-body-m font-bold text-app-text">{item.value}</span>
+                </div>
+              );
+            })}
+          </div>
+        </DashboardSection>
+      </div>
+
+      <div className="grid gap-[16px] lg:grid-cols-[minmax(0,1fr)_320px]">
+        <DashboardSection
+          title="Recent users"
+          actionLabel="View all users"
+          onAction={() => onOpenTab("users")}
+        >
+          {recentUsers.length > 0 ? (
+            <div className="grid gap-[4px]">
+              {recentUsers.map((item) => (
+                <div key={item.id} className="flex flex-wrap items-center justify-between gap-[12px] border-b border-app-border py-[10px] first:pt-0 last:border-b-0 last:pb-0">
+                  <div>
+                    <p className="type-body-s text-app-text">{item.fullName || "Unnamed user"}</p>
+                    <p className="type-body-xs mt-[3px] text-app-text-muted">{item.email}</p>
+                  </div>
+                  <StatusBadge status={item.role || "USER"} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <DashboardEmptyState text="No registered users are available yet." />
+          )}
+        </DashboardSection>
+
+        <div className="rounded-tk-8 border border-app-border bg-app-surface p-[20px]">
+          <p className="type-label-m text-brand">CATALOG TOOLS</p>
+          <h2 className="type-h5 mt-[8px] text-app-text">TMDB imports</h2>
+          <p className="type-body-s mt-[8px] text-app-text-muted">
+            Add or refresh catalog entries from TMDB when your local movie data needs an update.
+          </p>
+          <Button className="mt-[16px]" leftIcon={<Download />} onClick={onImport}>
+            Open Import Tools
+          </Button>
+        </div>
       </div>
     </section>
   );
 }
 
+function DashboardSection({ title, actionLabel, onAction, children }) {
+  return (
+    <section className="rounded-tk-8 border border-app-border bg-app-surface p-[20px]">
+      <div className="mb-[16px] flex items-center justify-between gap-[16px]">
+        <h2 className="type-h5 text-app-text">{title}</h2>
+        <button
+          type="button"
+          onClick={onAction}
+          className="shrink-0 type-button-s text-brand transition-colors hover:text-primary-300"
+        >
+          {actionLabel}
+        </button>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function DashboardEmptyState({ text }) {
+  return (
+    <div className="rounded-tk-4 border border-dashed border-app-border px-[16px] py-[24px] text-center">
+      <p className="type-body-s text-app-text-muted">{text}</p>
+    </div>
+  );
+}
+
+function StatusBadge({ status }) {
+  const normalizedStatus = status || "UNKNOWN";
+  const tone =
+    normalizedStatus === "CONFIRMED" || normalizedStatus === "ADMIN"
+      ? "border-success-500/50 bg-success-500/10 text-success-500"
+      : normalizedStatus === "CANCELLED" || normalizedStatus === "EXPIRED"
+        ? "border-error-500/50 bg-error-500/10 text-error-500"
+        : "border-app-border bg-app-background text-app-text-muted";
+
+  return (
+    <span className={cn("inline-flex rounded-full border px-[9px] py-[4px] type-body-xs", tone)}>
+      {normalizedStatus}
+    </span>
+  );
+}
+
 function MoviesPanel({
   movies,
-  visibleMovies,
   currentPage,
   totalPages,
+  totalItems,
   onPageChange,
   query,
   onQueryChange,
@@ -454,6 +661,7 @@ function MoviesPanel({
           <thead className="border-b border-app-border bg-app-background type-body-xs text-app-text-muted">
             <tr>
               <th className="px-[14px] py-[12px]">Movie</th>
+              <th className="px-[14px] py-[12px]">Availability</th>
               <th className="px-[14px] py-[12px]">Release</th>
               <th className="px-[14px] py-[12px]">Rating</th>
               <th className="px-[14px] py-[12px]">Duration</th>
@@ -461,7 +669,7 @@ function MoviesPanel({
             </tr>
           </thead>
           <tbody>
-            {visibleMovies.map((movie) => (
+            {movies.map((movie) => (
               <tr key={movie.id} className="border-b border-app-border last:border-b-0">
                 <td className="px-[14px] py-[12px]">
                   {editingMovieId === movie.id ? (
@@ -473,13 +681,24 @@ function MoviesPanel({
                   ) : (
                     <div className="flex items-center gap-[12px]">
                       <div className="h-[64px] w-[44px] overflow-hidden rounded-tk-4 bg-neutral-700">
-                        {movie.posterUrl && <img src={movie.posterUrl} alt="" className="h-full w-full object-cover" />}
+                        {movie.posterUrl && <img src={movie.posterUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />}
                       </div>
                       <div>
                         <p className="type-body-s font-bold text-app-text">{movie.title}</p>
                         <p className="type-body-xs mt-[4px] max-w-[440px] truncate text-app-text-muted">{movie.description || "No description"}</p>
                       </div>
                     </div>
+                  )}
+                </td>
+                <td className="px-[14px] py-[12px] type-body-s text-app-text-muted">
+                  {editingMovieId === movie.id ? (
+                    <AdminSelect value={movieDraft.displayStatus} onChange={(event) => onDraftChange({ ...movieDraft, displayStatus: event.target.value })}>
+                      {movieDisplayStatuses.map((status) => (
+                        <option key={status} value={status}>{formatMovieDisplayStatus(status)}</option>
+                      ))}
+                    </AdminSelect>
+                  ) : (
+                    formatMovieDisplayStatus(movie.displayStatus)
                   )}
                 </td>
                 <td className="px-[14px] py-[12px] type-body-s text-app-text-muted">
@@ -526,7 +745,7 @@ function MoviesPanel({
         currentPage={currentPage}
         totalPages={totalPages}
         pageSize={ADMIN_PAGE_SIZE}
-        totalItems={movies.length}
+        totalItems={totalItems}
         label="movies"
         onPageChange={onPageChange}
       />
@@ -536,9 +755,9 @@ function MoviesPanel({
 
 function UsersPanel({
   users,
-  visibleUsers,
   currentPage,
   totalPages,
+  totalItems,
   onPageChange,
   currentUserId,
   onRoleChange,
@@ -547,15 +766,15 @@ function UsersPanel({
   return (
     <section className="grid gap-[16px]">
       <TableShell headers={["Name", "Email", "Role", "Provider", "Verified", "Actions"]}>
-        {visibleUsers.map((item) => (
+        {users.map((item) => (
         <tr key={item.id} className="border-b border-app-border last:border-b-0">
           <td className="px-[14px] py-[12px] type-body-s text-app-text">{item.fullName}</td>
           <td className="px-[14px] py-[12px] type-body-s text-app-text-muted">{item.email}</td>
           <td className="px-[14px] py-[12px]">
-            <select className="admin-input" value={item.role} onChange={(event) => onRoleChange(item.id, event.target.value)} disabled={item.id === currentUserId}>
+            <AdminSelect value={item.role} onChange={(event) => onRoleChange(item.id, event.target.value)} disabled={item.id === currentUserId}>
               <option value="USER">USER</option>
               <option value="ADMIN">ADMIN</option>
-            </select>
+            </AdminSelect>
           </td>
           <td className="px-[14px] py-[12px] type-body-s text-app-text-muted">{item.provider}</td>
           <td className="px-[14px] py-[12px] type-body-s text-app-text-muted">{item.emailVerified ? "Yes" : "No"}</td>
@@ -572,7 +791,7 @@ function UsersPanel({
         currentPage={currentPage}
         totalPages={totalPages}
         pageSize={ADMIN_PAGE_SIZE}
-        totalItems={users.length}
+        totalItems={totalItems}
         label="users"
         onPageChange={onPageChange}
       />
@@ -582,16 +801,16 @@ function UsersPanel({
 
 function BookingsPanel({
   bookings,
-  visibleBookings,
   currentPage,
   totalPages,
+  totalItems,
   onPageChange,
-  onStatusChange,
+  onDelete,
 }) {
   return (
     <section className="grid gap-[16px]">
-      <TableShell headers={["Booking", "Customer", "Movie", "Schedule", "Payment", "Total", "Status"]}>
-        {visibleBookings.map((booking) => (
+      <TableShell headers={["Booking", "Customer", "Movie", "Schedule", "Payment", "Total", "Status", "Actions"]}>
+        {bookings.map((booking) => (
         <tr key={booking.id} className="border-b border-app-border last:border-b-0">
           <td className="px-[14px] py-[12px] type-body-s text-app-text">{String(booking.id).slice(0, 8).toUpperCase()}</td>
           <td className="px-[14px] py-[12px]">
@@ -609,11 +828,12 @@ function BookingsPanel({
           </td>
           <td className="px-[14px] py-[12px] type-body-s text-app-text-muted">{formatVnd(booking.totalAmount)}</td>
           <td className="px-[14px] py-[12px]">
-            <select className="admin-input" value={booking.status} onChange={(event) => onStatusChange(booking.id, event.target.value)}>
-              {bookingStatuses.map((status) => (
-                <option key={status} value={status}>{status}</option>
-              ))}
-            </select>
+            <StatusBadge status={booking.status} />
+          </td>
+          <td className="px-[14px] py-[12px]">
+            <Button size={32} variant="outline" tone="base" leftIcon={<Trash2 />} onClick={() => onDelete(booking.id)}>
+              Remove
+            </Button>
           </td>
         </tr>
         ))}
@@ -623,11 +843,25 @@ function BookingsPanel({
         currentPage={currentPage}
         totalPages={totalPages}
         pageSize={ADMIN_PAGE_SIZE}
-        totalItems={bookings.length}
+        totalItems={totalItems}
         label="bookings"
         onPageChange={onPageChange}
       />
     </section>
+  );
+}
+
+function AdminSelect({ children, className = "", ...props }) {
+  return (
+    <div className="relative inline-block">
+      <select
+        {...props}
+        className={cn("admin-input appearance-none pr-[44px]", className)}
+      >
+        {children}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-[16px] top-1/2 h-[16px] w-[16px] -translate-y-1/2 text-app-text-muted" />
+    </div>
   );
 }
 
@@ -691,18 +925,12 @@ function PaginationBar({
   );
 }
 
-function usePaginatedItems(items, page, pageSize) {
-  return useMemo(() => {
-    const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
-    const currentPage = Math.min(page, totalPages);
-    const startIndex = (currentPage - 1) * pageSize;
-
-    return {
-      currentPage,
-      totalPages,
-      visibleItems: items.slice(startIndex, startIndex + pageSize),
-    };
-  }, [items, page, pageSize]);
+function normalizePageMeta(data) {
+  return {
+    totalItems: Number(data?.totalItems) || 0,
+    totalPages: Math.max(1, Number(data?.totalPages) || 0),
+    page: Number(data?.page) || 0,
+  };
 }
 
 function formatDateTime(value) {
@@ -716,11 +944,24 @@ function formatDateTime(value) {
   });
 }
 
+function getSortTime(value) {
+  if (!value) return 0;
+
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
 function formatPaymentMethod(value) {
   if (value === "VNPAY_QR") return "VNPAY QR";
   if (value === "MOMO_WALLET") return "MoMo Wallet";
   if (value === "DEMO_CARD") return "Demo Card";
   return value || "Demo Card";
+}
+
+function formatMovieDisplayStatus(value) {
+  if (value === "SHOWING_NOW") return "Showing Now";
+  if (value === "COMING_SOON") return "Coming Soon";
+  return "Hidden";
 }
 
 function cleanError(error) {

@@ -74,21 +74,21 @@ export function ContactPage() {
             <div className="grid gap-[12px]">
               <div className="rounded-tk-8 border border-app-border bg-app-background p-[14px]">
                 <p className="type-body-xs text-app-text-subtle">Email</p>
-                <p className="type-body-m mt-[4px] text-app-text">support@ticketor.example</p>
+                <p className="type-body-m mt-[4px] text-app-text">23520532@gm.uit.edu.vn</p>
                 <p className="type-body-s mt-[6px]">
                   Best for account recovery, refund requests, and technical issues.
                 </p>
               </div>
               <div className="rounded-tk-8 border border-app-border bg-app-background p-[14px]">
                 <p className="type-body-xs text-app-text-subtle">Phone</p>
-                <p className="type-body-m mt-[4px] text-app-text">+1 (800) 555-0148</p>
+                <p className="type-body-m mt-[4px] text-app-text">(+84) 0522 664 260</p>
                 <p className="type-body-s mt-[6px]">
-                  Monday to Friday, 9:00 AM to 6:00 PM local cinema support time.
+                  For urgent booking issues, accessibility support, or partnership inquiries during business hours.
                 </p>
               </div>
               <div className="rounded-tk-8 border border-app-border bg-app-background p-[14px]">
                 <p className="type-body-xs text-app-text-subtle">Office</p>
-                <p className="type-body-m mt-[4px] text-app-text">120 Cinema Lane, Suite 400, Los Angeles, CA</p>
+                <p className="type-body-m mt-[4px] text-app-text">Quarter 34, Linh Xuan Ward, Ho Chi Minh City.</p>
                 <p className="type-body-s mt-[6px]">
                   For partner inquiries, operations, and scheduled business meetings.
                 </p>

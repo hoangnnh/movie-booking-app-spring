@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { bookingApi } from "../api/api";
 import Button from "../components/common/Button";
-import AccountMenu from "../components/dashboard/AccountMenu";
 import DashboardNotice from "../components/dashboard/DashboardNotice";
 import ProfileSummaryCard from "../components/dashboard/ProfileSummaryCard";
 import UpcomingBookingCard from "../components/dashboard/UpcomingBookingCard";
@@ -66,7 +65,6 @@ function normalizeBooking(booking) {
 export default function MyBookingPage({ onRequireAuth }) {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
-  const [activeMenu, setActiveMenu] = useState("booking");
   const [bookings, setBookings] = useState([]);
   const [selectedBookingId, setSelectedBookingId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -203,20 +201,7 @@ export default function MyBookingPage({ onRequireAuth }) {
         </section>
 
         <div className="mt-[28px] grid grid-cols-12 gap-[16px]">
-          <div className="col-span-12 lg:col-span-2">
-            <AccountMenu
-              activeKey={activeMenu}
-              onSelect={(key) => {
-                setActiveMenu(key);
-
-                if (key === "watchlist") {
-                  navigate("/favorites");
-                }
-              }}
-            />
-          </div>
-
-          <div className="col-span-12 flex flex-col gap-[24px] lg:col-span-7">
+          <div className="col-span-12 flex flex-col gap-[24px] lg:col-span-9">
             <DashboardNotice
               title="Coming Up For You"
               description={`You have ${upcomingBookings.length} upcoming movie${
@@ -229,7 +214,7 @@ export default function MyBookingPage({ onRequireAuth }) {
                   return;
                 }
 
-                navigate("/movies");
+                navigate("/movies/showing-now");
               }}
             />
 
@@ -252,7 +237,7 @@ export default function MyBookingPage({ onRequireAuth }) {
                   Book a showtime and your tickets will appear here right after checkout.
                 </p>
                 <div className="mt-[20px] flex justify-center">
-                  <Button size={40} onClick={() => navigate("/movies")}>
+                  <Button size={40} onClick={() => navigate("/movies/showing-now")}>
                     Browse Movies
                   </Button>
                 </div>
@@ -292,7 +277,7 @@ export default function MyBookingPage({ onRequireAuth }) {
             {!loading && !error && selectedBooking && (
               <BookingDetailPanel
                 booking={selectedBooking}
-                onBrowseMovies={() => navigate("/movies")}
+                onBrowseMovies={() => navigate("/movies/showing-now")}
                 onCancelBooking={() => handleCancelBooking(selectedBooking)}
                 canceling={cancelingBookingId === selectedBooking.id}
               />

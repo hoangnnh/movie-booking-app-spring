@@ -1,24 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { movieApi } from "../api/api";
-import { useAuth } from "../context/useAuth";
 
 import HeroSection from "../components/home/HeroSection";
-import StatsSection from "../components/home/StatsSection";
-import SpecialOfferBanner from "../components/home/SpecialOfferBanner";
 import MovieSection from "../components/home/MovieSection";
-import EventsOffersSection from "../components/home/EventsOffersSection";
 import BookingCTASection from "../components/home/BookingCTASection";
 import TestimonialsSection from "../components/home/TestimonialsSection";
 import FAQSection from "../components/home/FAQSection";
 import NewsletterSection from "../components/home/NewsletterSection";
-import { isComingSoon } from "../components/home/homeUtils";
 
 export default function HomePage() {
-  const { user, isAuthenticated } = useAuth();
   const [nowPlayingMovies, setNowPlayingMovies] = useState([]);
-  const [topMoviesThisWeek, setTopMoviesThisWeek] = useState([]);
-  const [catalogMovies, setCatalogMovies] = useState([]);
-  const [recommendedMovies, setRecommendedMovies] = useState([]);
+  const [comingSoonMovies, setComingSoonMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -28,17 +20,13 @@ export default function HomePage() {
         setLoading(true);
         setError("");
 
-        const [nowPlaying, trendingThisWeek, catalog] = await Promise.all([
+        const [nowPlaying, comingSoon] = await Promise.all([
           movieApi.getNowPlaying(10),
-          movieApi.getTrendingThisWeek(10),
-          movieApi.getAll(),
+          movieApi.getComingSoon(10),
         ]);
 
         setNowPlayingMovies(Array.isArray(nowPlaying) ? nowPlaying : []);
-        setTopMoviesThisWeek(
-          Array.isArray(trendingThisWeek) ? trendingThisWeek : []
-        );
-        setCatalogMovies(Array.isArray(catalog) ? catalog : []);
+        setComingSoonMovies(Array.isArray(comingSoon) ? comingSoon : []);
       } catch {
         setError("Cannot load TMDB movie sections from server.");
       } finally {
@@ -49,46 +37,9 @@ export default function HomePage() {
     loadHomeMovies();
   }, []);
 
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadRecommendations() {
-      if (!isAuthenticated || !user?.userId) {
-        setRecommendedMovies([]);
-        return;
-      }
-
-      try {
-        const data = await movieApi.getRecommendations(user.userId, 10);
-
-        if (!ignore) {
-          setRecommendedMovies(Array.isArray(data) ? data : []);
-        }
-      } catch {
-        if (!ignore) {
-          setRecommendedMovies([]);
-        }
-      }
-    }
-
-    loadRecommendations();
-
-    return () => {
-      ignore = true;
-    };
-  }, [isAuthenticated, user?.userId]);
-
-  const comingSoonMovies = useMemo(() => {
-    const result = catalogMovies.filter(isComingSoon);
-
-    return result.length > 0 ? result : catalogMovies;
-  }, [catalogMovies]);
-
   return (
     <div className="bg-app-background text-app-text">
       <HeroSection />
-      <StatsSection />
-      <SpecialOfferBanner />
 
       {loading && (
         <div className="ticketor-container py-[56px]">
@@ -106,37 +57,17 @@ export default function HomePage() {
 
       {!loading && !error && (
         <>
-          {recommendedMovies.length > 0 && (
-            <MovieSection
-              title="Recommended For You"
-              description="DL4J-powered picks based on your favorites and booking history."
-              movies={recommendedMovies}
-              status="released"
-              limit={10}
-            />
-          )}
-
           <MovieSection
-            title="Currently In Cinemas"
+            title="Showing Now"
             description="Discover the latest movies now playing in cinemas. Book your tickets today!"
             movies={nowPlayingMovies}
-            status="released"
-            limit={5}
-          />
-
-          <MovieSection
-            title="Top 10 Movies This Week"
-            description="Trending on TMDB this week, refreshed from the TMDB API."
-            movies={topMoviesThisWeek}
             status="released"
             limit={10}
           />
 
-          <EventsOffersSection />
-
           <MovieSection
             title="Coming Soon"
-            description="Get ready for these upcoming releases."
+            description="Keep an eye on the next movies worth booking."
             movies={comingSoonMovies}
             status="coming-soon"
             limit={10}

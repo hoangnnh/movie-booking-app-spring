@@ -1,8 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
 import DateChip from "../booking/DateChip";
-import Button from "../common/Button";
 
 function getDateParts(offset) {
   const date = new Date();
@@ -16,7 +14,7 @@ function getDateParts(offset) {
   };
 }
 
-export default function ShowtimesSection({ showtimes = [] }) {
+export default function ShowtimesSection({ showtimes = [], bookingAvailable = true }) {
   const navigate = useNavigate();
 
   const [selectedDate, setSelectedDate] = useState(getDateParts(0).key);
@@ -27,21 +25,32 @@ export default function ShowtimesSection({ showtimes = [] }) {
   );
 
   const showtimesForSelectedDate = useMemo(() => {
-    const filtered = showtimes.filter((showtime) =>
+    return showtimes.filter((showtime) =>
       showtime.startTime?.startsWith(selectedDate)
     );
-
-    return filtered.length > 0 ? filtered : showtimes;
   }, [showtimes, selectedDate]);
 
-  const entryShowtime = showtimesForSelectedDate[0];
+  const showtimesByCinema = useMemo(() => {
+    return showtimesForSelectedDate.reduce((groups, showtime) => {
+      const cinemaName = showtime.cinemaName || "Cinema";
+      const roomName = showtime.roomName || "Standard";
+      const cinemaRooms = groups.get(cinemaName) || new Map();
+      const roomShowtimes = cinemaRooms.get(roomName) || [];
+
+      roomShowtimes.push(showtime);
+      cinemaRooms.set(roomName, roomShowtimes);
+      groups.set(cinemaName, cinemaRooms);
+
+      return groups;
+    }, new Map());
+  }, [showtimesForSelectedDate]);
 
   return (
     <section id="showtimes" className="ticketor-container py-[56px]">
       <div className="mb-[32px]">
         <h2 className="type-h3 text-app-text">Get Ticket</h2>
         <p className="type-body-m mt-[8px] text-app-text-muted">
-          Select a date first, then continue to choose cinema and showtime.
+          Select a date, cinema, and showtime to continue booking.
         </p>
       </div>
 
@@ -60,39 +69,74 @@ export default function ShowtimesSection({ showtimes = [] }) {
         ))}
       </div>
 
-      {showtimes.length === 0 ? (
+      {!bookingAvailable ? (
+        <div className="rounded-card border border-app-border bg-app-background p-[32px] text-center">
+          <p className="type-body-m text-app-text-muted">
+            This movie is not currently available for booking.
+          </p>
+        </div>
+      ) : showtimes.length === 0 ? (
         <div className="rounded-card border border-app-border bg-app-background p-[32px] text-center">
           <p className="type-body-m text-app-text-muted">
             No showtimes are available for this movie yet.
           </p>
         </div>
+      ) : showtimesForSelectedDate.length === 0 ? (
+        <div className="rounded-card border border-app-border bg-app-background p-[32px] text-center">
+          <p className="type-body-m text-app-text-muted">
+            No showtimes are available for this date.
+          </p>
+        </div>
       ) : (
-        <article className="rounded-tk-8 border border-app-border bg-app-surface p-[24px]">
-          <div className="flex flex-col gap-[20px] md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 className="type-h5 text-app-text">Continue booking</h3>
-              <p className="type-body-s mt-[6px] max-w-[520px] text-app-text-muted">
-                The next step lets you pick a HCM cinema location and available
-                showtime for the selected date.
-              </p>
-            </div>
-
-            <Button
-              size={40}
-              variant="primary"
-              rightIcon={<ChevronRight />}
-              disabled={!entryShowtime}
-              onClick={() => {
-                if (entryShowtime) {
-                  navigate(`/booking/${entryShowtime.id}?date=${selectedDate}`);
-                }
-              }}
+        <div className="grid gap-[16px]">
+          {Array.from(showtimesByCinema.entries()).map(([cinemaName, cinemaRooms]) => (
+            <article
+              key={cinemaName}
+              className="rounded-tk-8 border border-app-border bg-app-surface p-[24px]"
             >
-              Continue
-            </Button>
-          </div>
-        </article>
+              <h3 className="type-h5 text-app-text">{cinemaName}</h3>
+
+              <div className="mt-[16px] grid gap-[16px]">
+                {Array.from(cinemaRooms.entries()).map(([roomName, roomShowtimes]) => (
+                  <div
+                    key={roomName}
+                    className="flex flex-wrap items-center gap-[12px]"
+                  >
+                    <span className="w-[120px] type-body-s text-app-text-muted">
+                      {roomName}
+                    </span>
+
+                    {roomShowtimes.map((showtime) => (
+                      <button
+                        key={showtime.id}
+                        type="button"
+                        onClick={() => {
+                          const nextParams = new URLSearchParams({
+                            date: selectedDate,
+                            cinemaName,
+                          });
+
+                          navigate(`/booking/${showtime.id}/seats?${nextParams.toString()}`);
+                        }}
+                        className="min-w-[96px] rounded-tk-4 border border-app-border bg-app-background px-[14px] py-[10px] type-body-s text-app-text transition-colors hover:border-brand hover:text-brand"
+                      >
+                        {formatTime(showtime.startTime)}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
       )}
     </section>
   );
+}
+
+function formatTime(value) {
+  return new Date(value).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }

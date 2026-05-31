@@ -231,6 +231,15 @@
         transition: background-color 180ms ease, color 180ms ease;
     }
 
+    a,
+    button {
+        cursor: pointer;
+    }
+
+    button:disabled {
+        cursor: not-allowed;
+    }
+
     #root {
         min-height: 100vh;
         background: var(--color-app-background);
@@ -264,6 +273,34 @@
 }
 
 @layer components {
+    .ticketor-overlay-nav {
+        --color-app-background: #141418;
+        --color-app-surface: #353541;
+        --color-app-surface-soft: #454555;
+        --color-app-border: #565669;
+        --color-app-text: #f1f1f3;
+        --color-app-text-muted: #9797aa;
+        --color-app-text-subtle: #73738d;
+        --color-brand: #fbfb1e;
+        --color-brand-hover: #fcfc65;
+        --color-brand-soft: #fafadc;
+        --color-brand-dark: #7e7e09;
+    }
+
+    .ticketor-overlay-nav-light {
+        --color-app-background: #f4f1e8;
+        --color-app-surface: #fffdf8;
+        --color-app-surface-soft: #f0eadc;
+        --color-app-border: #d8cfbc;
+        --color-app-text: #171714;
+        --color-app-text-muted: #5f5d56;
+        --color-app-text-subtle: #8e8878;
+        --color-brand: #8b7200;
+        --color-brand-hover: #6d5a00;
+        --color-brand-soft: #fff7c6;
+        --color-brand-dark: #4f4200;
+    }
+
     .type-display-1 {
         font-size: var(--text-display-1);
         line-height: var(--text-display-1--line-height);

@@ -24,17 +24,22 @@ export function getPosterUrl(movie) {
 export function normalizeMovie(movie) {
   return {
     id: movie.id,
+    slug: movie.slug,
     title: movie.title || "Untitled Movie",
     genres: Array.isArray(movie.genres) ? movie.genres.join(", ") : "Drama",
     duration: formatDuration(movie.durationMinutes),
     rating: movie.rating ? Number(movie.rating).toFixed(1) : "8.5",
     ageRating: movie.ageRating || "PG-13",
     posterUrl: getPosterUrl(movie),
+    trailerUrl: movie.trailerUrl || "",
     releaseDate: movie.releaseDate,
+    displayStatus: movie.displayStatus || "HIDDEN",
   };
 }
 
 export function isComingSoon(movie) {
+  if (movie.displayStatus) return movie.displayStatus === "COMING_SOON";
+
   if (!movie.releaseDate) return false;
 
   return new Date(movie.releaseDate) > new Date();

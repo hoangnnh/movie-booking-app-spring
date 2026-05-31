@@ -1,30 +1,32 @@
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Navigate, Routes, Route, useLocation } from "react-router-dom";
 import { useState } from "react";
 import AuthModal from "./components/auth/AuthModal";
+import AdminRoute from "./components/auth/AdminRoute";
 import Navbar from "./components/layout/Navbar";
 import { useAuth } from "./context/useAuth";
 import { useTheme } from "./context/useTheme";
 import HomePage from "./pages/HomePage";
 import FoodDrinkPage from "./pages/FoodDrinkPage";
 import MoviesPage from "./pages/MoviesPage";
+import CinemasPage from "./pages/CinemasPage";
 import ActorMoviesPage from "./pages/ActorMoviesPage";
 import MovieDetailPage from "./pages/MovieDetailPage";
-import FavoritesPage from "./pages/FavoritesPage";
 import MyBookingPage from "./pages/MyBookingPage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { ContactPage, PrivacyPolicyPage, TermsOfUsePage } from "./pages/InfoPages";
 import SeatSelectionPage from "./pages/SeatSelectionPage";
-import TimeSelectionPage from "./pages/TimeSelectionPage";
 import PaymentPage from "./pages/PaymentPage";
 import TmdbImportPage from "./pages/TmdbImportPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import NotFoundPage from "./pages/NotFoundPage";
 
 export default function App() {
   const location = useLocation();
   const { ready, user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [authMode, setAuthMode] = useState(null);
+  const isHome = location.pathname === "/";
 
   if (!ready) {
     return null;
@@ -39,40 +41,41 @@ export default function App() {
         onLogout={logout}
         theme={theme}
         onThemeToggle={toggleTheme}
+        variant={isHome ? "overlay" : "solid"}
       />
 
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route
-          path="/movies"
-          element={<MoviesPage key={`movies:${location.search}`} />}
+          path="/movies/showing-now"
+          element={<MoviesPage key={`movies:${location.search}`} statusFilter="released" />}
         />
+        <Route path="/movies/coming-soon" element={<MoviesPage statusFilter="coming-soon" />} />
+        <Route path="/movies" element={<Navigate to="/movies/showing-now" replace />} />
+        <Route path="/coming-soon" element={<Navigate to="/movies/coming-soon" replace />} />
+        <Route path="/cinemas" element={<CinemasPage />} />
         <Route
-          path="/movies/:movieId"
-          element={<MovieDetailPage onRequireAuth={() => setAuthMode("login")} />}
+          path="/movies/:movieRef"
+          element={<MovieDetailPage />}
         />
-        <Route
-          path="/favorites"
-          element={<FavoritesPage onRequireAuth={() => setAuthMode("login")} />}
-        />
+        <Route path="/booking/:movieRef" element={<MovieDetailPage />} />
         <Route
           path="/my-booking"
           element={<MyBookingPage onRequireAuth={() => setAuthMode("login")} />}
         />
         <Route path="/actors/:actorName/movies" element={<ActorMoviesPage />} />
-        <Route path="/tmdb" element={<TmdbImportPage />} />
+        <Route path="/tmdb" element={<AdminRoute><TmdbImportPage /></AdminRoute>} />
         <Route
           path="/admin"
           element={<AdminDashboardPage onRequireAuth={() => setAuthMode("login")} />}
         />
-        <Route path="/admin/movies" element={<TmdbImportPage />} />
-        <Route path="/admin/imports" element={<TmdbImportPage />} />
+        <Route path="/admin/movies" element={<AdminRoute><TmdbImportPage /></AdminRoute>} />
+        <Route path="/admin/imports" element={<AdminRoute><TmdbImportPage /></AdminRoute>} />
         <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/terms" element={<TermsOfUsePage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
-        <Route path="/booking/:showtimeId" element={<TimeSelectionPage />} />
         <Route path="/booking/:showtimeId/seats" element={<SeatSelectionPage />} />
         <Route
           path="/booking/:showtimeId/food"
@@ -82,7 +85,7 @@ export default function App() {
           path="/booking/:showtimeId/payment"
           element={<PaymentPage onRequireAuth={() => setAuthMode("login")} />}
         />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
 
       {authMode && (
