@@ -9,6 +9,7 @@ public record AdminMovieUpdateRequest(
         String posterUrl,
         String backdropUrl,
         LocalDate releaseDate,
-        Double rating
+        Double rating,
+        String displayStatus
 ) {
 }

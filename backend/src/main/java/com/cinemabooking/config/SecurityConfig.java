@@ -1,9 +1,5 @@
 package com.cinemabooking.config;
 
-import static org.springframework.http.HttpMethod.GET;
-import static org.springframework.http.HttpMethod.POST;
-import static org.springframework.http.HttpStatus.UNAUTHORIZED;
-
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +7,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.http.HttpMethod.POST;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -107,8 +106,8 @@ public class SecurityConfig {
                         .requestMatchers(GET, "/api/auth/me").authenticated()
                         .requestMatchers(GET, "/api/payments/**").permitAll()
                         .requestMatchers(POST, "/api/payments/**").permitAll()
-                        .requestMatchers(GET, "/api/movies/**", "/api/showtimes/**", "/api/tmdb/**").permitAll()
-                        .requestMatchers(POST, "/api/tmdb/**").permitAll()
+                        .requestMatchers(GET, "/api/movies/**", "/api/showtimes/**").permitAll()
+                        .requestMatchers("/api/tmdb/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/bookings", "/api/bookings/**", "/api/users/**").authenticated()
                         .anyRequest().permitAll()

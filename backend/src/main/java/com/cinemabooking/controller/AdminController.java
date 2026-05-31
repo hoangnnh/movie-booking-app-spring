@@ -1,10 +1,10 @@
 package com.cinemabooking.controller;
 
-import java.math.BigDecimal;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,20 +17,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.cinemabooking.dto.AdminBookingResponse;
-import com.cinemabooking.dto.AdminBookingStatusRequest;
+import com.cinemabooking.dto.AdminBookingListItemResponse;
+import com.cinemabooking.dto.AdminMovieResponse;
 import com.cinemabooking.dto.AdminMovieUpdateRequest;
 import com.cinemabooking.dto.AdminSummaryResponse;
 import com.cinemabooking.dto.AdminUserResponse;
 import com.cinemabooking.dto.AdminUserRoleRequest;
-import com.cinemabooking.dto.MovieResponse;
-import com.cinemabooking.dto.TicketResponse;
+import com.cinemabooking.dto.PageResponse;
 import com.cinemabooking.entity.AppUser;
 import com.cinemabooking.entity.Booking;
-import com.cinemabooking.entity.Genre;
 import com.cinemabooking.entity.Movie;
-import com.cinemabooking.entity.Ticket;
 import com.cinemabooking.enums.BookingStatus;
+import com.cinemabooking.enums.MovieDisplayStatus;
 import com.cinemabooking.enums.Role;
 import com.cinemabooking.repository.AppUserRepository;
 import com.cinemabooking.repository.BookingRepository;
@@ -61,40 +59,34 @@ public class AdminController {
 
     @GetMapping("/summary")
     public AdminSummaryResponse getSummary() {
-        BigDecimal revenue = bookingRepository.findAll()
-                .stream()
-                .filter((booking) -> booking.getStatus() == BookingStatus.CONFIRMED)
-                .map(Booking::getTotalAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        bookingService.expirePassedShowtimeBookings();
 
         return new AdminSummaryResponse(
                 movieRepository.count(),
                 appUserRepository.count(),
                 bookingRepository.count(),
-                revenue
+                bookingRepository.sumTotalAmountByStatus(BookingStatus.CONFIRMED),
+                movieRepository.countByDisplayStatus(MovieDisplayStatus.SHOWING_NOW),
+                movieRepository.countByDisplayStatus(MovieDisplayStatus.COMING_SOON),
+                movieRepository.countByDisplayStatus(MovieDisplayStatus.HIDDEN)
         );
     }
 
     @GetMapping("/movies")
-    public List<MovieResponse> getMovies(@RequestParam(required = false) String query) {
-        String normalizedQuery = query == null ? "" : query.trim().toLowerCase();
-
-        return movieRepository.findAll()
-                .stream()
-                .filter((movie) ->
-                        normalizedQuery.isBlank()
-                                || movie.getTitle().toLowerCase().contains(normalizedQuery)
-                                || (movie.getDescription() != null
-                                && movie.getDescription().toLowerCase().contains(normalizedQuery))
-                )
-                .sorted(Comparator.comparing(Movie::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
-                .map(tmdbService::toStoredMovieResponse)
-                .toList();
+    public PageResponse<AdminMovieResponse> getMovies(
+            @RequestParam(required = false) String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return PageResponse.from(
+                movieRepository.findAdminMovies(normalizeQuery(query), pageRequest(page, size)),
+                tmdbService::toAdminMovieResponse
+        );
     }
 
     @PatchMapping("/movies/{movieId}")
     @Transactional
-    public MovieResponse updateMovie(
+    public AdminMovieResponse updateMovie(
             @PathVariable UUID movieId,
             @RequestBody AdminMovieUpdateRequest request
     ) {
@@ -122,8 +114,11 @@ public class AdminController {
         if (request.rating() != null) {
             movie.setRating(Math.max(0, Math.min(10, request.rating())));
         }
+        if (hasText(request.displayStatus())) {
+            movie.setDisplayStatus(parseMovieDisplayStatus(request.displayStatus()));
+        }
 
-        return tmdbService.toStoredMovieResponse(movieRepository.save(movie));
+        return tmdbService.toAdminMovieResponse(movieRepository.save(movie));
     }
 
     @DeleteMapping("/movies/{movieId}")
@@ -147,10 +142,17 @@ public class AdminController {
     }
 
     @GetMapping("/users")
-    public List<AdminUserResponse> getUsers() {
-        return appUserRepository.findAll()
+    public PageResponse<AdminUserResponse> getUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return PageResponse.from(appUserRepository.findAll(pageRequest(page, size)), this::toUserResponse);
+    }
+
+    @GetMapping("/users/recent")
+    public List<AdminUserResponse> getRecentUsers() {
+        return appUserRepository.findTop5ByOrderByCreatedAtDesc()
                 .stream()
-                .sorted(Comparator.comparing(AppUser::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(this::toUserResponse)
                 .toList();
     }
@@ -185,36 +187,31 @@ public class AdminController {
     }
 
     @GetMapping("/bookings")
-    public List<AdminBookingResponse> getBookings() {
-        return bookingRepository.findAllByOrderByCreatedAtDesc()
+    public PageResponse<AdminBookingListItemResponse> getBookings(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        bookingService.expirePassedShowtimeBookings();
+
+        return PageResponse.from(
+                bookingRepository.findAllByOrderByCreatedAtDesc(pageRequest(page, size)),
+                this::toBookingListItemResponse
+        );
+    }
+
+    @GetMapping("/bookings/recent")
+    public List<AdminBookingListItemResponse> getRecentBookings() {
+        bookingService.expirePassedShowtimeBookings();
+
+        return bookingRepository.findTop5ByOrderByCreatedAtDesc()
                 .stream()
-                .map(this::toBookingResponse)
+                .map(this::toBookingListItemResponse)
                 .toList();
     }
 
-    @PatchMapping("/bookings/{bookingId}/status")
-    public AdminBookingResponse updateBookingStatus(
-            @PathVariable UUID bookingId,
-            @RequestBody AdminBookingStatusRequest request
-    ) {
-        BookingStatus nextStatus = parseBookingStatus(request.status());
-
-        if (nextStatus == BookingStatus.CANCELLED) {
-            return toBookingResponse(bookingService.cancelBookingAsAdmin(bookingId));
-        }
-
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
-
-        if (booking.getStatus() == BookingStatus.CANCELLED) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Cancelled bookings cannot be changed to another status"
-            );
-        }
-
-        booking.setStatus(nextStatus);
-        return toBookingResponse(bookingRepository.save(booking));
+    @DeleteMapping("/bookings/{bookingId}")
+    public void deleteBooking(@PathVariable UUID bookingId) {
+        bookingService.deleteBookingAsAdmin(bookingId);
     }
 
     private AdminUserResponse toUserResponse(AppUser user) {
@@ -229,13 +226,19 @@ public class AdminController {
         );
     }
 
-    private AdminBookingResponse toBookingResponse(Booking booking) {
-        List<TicketResponse> tickets = ticketRepository.findByBooking_Id(booking.getId())
-                .stream()
-                .map(this::toTicketResponse)
-                .toList();
+    private MovieDisplayStatus parseMovieDisplayStatus(String value) {
+        try {
+            return MovieDisplayStatus.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Movie display status must be SHOWING_NOW, COMING_SOON, or HIDDEN"
+            );
+        }
+    }
 
-        return new AdminBookingResponse(
+    private AdminBookingListItemResponse toBookingListItemResponse(Booking booking) {
+        return new AdminBookingListItemResponse(
                 booking.getId(),
                 booking.getStatus().name(),
                 booking.getTotalAmount(),
@@ -252,18 +255,7 @@ public class AdminController {
                 booking.getShowtime().getRoom().getCinema().getName(),
                 booking.getShowtime().getRoom().getName(),
                 booking.getShowtime().getStartTime(),
-                booking.getCreatedAt(),
-                tickets
-        );
-    }
-
-    private TicketResponse toTicketResponse(Ticket ticket) {
-        return new TicketResponse(
-                ticket.getId(),
-                ticket.getSeat().getId(),
-                ticket.getSeat().getLabel(),
-                ticket.getPrice(),
-                ticket.getCode()
+                booking.getCreatedAt()
         );
     }
 
@@ -275,18 +267,19 @@ public class AdminController {
         }
     }
 
-    private BookingStatus parseBookingStatus(String value) {
-        try {
-            return BookingStatus.valueOf(value.trim().toUpperCase());
-        } catch (RuntimeException exception) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Status must be PENDING, CONFIRMED, CANCELLED, or EXPIRED"
-            );
-        }
-    }
-
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private String normalizeQuery(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private PageRequest pageRequest(int page, int size) {
+        return PageRequest.of(
+                Math.max(0, page),
+                Math.max(1, Math.min(size, 100)),
+                Sort.by(Sort.Order.desc("createdAt"))
+        );
     }
 }

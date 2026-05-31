@@ -36,6 +36,7 @@ import com.cinemabooking.entity.Seat;
 import com.cinemabooking.entity.Showtime;
 import com.cinemabooking.entity.Ticket;
 import com.cinemabooking.enums.BookingStatus;
+import com.cinemabooking.enums.MovieDisplayStatus;
 import com.cinemabooking.repository.AppUserRepository;
 import com.cinemabooking.repository.BookingRepository;
 import com.cinemabooking.repository.SeatRepository;
@@ -96,6 +97,7 @@ class BookingServiceTests {
         movie.setId(UUID.randomUUID());
         movie.setTitle("Test Movie");
         movie.setDurationMinutes(120);
+        movie.setDisplayStatus(MovieDisplayStatus.SHOWING_NOW);
 
         showtime = new Showtime();
         showtime.setId(showtimeId);
@@ -307,6 +309,23 @@ class BookingServiceTests {
 
         verify(bookingRepository, never()).save(any());
         verify(ticketRepository, never()).save(any());
+    }
+
+    @Test
+    void expirePassedShowtimeBookingsMarksActiveBookingsAsExpired() {
+        when(bookingRepository.expirePassedShowtimeBookings(
+                anySet(),
+                eq(BookingStatus.EXPIRED),
+                any(LocalDateTime.class)
+        )).thenReturn(2);
+
+        assertThat(bookingService.expirePassedShowtimeBookings()).isEqualTo(2);
+
+        verify(bookingRepository).expirePassedShowtimeBookings(
+                anySet(),
+                eq(BookingStatus.EXPIRED),
+                any(LocalDateTime.class)
+        );
     }
 
     private Seat seat(Room room, String rowName, int seatNumber) {

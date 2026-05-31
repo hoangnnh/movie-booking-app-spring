@@ -6,6 +6,9 @@ public record AdminSummaryResponse(
         long movieCount,
         long userCount,
         long bookingCount,
-        BigDecimal revenue
+        BigDecimal revenue,
+        long showingNowMovieCount,
+        long comingSoonMovieCount,
+        long hiddenMovieCount
 ) {
 }

@@ -26,6 +26,7 @@ import com.cinemabooking.entity.Seat;
 import com.cinemabooking.entity.Showtime;
 import com.cinemabooking.entity.Ticket;
 import com.cinemabooking.enums.BookingStatus;
+import com.cinemabooking.enums.MovieDisplayStatus;
 import com.cinemabooking.repository.AppUserRepository;
 import com.cinemabooking.repository.BookingRepository;
 import com.cinemabooking.repository.SeatRepository;
@@ -60,6 +61,10 @@ public class BookingService {
     public List<SeatStatusResponse> getSeatStatuses(UUID showtimeId) {
         Showtime showtime = showtimeRepository.findById(showtimeId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Showtime not found"));
+
+        if (showtime.getMovie().getDisplayStatus() != MovieDisplayStatus.SHOWING_NOW) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This movie is not currently available for booking");
+        }
 
         List<Ticket> bookedTickets = ticketRepository.findByShowtime_IdAndBooking_StatusIn(
                 showtimeId,
@@ -105,6 +110,10 @@ public class BookingService {
 
         Showtime showtime = showtimeRepository.findById(request.showtimeId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Showtime not found"));
+
+        if (showtime.getMovie().getDisplayStatus() != MovieDisplayStatus.SHOWING_NOW) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This movie is not currently available for booking");
+        }
 
         List<Seat> seats = seatRepository.findAllById(request.seatIds());
 
@@ -189,12 +198,32 @@ public class BookingService {
         );
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<BookingResponse> getBookingsByUser(UUID userId) {
+        expirePassedShowtimeBookings();
+
         return bookingRepository.findByUser_IdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(this::toBookingResponse)
                 .toList();
+    }
+
+    @Transactional
+    public int expirePassedShowtimeBookings() {
+        return bookingRepository.expirePassedShowtimeBookings(
+                ACTIVE_BOOKING_STATUSES,
+                BookingStatus.EXPIRED,
+                LocalDateTime.now()
+        );
+    }
+
+    @Transactional
+    public void deleteBookingAsAdmin(UUID bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+
+        ticketRepository.deleteByBooking_Id(booking.getId());
+        bookingRepository.delete(booking);
     }
 
     @Transactional
@@ -206,16 +235,7 @@ public class BookingService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only cancel your own bookings");
         }
 
-        return cancelBookingInternal(booking, false);
-    }
-
-    @Transactional
-    public Booking cancelBookingAsAdmin(UUID bookingId) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
-
-        cancelBookingInternal(booking, true);
-        return booking;
+        return cancelBookingInternal(booking);
     }
 
     @Transactional
@@ -281,7 +301,7 @@ public class BookingService {
         );
     }
 
-    private BookingResponse cancelBookingInternal(Booking booking, boolean allowPastShowtimeCancellation) {
+    private BookingResponse cancelBookingInternal(Booking booking) {
         if (booking.getStatus() == BookingStatus.CANCELLED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This booking has already been cancelled");
         }
@@ -290,7 +310,7 @@ public class BookingService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only confirmed bookings can be cancelled");
         }
 
-        if (!allowPastShowtimeCancellation && !booking.getShowtime().getStartTime().isAfter(LocalDateTime.now())) {
+        if (!booking.getShowtime().getStartTime().isAfter(LocalDateTime.now())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "This booking can no longer be cancelled because the showtime has started"
