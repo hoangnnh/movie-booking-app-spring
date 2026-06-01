@@ -24,7 +24,36 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
 
     List<Movie> findAllByOrderByCreatedAtDescTitleAsc();
 
-    List<Movie> findByDisplayStatusOrderByCreatedAtDescTitleAsc(MovieDisplayStatus displayStatus, Pageable pageable);
+    @Query("""
+            select movie
+            from Movie movie
+            where movie.displayStatus = :displayStatus
+              and (movie.releaseDate is null or movie.releaseDate <= current_date)
+            order by
+                case when movie.releaseDate is null then 1 else 0 end,
+                movie.releaseDate desc,
+                movie.createdAt desc,
+                movie.title asc
+            """)
+    List<Movie> findLatestReleasedByDisplayStatus(
+            @Param("displayStatus") MovieDisplayStatus displayStatus,
+            Pageable pageable
+    );
+
+    @Query("""
+            select movie
+            from Movie movie
+            where movie.displayStatus = :displayStatus
+            order by
+                case when movie.releaseDate is null then 1 else 0 end,
+                movie.releaseDate asc,
+                movie.createdAt desc,
+                movie.title asc
+            """)
+    List<Movie> findEarliestUpcomingByDisplayStatus(
+            @Param("displayStatus") MovieDisplayStatus displayStatus,
+            Pageable pageable
+    );
 
     long countByDisplayStatus(MovieDisplayStatus displayStatus);
 
@@ -48,6 +77,11 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
                     left join movie.genres genre
                     where movie.displayStatus = :displayStatus
                       and (
+                          :displayStatus <> com.cinemabooking.enums.MovieDisplayStatus.SHOWING_NOW
+                          or movie.releaseDate is null
+                          or movie.releaseDate <= current_date
+                      )
+                      and (
                           :query = ''
                           or lower(movie.title) like lower(concat('%', :query, '%'))
                           or lower(coalesce(movie.description, '')) like lower(concat('%', :query, '%'))
@@ -59,6 +93,11 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
                     from Movie movie
                     left join movie.genres genre
                     where movie.displayStatus = :displayStatus
+                      and (
+                          :displayStatus <> com.cinemabooking.enums.MovieDisplayStatus.SHOWING_NOW
+                          or movie.releaseDate is null
+                          or movie.releaseDate <= current_date
+                      )
                       and (
                           :query = ''
                           or lower(movie.title) like lower(concat('%', :query, '%'))

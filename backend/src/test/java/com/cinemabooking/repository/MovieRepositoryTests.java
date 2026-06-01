@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +51,35 @@ class MovieRepositoryTests {
                 .isEqualTo(MovieDisplayStatus.HIDDEN);
         assertThat(movieRepository.findById(showingNow.getId()).orElseThrow().getDisplayStatus())
                 .isEqualTo(MovieDisplayStatus.SHOWING_NOW);
+    }
+
+    @Test
+    void findLatestReleasedByDisplayStatusOrdersNewestReleaseFirstAndUnknownDatesLast() {
+        saveMovie("Older Release", LocalDate.of(2025, 12, 1), MovieDisplayStatus.SHOWING_NOW);
+        saveMovie("Unknown Release", null, MovieDisplayStatus.SHOWING_NOW);
+        saveMovie("Latest Release", LocalDate.now().minusDays(1), MovieDisplayStatus.SHOWING_NOW);
+        saveMovie("Future Showing Now", LocalDate.now().plusDays(1), MovieDisplayStatus.SHOWING_NOW);
+        saveMovie("Coming Soon", LocalDate.now().plusDays(30), MovieDisplayStatus.COMING_SOON);
+
+        assertThat(movieRepository.findLatestReleasedByDisplayStatus(
+                MovieDisplayStatus.SHOWING_NOW,
+                PageRequest.of(0, 10)
+        )).extracting(Movie::getTitle)
+                .containsExactly("Latest Release", "Older Release", "Unknown Release");
+    }
+
+    @Test
+    void findEarliestUpcomingByDisplayStatusOrdersNearestReleaseFirstAndUnknownDatesLast() {
+        saveMovie("Later Upcoming", LocalDate.now().plusDays(30), MovieDisplayStatus.COMING_SOON);
+        saveMovie("Unknown Upcoming", null, MovieDisplayStatus.COMING_SOON);
+        saveMovie("Nearest Upcoming", LocalDate.now().plusDays(1), MovieDisplayStatus.COMING_SOON);
+        saveMovie("Showing Now", LocalDate.now().minusDays(1), MovieDisplayStatus.SHOWING_NOW);
+
+        assertThat(movieRepository.findEarliestUpcomingByDisplayStatus(
+                MovieDisplayStatus.COMING_SOON,
+                PageRequest.of(0, 10)
+        )).extracting(Movie::getTitle)
+                .containsExactly("Nearest Upcoming", "Later Upcoming", "Unknown Upcoming");
     }
 
     private Movie saveMovie(String title, LocalDate releaseDate, MovieDisplayStatus displayStatus) {

@@ -208,7 +208,15 @@ public class TmdbService {
 
     @Transactional
     public List<MovieListItemResponse> getNowPlayingMovies(int limit) {
-        return getStoredMoviesByDisplayStatus(MovieDisplayStatus.SHOWING_NOW, limit);
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+
+        return movieRepository.findLatestReleasedByDisplayStatus(
+                        MovieDisplayStatus.SHOWING_NOW,
+                        PageRequest.of(0, safeLimit)
+                )
+                .stream()
+                .map(this::toMovieListItemResponse)
+                .toList();
     }
 
     @Transactional
@@ -218,14 +226,10 @@ public class TmdbService {
 
     @Transactional
     public List<MovieListItemResponse> getComingSoonMovies(int limit) {
-        return getStoredMoviesByDisplayStatus(MovieDisplayStatus.COMING_SOON, limit);
-    }
-
-    private List<MovieListItemResponse> getStoredMoviesByDisplayStatus(MovieDisplayStatus displayStatus, int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 100));
 
-        return movieRepository.findByDisplayStatusOrderByCreatedAtDescTitleAsc(
-                        displayStatus,
+        return movieRepository.findEarliestUpcomingByDisplayStatus(
+                        MovieDisplayStatus.COMING_SOON,
                         PageRequest.of(0, safeLimit)
                 )
                 .stream()

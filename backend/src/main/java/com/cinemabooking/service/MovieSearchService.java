@@ -35,16 +35,32 @@ public class MovieSearchService {
         String genre = rawGenre == null ? "" : rawGenre.trim();
         int safePage = Math.max(0, page);
         int safeSize = Math.max(1, Math.min(size, 48));
-        PageRequest pageRequest = PageRequest.of(
-                safePage,
-                safeSize,
-                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("title"))
-        );
+        PageRequest pageRequest = PageRequest.of(safePage, safeSize, catalogSort(displayStatus));
 
         return PageResponse.from(
                 movieRepository.findCatalogMovies(displayStatus, query, genre, pageRequest),
                 tmdbService::toMovieListItemResponse
         );
+    }
+
+    private Sort catalogSort(MovieDisplayStatus displayStatus) {
+        if (displayStatus == MovieDisplayStatus.SHOWING_NOW) {
+            return Sort.by(
+                    Sort.Order.desc("releaseDate").nullsLast(),
+                    Sort.Order.desc("createdAt"),
+                    Sort.Order.asc("title")
+            );
+        }
+
+        if (displayStatus == MovieDisplayStatus.COMING_SOON) {
+            return Sort.by(
+                    Sort.Order.asc("releaseDate").nullsLast(),
+                    Sort.Order.desc("createdAt"),
+                    Sort.Order.asc("title")
+            );
+        }
+
+        return Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("title"));
     }
 
     public List<String> getGenres(MovieDisplayStatus displayStatus) {
