@@ -59,7 +59,7 @@ public class AdminController {
 
     @GetMapping("/summary")
     public AdminSummaryResponse getSummary() {
-        bookingService.expirePassedShowtimeBookings();
+        bookingService.expireStaleBookings();
 
         return new AdminSummaryResponse(
                 movieRepository.count(),
@@ -113,6 +113,9 @@ public class AdminController {
         }
         if (request.rating() != null) {
             movie.setRating(Math.max(0, Math.min(10, request.rating())));
+        }
+        if (hasText(request.ageRating())) {
+            movie.setAgeRating(tmdbService.normalizeVietnameseAgeRating(request.ageRating()));
         }
         if (hasText(request.displayStatus())) {
             movie.setDisplayStatus(parseMovieDisplayStatus(request.displayStatus()));
@@ -191,7 +194,7 @@ public class AdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        bookingService.expirePassedShowtimeBookings();
+        bookingService.expireStaleBookings();
 
         return PageResponse.from(
                 bookingRepository.findAllByOrderByCreatedAtDesc(pageRequest(page, size)),
@@ -201,7 +204,7 @@ public class AdminController {
 
     @GetMapping("/bookings/recent")
     public List<AdminBookingListItemResponse> getRecentBookings() {
-        bookingService.expirePassedShowtimeBookings();
+        bookingService.expireStaleBookings();
 
         return bookingRepository.findTop5ByOrderByCreatedAtDesc()
                 .stream()

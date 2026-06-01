@@ -10,6 +10,7 @@ public record AdminMovieUpdateRequest(
         String backdropUrl,
         LocalDate releaseDate,
         Double rating,
+        String ageRating,
         String displayStatus
 ) {
 }

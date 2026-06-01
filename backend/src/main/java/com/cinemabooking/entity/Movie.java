@@ -66,6 +66,9 @@ public class Movie extends BaseEntity {
     @Column(name = "rating")
     private Double rating;
 
+    @Column(name = "age_rating", nullable = false, length = 10, columnDefinition = "VARCHAR(10) DEFAULT 'T13'")
+    private String ageRating = "T13";
+
     @Enumerated(EnumType.STRING)
     @Column(name = "display_status", nullable = false, length = 30, columnDefinition = "VARCHAR(30) DEFAULT 'HIDDEN'")
     private MovieDisplayStatus displayStatus = MovieDisplayStatus.HIDDEN;

@@ -12,6 +12,7 @@ public record AdminMovieResponse(
         String backdropUrl,
         LocalDate releaseDate,
         Double rating,
+        String ageRating,
         String displayStatus
 ) {
 }

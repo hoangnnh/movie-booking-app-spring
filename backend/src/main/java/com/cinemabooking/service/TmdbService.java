@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -119,6 +120,7 @@ public class TmdbService {
         movie.setTrailerUrl(extractTrailerUrl(mapValue(detail, "videos")));
         movie.setReleaseDate(dateValue(stringValue(detail, "release_date", "")));
         movie.setRating(doubleValue(detail, "vote_average"));
+        movie.setAgeRating(extractVietnameseAgeRating(mapValue(detail, "release_dates")));
 
         List<Map<String, Object>> genres = listValue(detail, "genres");
         movie.setGenres(new HashSet<>(genres.stream()
@@ -319,10 +321,17 @@ public class TmdbService {
                 .stream()
                 .toList();
 
+        MovieDisplayStatus displayStatus = displayStatusForCategory(category);
+
         for (int index = 0; index < uniqueMovies.size(); index++) {
             MovieResponse movieResponse = uniqueMovies.get(index);
             Movie movie = movieRepository.findById(movieResponse.id())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Movie not found"));
+
+            if (displayStatus != null && movie.getDisplayStatus() != displayStatus) {
+                movie.setDisplayStatus(displayStatus);
+                movieRepository.save(movie);
+            }
 
             MovieListEntry entry = new MovieListEntry();
             entry.setCategory(category);
@@ -330,6 +339,14 @@ public class TmdbService {
             entry.setSortOrder(index);
             movieListEntryRepository.save(entry);
         }
+    }
+
+    private MovieDisplayStatus displayStatusForCategory(String category) {
+        return switch (category) {
+            case "now_playing" -> MovieDisplayStatus.SHOWING_NOW;
+            case "upcoming" -> MovieDisplayStatus.COMING_SOON;
+            default -> null;
+        };
     }
 
     private String normalizeListName(String list) {
@@ -430,6 +447,7 @@ public class TmdbService {
                 firstNonBlank(movie.getTrailerUrl()),
                 movie.getReleaseDate(),
                 movie.getRating(),
+                normalizeVietnameseAgeRating(movie.getAgeRating()),
                 movie.getDisplayStatus() == null ? MovieDisplayStatus.HIDDEN.name() : movie.getDisplayStatus().name(),
                 genres,
                 cast
@@ -446,6 +464,7 @@ public class TmdbService {
                 firstNonBlank(movie.getTrailerUrl()),
                 movie.getReleaseDate(),
                 movie.getRating(),
+                normalizeVietnameseAgeRating(movie.getAgeRating()),
                 movie.getDisplayStatus() == null ? MovieDisplayStatus.HIDDEN.name() : movie.getDisplayStatus().name(),
                 movie.getGenres()
                         .stream()
@@ -465,6 +484,7 @@ public class TmdbService {
                 firstNonBlank(movie.getBackdropUrl()),
                 movie.getReleaseDate(),
                 movie.getRating(),
+                normalizeVietnameseAgeRating(movie.getAgeRating()),
                 movie.getDisplayStatus() == null ? MovieDisplayStatus.HIDDEN.name() : movie.getDisplayStatus().name()
         );
     }
@@ -561,6 +581,7 @@ public class TmdbService {
                 });
     }
 
+    @Transactional
     public int syncCastForStoredMovies() {
         if (readAccessToken == null || readAccessToken.isBlank()) {
             return 0;
@@ -591,12 +612,49 @@ public class TmdbService {
                         movie.getTrailerUrl()
                 ));
                 movie.setRating(doubleValue(detail, "vote_average"));
+                movie.setAgeRating(extractVietnameseAgeRating(mapValue(detail, "release_dates")));
                 addCastMembersIfMissing(movie, toCastMembers(movie, mapValue(detail, "credits")));
                 movieRepository.save(movie);
                 updatedCount++;
             } catch (RuntimeException exception) {
                 System.out.println(
                         "Skipping TMDB cast sync for movie '" + movie.getTitle() + "': " + exception.getMessage()
+                );
+            }
+        }
+
+        return updatedCount;
+    }
+
+    public int backfillAgeRatingsForStoredMovies() {
+        if (readAccessToken == null || readAccessToken.isBlank()) {
+            return 0;
+        }
+
+        int updatedCount = 0;
+
+        List<Movie> movies = movieRepository.findAll()
+                .stream()
+                .filter((movie) -> movie.getTmdbId() != null)
+                .sorted(Comparator.comparing(Movie::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+
+        for (Movie movie : movies) {
+            try {
+                Map<String, Object> detail = fetchMovieDetail(movie.getTmdbId(), false, false);
+                String ageRating = extractVietnameseAgeRating(mapValue(detail, "release_dates"));
+
+                if (!ageRating.equals(movie.getAgeRating())) {
+                    movie.setAgeRating(ageRating);
+                    movieRepository.save(movie);
+                    updatedCount++;
+                }
+            } catch (RuntimeException exception) {
+                System.out.println(
+                        "Skipping TMDB age-rating backfill for movie '"
+                                + movie.getTitle()
+                                + "': "
+                                + exception.getMessage()
                 );
             }
         }
@@ -667,6 +725,12 @@ public class TmdbService {
                     }
 
                     if (!appendToResponse.isEmpty()) {
+                        appendToResponse.append(",");
+                    }
+
+                    appendToResponse.append("release_dates");
+
+                    if (!appendToResponse.isEmpty()) {
                         uriBuilder.queryParam("append_to_response", appendToResponse.toString());
                     }
 
@@ -674,6 +738,49 @@ public class TmdbService {
                 })
                 .retrieve()
                 .body(Map.class);
+    }
+
+    private String extractVietnameseAgeRating(Map<String, Object> releaseDates) {
+        List<Map<String, Object>> results = listValue(releaseDates, "results");
+
+        return extractHighestAgeRating(results, "VN")
+                .or(() -> extractHighestAgeRating(results, "US"))
+                .or(() -> extractHighestAgeRating(results, null))
+                .orElse("T13");
+    }
+
+    private java.util.Optional<String> extractHighestAgeRating(
+            List<Map<String, Object>> results,
+            String countryCode
+    ) {
+        return results.stream()
+                .filter((country) -> countryCode == null
+                        || countryCode.equalsIgnoreCase(stringValue(country, "iso_3166_1", "")))
+                .flatMap((country) -> listValue(country, "release_dates").stream())
+                .map((release) -> stringValue(release, "certification", ""))
+                .filter((certification) -> !certification.isBlank())
+                .map(this::normalizeVietnameseAgeRating)
+                .max(Comparator.comparingInt(this::ageRatingRank));
+    }
+
+    public String normalizeVietnameseAgeRating(String certification) {
+        String normalized = certification == null
+                ? ""
+                : certification.trim().toUpperCase(Locale.ROOT).replace("-", "").replace(" ", "");
+
+        return switch (normalized) {
+            case "T18", "18", "18+", "NC17", "X", "C" -> "T18";
+            case "T16", "16", "16+", "R", "MA15+", "M18" -> "T16";
+            default -> "T13";
+        };
+    }
+
+    private int ageRatingRank(String ageRating) {
+        return switch (ageRating) {
+            case "T18" -> 3;
+            case "T16" -> 2;
+            default -> 1;
+        };
     }
 
     private String extractTrailerUrl(Map<String, Object> videos) {

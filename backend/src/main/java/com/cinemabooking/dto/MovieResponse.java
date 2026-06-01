@@ -16,6 +16,7 @@ public record MovieResponse(
         String trailerUrl,
         LocalDate releaseDate,
         Double rating,
+        String ageRating,
         String displayStatus,
         List<String> genres,
         List<MovieCastMemberResponse> cast

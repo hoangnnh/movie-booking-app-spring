@@ -13,6 +13,7 @@ public record MovieListItemResponse(
         String trailerUrl,
         LocalDate releaseDate,
         Double rating,
+        String ageRating,
         String displayStatus,
         List<String> genres
 ) {
