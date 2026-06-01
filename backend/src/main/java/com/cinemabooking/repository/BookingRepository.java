@@ -46,6 +46,31 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     @Query("select coalesce(sum(booking.totalAmount), 0) from Booking booking where booking.status = :status")
     BigDecimal sumTotalAmountByStatus(@Param("status") BookingStatus status);
 
+    @Query("""
+            select booking.id from Booking booking
+            where booking.status = :status
+              and booking.paymentMethod = :paymentMethod
+              and booking.createdAt < :cutoff
+            """)
+    List<UUID> findAbandonedPendingPaymentBookingIds(
+            @Param("status") BookingStatus status,
+            @Param("paymentMethod") String paymentMethod,
+            @Param("cutoff") LocalDateTime cutoff
+    );
+
+    @Modifying
+    @Query("""
+            update Booking booking
+            set booking.status = :expiredStatus,
+                booking.paymentStatus = :failedPaymentStatus
+            where booking.id in :bookingIds
+            """)
+    int markBookingsExpiredByIds(
+            @Param("bookingIds") Collection<UUID> bookingIds,
+            @Param("expiredStatus") BookingStatus expiredStatus,
+            @Param("failedPaymentStatus") String failedPaymentStatus
+    );
+
     @Modifying
     @Query("""
             update Booking booking

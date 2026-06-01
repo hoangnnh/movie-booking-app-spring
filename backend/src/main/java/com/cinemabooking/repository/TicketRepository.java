@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.cinemabooking.entity.Ticket;
@@ -25,6 +27,9 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
     );
 
     void deleteByBooking_Id(UUID bookingId);
+
+    @Transactional
+    void deleteByBooking_IdIn(Collection<UUID> bookingIds);
 
     long countByShowtime_Movie_Id(UUID movieId);
 }

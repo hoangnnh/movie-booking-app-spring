@@ -15,7 +15,7 @@ public class BookingExpiryScheduler {
             fixedDelayString = "${app.booking.expiry.interval-ms:60000}",
             initialDelayString = "${app.booking.expiry.initial-delay-ms:60000}"
     )
-    public void expirePassedShowtimeBookings() {
-        bookingService.expirePassedShowtimeBookings();
+    public void expireStaleBookings() {
+        bookingService.expireStaleBookings();
     }
 }

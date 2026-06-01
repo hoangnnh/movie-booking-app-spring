@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,8 +65,15 @@ public class BookingService {
             "DEMO_CARD"
     );
 
-    @Transactional(readOnly = true)
+    private static final String VNPAY_PAYMENT_METHOD = "VNPAY_QR";
+
+    @Value("${app.booking.pending-payment-expiry-minutes:5}")
+    private int pendingPaymentExpiryMinutes;
+
+    @Transactional
     public List<SeatStatusResponse> getSeatStatuses(UUID showtimeId) {
+        expireStaleBookings();
+
         Showtime showtime = showtimeRepository.findById(showtimeId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Showtime not found"));
 
@@ -104,6 +112,8 @@ public class BookingService {
             CreateBookingRequest request,
             String clientIpAddress
     ) {
+        expireStaleBookings();
+
         if (request.seatIds() == null || request.seatIds().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one seat is required");
         }
@@ -222,12 +232,38 @@ public class BookingService {
 
     @Transactional
     public List<BookingResponse> getBookingsByUser(UUID userId) {
-        expirePassedShowtimeBookings();
+        expireStaleBookings();
 
         return bookingRepository.findByUser_IdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(this::toBookingResponse)
                 .toList();
+    }
+
+    @Transactional
+    public int expireStaleBookings() {
+        return expireAbandonedPendingPayments() + expirePassedShowtimeBookings();
+    }
+
+    @Transactional
+    public int expireAbandonedPendingPayments() {
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(pendingPaymentExpiryMinutes);
+        List<UUID> bookingIds = bookingRepository.findAbandonedPendingPaymentBookingIds(
+                BookingStatus.PENDING,
+                VNPAY_PAYMENT_METHOD,
+                cutoff
+        );
+
+        if (bookingIds.isEmpty()) {
+            return 0;
+        }
+
+        ticketRepository.deleteByBooking_IdIn(bookingIds);
+        return bookingRepository.markBookingsExpiredByIds(
+                bookingIds,
+                BookingStatus.EXPIRED,
+                "FAILED"
+        );
     }
 
     @Transactional

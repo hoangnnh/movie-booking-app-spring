@@ -351,6 +351,45 @@ class BookingServiceTests {
         );
     }
 
+    @Test
+    void expireAbandonedPendingPaymentsReleasesSeatsForStaleVnpayBookings() {
+        UUID bookingId = UUID.randomUUID();
+
+        when(bookingRepository.findAbandonedPendingPaymentBookingIds(
+                eq(BookingStatus.PENDING),
+                eq("VNPAY_QR"),
+                any(LocalDateTime.class)
+        )).thenReturn(List.of(bookingId));
+        when(bookingRepository.markBookingsExpiredByIds(
+                List.of(bookingId),
+                BookingStatus.EXPIRED,
+                "FAILED"
+        )).thenReturn(1);
+
+        assertThat(bookingService.expireAbandonedPendingPayments()).isEqualTo(1);
+
+        verify(ticketRepository).deleteByBooking_IdIn(List.of(bookingId));
+        verify(bookingRepository).markBookingsExpiredByIds(
+                List.of(bookingId),
+                BookingStatus.EXPIRED,
+                "FAILED"
+        );
+    }
+
+    @Test
+    void expireAbandonedPendingPaymentsDoesNothingWhenNoStaleBookings() {
+        when(bookingRepository.findAbandonedPendingPaymentBookingIds(
+                eq(BookingStatus.PENDING),
+                eq("VNPAY_QR"),
+                any(LocalDateTime.class)
+        )).thenReturn(List.of());
+
+        assertThat(bookingService.expireAbandonedPendingPayments()).isZero();
+
+        verify(ticketRepository, never()).deleteByBooking_IdIn(any());
+        verify(bookingRepository, never()).markBookingsExpiredByIds(any(), any(), any());
+    }
+
     private Seat seat(Room room, String rowName, int seatNumber) {
         Seat seat = new Seat();
         seat.setId(UUID.randomUUID());
