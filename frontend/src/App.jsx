@@ -17,6 +17,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { ContactPage, PrivacyPolicyPage, TermsOfUsePage } from "./pages/InfoPages";
 import SeatSelectionPage from "./pages/SeatSelectionPage";
 import PaymentPage from "./pages/PaymentPage";
+import ProfilePage from "./pages/ProfilePage";
 import TmdbImportPage from "./pages/TmdbImportPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import NotFoundPage from "./pages/NotFoundPage";
@@ -42,6 +43,7 @@ export default function App() {
         theme={theme}
         onThemeToggle={toggleTheme}
         variant={isHome ? "overlay" : "solid"}
+        showSearch={!isHome}
       />
 
       <Routes>
@@ -62,6 +64,14 @@ export default function App() {
         <Route
           path="/my-booking"
           element={<MyBookingPage onRequireAuth={() => setAuthMode("login")} />}
+        />
+        <Route
+          path="/my-booking/:bookingId"
+          element={<MyBookingPage onRequireAuth={() => setAuthMode("login")} />}
+        />
+        <Route
+          path="/profile"
+          element={<ProfilePage onRequireAuth={() => setAuthMode("login")} />}
         />
         <Route path="/actors/:actorName/movies" element={<ActorMoviesPage />} />
         <Route path="/tmdb" element={<AdminRoute><TmdbImportPage /></AdminRoute>} />

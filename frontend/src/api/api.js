@@ -119,6 +119,26 @@ export const authApi = {
   getSettings: () => apiRequest("/auth/settings"),
 
   getCurrentUser: () => apiRequest("/auth/me"),
+
+  getProfile: () => apiRequest("/auth/profile"),
+
+  updateProfile: (data) =>
+    apiRequest("/auth/profile", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  updateAvatar: (avatarUrl) =>
+    apiRequest("/auth/profile/avatar", {
+      method: "PATCH",
+      body: JSON.stringify({ avatarUrl }),
+    }),
+
+  changePassword: (data) =>
+    apiRequest("/auth/password", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
 };
 
 export const movieApi = {
@@ -244,6 +264,10 @@ export const showtimeApi = {
   getById: (showtimeId) => apiRequest(`/showtimes/${showtimeId}`),
 };
 
+export const concessionApi = {
+  getByShowtime: (showtimeId) => apiRequest(`/showtimes/${showtimeId}/food-items`),
+};
+
 export const bookingApi = {
   getSeats: (showtimeId) => apiRequest(`/showtimes/${showtimeId}/seats`),
 
@@ -255,8 +279,4 @@ export const bookingApi = {
 
   getUserBookings: (userId) => apiRequest(`/users/${userId}/bookings`),
 
-  cancelBooking: (bookingId) =>
-    apiRequest(`/bookings/${bookingId}/cancel`, {
-      method: "PATCH",
-    }),
 };

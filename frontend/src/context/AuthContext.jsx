@@ -86,6 +86,18 @@ export function AuthProvider({ children }) {
     clearAuth();
   }
 
+  function updateUser(nextUser) {
+    const nextAuth = {
+      accessToken,
+      user: {
+        ...user,
+        ...nextUser,
+      },
+    };
+
+    persistAuth(nextAuth);
+  }
+
   const value = {
     ready,
     user,
@@ -95,6 +107,7 @@ export function AuthProvider({ children }) {
     register,
     loginWithGoogle,
     completeOAuthLogin,
+    updateUser,
     logout,
     isAuthenticated: Boolean(user),
     storageKey: AUTH_STORAGE_KEY,
@@ -117,5 +130,6 @@ function toUserState(authResponse) {
     email: authResponse.email,
     role: authResponse.role,
     provider: authResponse.provider,
+    avatarUrl: authResponse.avatarUrl,
   };
 }

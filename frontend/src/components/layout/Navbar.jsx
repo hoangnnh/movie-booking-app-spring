@@ -17,9 +17,11 @@ export default function Navbar({
     onLogout,
     theme = "dark",
     onThemeToggle,
+    showSearch = true,
     className = "",
 }) {
     const isLoggedIn = Boolean(user);
+    const resolvedAvatarSrc = avatarSrc || user?.avatarUrl || "";
     const nextThemeLabel = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
     const navigate = useNavigate();
     const [searchOpen, setSearchOpen] = useState(false);
@@ -155,7 +157,7 @@ export default function Navbar({
                             rightIcon={theme === "dark" ? <Sun /> : <Moon />}
                         />
 
-                        <div className="relative">
+                        {showSearch && <div className="relative">
                             <Button
                                 variant="text"
                                 size={40}
@@ -240,7 +242,7 @@ export default function Navbar({
                                 </div>
                             </div>
                         )}
-                    </div>
+                    </div>}
 
                         <div className="hidden h-[24px] w-px bg-app-border xl:block" />
 
@@ -248,17 +250,23 @@ export default function Navbar({
                         <div className="group relative hidden xl:block">
                             <button
                                 type="button"
-                                className="flex max-w-[220px] items-center gap-[12px] text-app-text transition-colors hover:text-brand"
+                                className="flex min-w-0 max-w-[220px] items-center gap-[12px] text-app-text transition-colors hover:text-brand"
                             >
-                                <Avatar size={40} src={avatarSrc} alt={user.fullName} />
-                                <span className="type-body-m truncate whitespace-nowrap">
+                                <Avatar size={40} src={resolvedAvatarSrc} alt={user.fullName} />
+                                <span className="min-w-0 flex-1 truncate whitespace-nowrap type-body-m">
                                     Hello, {user.fullName}
                                 </span>
-                                <ChevronDown className="h-[20px] w-[20px]" />
+                                <ChevronDown className="h-[20px] w-[20px] shrink-0" />
                             </button>
 
                             <div className="invisible absolute right-0 top-full z-30 min-w-[180px] pt-[12px] opacity-0 transition-opacity group-hover:visible group-hover:opacity-100">
                                 <div className="rounded-tk-8 border border-app-border bg-app-surface p-[8px] shadow-xl">
+                                    <Link
+                                        to="/profile"
+                                        className="block w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text-muted transition-colors hover:bg-app-background hover:text-brand"
+                                    >
+                                        Profile Settings
+                                    </Link>
                                     <Link
                                         to="/my-booking"
                                         className="block w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text-muted transition-colors hover:bg-app-background hover:text-brand"
@@ -331,6 +339,9 @@ export default function Navbar({
                             <MobileNavLink to="/cinemas?type=3d" onNavigate={closeMobileMenu}>3D Theaters</MobileNavLink>
                             <MobileNavLink to="/cinemas?type=special" onNavigate={closeMobileMenu}>Special Theaters</MobileNavLink>
                             {isLoggedIn && (
+                                <MobileNavLink to="/profile" onNavigate={closeMobileMenu}>Profile Settings</MobileNavLink>
+                            )}
+                            {isLoggedIn && (
                                 <MobileNavLink to="/my-booking" onNavigate={closeMobileMenu}>My Booking</MobileNavLink>
                             )}
                             {user?.role === "ADMIN" && (
@@ -342,7 +353,7 @@ export default function Navbar({
                             {isLoggedIn ? (
                                 <div className="grid gap-[10px]">
                                     <div className="flex items-center gap-[10px] rounded-tk-8 bg-app-background px-[12px] py-[10px]">
-                                        <Avatar size={40} src={avatarSrc} alt={user.fullName} />
+                                        <Avatar size={40} src={resolvedAvatarSrc} alt={user.fullName} />
                                         <div className="min-w-0">
                                             <p className="type-body-s truncate text-app-text">{user.fullName}</p>
                                             <p className="type-body-xs truncate text-app-text-muted">{user.email}</p>
