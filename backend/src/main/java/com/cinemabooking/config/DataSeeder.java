@@ -1,5 +1,6 @@
 package com.cinemabooking.config;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import com.cinemabooking.entity.AppUser;
 import com.cinemabooking.entity.Cinema;
+import com.cinemabooking.entity.FoodItem;
 import com.cinemabooking.entity.Genre;
 import com.cinemabooking.entity.Movie;
 import com.cinemabooking.entity.Room;
@@ -22,6 +24,7 @@ import com.cinemabooking.enums.AuthProvider;
 import com.cinemabooking.enums.Role;
 import com.cinemabooking.repository.AppUserRepository;
 import com.cinemabooking.repository.CinemaRepository;
+import com.cinemabooking.repository.FoodItemRepository;
 import com.cinemabooking.repository.GenreRepository;
 import com.cinemabooking.repository.MovieRepository;
 import com.cinemabooking.repository.RoomRepository;
@@ -41,6 +44,7 @@ public class DataSeeder implements CommandLineRunner {
     private final MovieRepository movieRepository;
     private final CinemaRepository cinemaRepository;
     private final RoomRepository roomRepository;
+    private final FoodItemRepository foodItemRepository;
     private final ShowtimeSeedService showtimeSeedService;
     private final PasswordEncoder passwordEncoder;
     private final TmdbService tmdbService;
@@ -64,6 +68,7 @@ public class DataSeeder implements CommandLineRunner {
         ensureRoomsForCinemas();
         seedDemoUser();
         seedAdminUser();
+        seedFoodItems();
 
         Genre action = getOrCreateGenre("Action");
         Genre sciFi = getOrCreateGenre("Sci-Fi");
@@ -101,6 +106,33 @@ public class DataSeeder implements CommandLineRunner {
         admin.setProvider(AuthProvider.LOCAL);
         admin.setEmailVerified(true);
         appUserRepository.save(admin);
+    }
+
+    private void seedFoodItems() {
+        List.of(
+                new FoodItemSeed("sweet-popcorn", "Sweet Popcorn", "POPCORN", 65_000, 10),
+                new FoodItemSeed("caramel-popcorn", "Caramel Popcorn", "POPCORN", 74_000, 20),
+                new FoodItemSeed("cheese-popcorn", "Cheese Popcorn", "POPCORN", 80_000, 30),
+                new FoodItemSeed("hot-dog", "Hot Dog", "SNACK", 42_000, 40),
+                new FoodItemSeed("sausage", "Sausage", "SNACK", 32_000, 50),
+                new FoodItemSeed("large-soft-drink", "Large Soft Drink", "DRINK", 35_000, 60),
+                new FoodItemSeed("bottled-water", "Bottled Water", "DRINK", 20_000, 70),
+                new FoodItemSeed("my-combo", "My Combo", "COMBO", 95_000, 80),
+                new FoodItemSeed("couple-combo", "Couple Combo", "COMBO", 125_000, 90)
+        ).forEach(seed -> {
+            if (foodItemRepository.findBySlug(seed.slug()).isPresent()) {
+                return;
+            }
+
+            FoodItem foodItem = new FoodItem();
+            foodItem.setSlug(seed.slug());
+            foodItem.setName(seed.name());
+            foodItem.setCategory(seed.category());
+            foodItem.setPrice(BigDecimal.valueOf(seed.price()));
+            foodItem.setActive(true);
+            foodItem.setSortOrder(seed.sortOrder());
+            foodItemRepository.save(foodItem);
+        });
     }
 
     private void seedFallbackMovies(Genre action, Genre sciFi, Genre drama) {
@@ -307,6 +339,15 @@ public class DataSeeder implements CommandLineRunner {
             String district,
             String hotline,
             String amenities
+    ) {
+    }
+
+    private record FoodItemSeed(
+            String slug,
+            String name,
+            String category,
+            long price,
+            int sortOrder
     ) {
     }
 }

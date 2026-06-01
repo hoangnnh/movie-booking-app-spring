@@ -143,19 +143,24 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret
 APP_BACKEND_BASE_URL=http://localhost:8080
 APP_FRONTEND_BASE_URL=http://localhost:5173
 
+APP_EMAIL_PROVIDER=smtp
+APP_EMAIL_FROM=your-gmail-address@gmail.com
+EMAIL=your-gmail-address@gmail.com
+EMAIL_PASSWORD=your-google-app-password
+APP_EMAIL_CONSOLE_FALLBACK=false
+
 PAYMENT_VNPAY_ENABLED=false
 PAYMENT_VNPAY_PAY_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
 PAYMENT_VNPAY_TMN_CODE=your-vnpay-tmn-code
 PAYMENT_VNPAY_HASH_SECRET=your-vnpay-hash-secret
 
-PAYMENT_MOMO_ENABLED=false
-PAYMENT_MOMO_CREATE_URL=https://test-payment.momo.vn/v2/gateway/api/create
-PAYMENT_MOMO_PARTNER_CODE=your-momo-partner-code
-PAYMENT_MOMO_ACCESS_KEY=your-momo-access-key
-PAYMENT_MOMO_SECRET_KEY=your-momo-secret-key
 ```
 
 Do not commit `.env.local`.
+
+For deployed verification and password reset emails, configure the same SMTP
+variables in the backend host. Use a Google app password, not the account
+password. Do not commit either value.
 
 Leave the gateway flags disabled until real sandbox credentials are configured. When testing provider callbacks locally, set `APP_BACKEND_BASE_URL` to a public tunnel URL that forwards to the backend.
 
