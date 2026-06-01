@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import com.cinemabooking.dto.ResetPasswordRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -35,6 +36,9 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
+    @Value("${app.auth.verification-token-expiry-hours:24}")
+    private long verificationTokenExpiryHours;
+
     @Transactional
     public void register(RegisterRequest request) {
         boolean emailExists = appUserRepository.findByEmail(request.email()).isPresent();
@@ -47,11 +51,12 @@ public class AuthService {
         AppUser user = new AppUser();
         user.setFullName(request.fullName());
         user.setEmail(request.email());
-        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setPassword(passwordEncoder.encode(requirePassword(request.password(), "Password", 8)));
         user.setRole(Role.USER);
         user.setProvider(AuthProvider.LOCAL);
         user.setEmailVerified(false);
         user.setVerificationToken(verificationToken);
+        user.setVerificationTokenExpiry(newVerificationTokenExpiry());
 
         appUserRepository.save(user);
         emailService.sendVerificationEmail(user.getEmail(), verificationToken);
@@ -164,6 +169,7 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
         user.setRole(Role.USER);
         user.setProvider(AuthProvider.GOOGLE);
+        user.setEmailVerified(true);
         return appUserRepository.save(user);
     }
 
@@ -291,12 +297,20 @@ public class AuthService {
     // ── Confirm email ─────────────────────────────────────────
     @Transactional
     public void verifyEmail(String token) {
-        AppUser user = appUserRepository.findByVerificationToken(token)
+        String verificationToken = normalizeRequired(token, "Verification token", 100);
+        AppUser user = appUserRepository.findByVerificationToken(verificationToken)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.BAD_REQUEST, "Invalid or expired verification token"));
 
+        if (user.getVerificationTokenExpiry() == null
+                || user.getVerificationTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Invalid or expired verification token");
+        }
+
         user.setEmailVerified(true);
         user.setVerificationToken(null);
+        user.setVerificationTokenExpiry(null);
         appUserRepository.save(user);
     }
 
@@ -317,6 +331,7 @@ public class AuthService {
 
         String verificationToken = UUID.randomUUID().toString();
         user.setVerificationToken(verificationToken);
+        user.setVerificationTokenExpiry(newVerificationTokenExpiry());
         appUserRepository.save(user);
 
         emailService.sendVerificationEmail(user.getEmail(), verificationToken);
@@ -345,7 +360,10 @@ public class AuthService {
     // ── Reset password ─────────────────────────────────────────
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        AppUser user = appUserRepository.findByResetPasswordToken(request.token())
+        String token = normalizeRequired(request.token(), "Reset token", 100);
+        String newPassword = requirePassword(request.newPassword(), "New password", 8);
+
+        AppUser user = appUserRepository.findByResetPasswordToken(token)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.BAD_REQUEST, "Invalid reset token"));
 
@@ -355,9 +373,13 @@ public class AuthService {
                     HttpStatus.BAD_REQUEST, "Reset token has expired");
         }
 
-        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        user.setPassword(passwordEncoder.encode(newPassword));
         user.setResetPasswordToken(null);
         user.setResetTokenExpiry(null);
         appUserRepository.save(user);
+    }
+
+    private LocalDateTime newVerificationTokenExpiry() {
+        return LocalDateTime.now().plusHours(verificationTokenExpiryHours);
     }
 }

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.cinemabooking.dto.ProfileResponse;
 import com.cinemabooking.dto.ChangePasswordRequest;
+import com.cinemabooking.dto.ResetPasswordRequest;
 import com.cinemabooking.dto.UpdateProfileRequest;
 import com.cinemabooking.dto.UpdateAvatarRequest;
 import com.cinemabooking.entity.AppUser;
@@ -143,5 +145,45 @@ class AuthServiceTests {
 
         assertThat(response.avatarUrl()).isEqualTo("data:image/webp;base64,avatar");
         verify(appUserRepository).save(user);
+    }
+
+    @Test
+    void resetPasswordRejectsWeakReplacementBeforeSaving() {
+        assertThatThrownBy(() -> authService.resetPassword(
+                new ResetPasswordRequest("valid-token", "short")
+        ))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verify(appUserRepository, never()).save(any());
+        verify(passwordEncoder, never()).encode(any());
+    }
+
+    @Test
+    void resetPasswordEncodesValidReplacementAndClearsToken() {
+        user.setResetPasswordToken("valid-token");
+        user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(5));
+        when(appUserRepository.findByResetPasswordToken("valid-token")).thenReturn(Optional.of(user));
+        when(passwordEncoder.encode("new-password")).thenReturn("encoded-new-password");
+
+        authService.resetPassword(new ResetPasswordRequest("valid-token", "new-password"));
+
+        assertThat(user.getPassword()).isEqualTo("encoded-new-password");
+        assertThat(user.getResetPasswordToken()).isNull();
+        assertThat(user.getResetTokenExpiry()).isNull();
+        verify(appUserRepository).save(user);
+    }
+
+    @Test
+    void verifyEmailRejectsExpiredToken() {
+        user.setVerificationToken("expired-token");
+        user.setVerificationTokenExpiry(LocalDateTime.now().minusMinutes(1));
+        when(appUserRepository.findByVerificationToken("expired-token")).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> authService.verifyEmail("expired-token"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verify(appUserRepository, never()).save(any());
     }
 }

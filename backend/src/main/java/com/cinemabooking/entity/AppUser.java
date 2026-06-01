@@ -64,6 +64,8 @@ public class AppUser extends BaseEntity {
     @Column(length = 100)
     private String verificationToken;
 
+    private LocalDateTime verificationTokenExpiry;
+
     @Column(length = 100)
     private String resetPasswordToken;
 

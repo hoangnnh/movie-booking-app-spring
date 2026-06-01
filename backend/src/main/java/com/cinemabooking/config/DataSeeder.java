@@ -21,6 +21,7 @@ import com.cinemabooking.entity.Genre;
 import com.cinemabooking.entity.Movie;
 import com.cinemabooking.entity.Room;
 import com.cinemabooking.enums.AuthProvider;
+import com.cinemabooking.enums.MovieDisplayStatus;
 import com.cinemabooking.enums.Role;
 import com.cinemabooking.repository.AppUserRepository;
 import com.cinemabooking.repository.CinemaRepository;
@@ -80,17 +81,21 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedDemoUser() {
-        if (appUserRepository.findByEmail("user@example.com").isPresent()) {
-            return;
-        }
+        AppUser user = appUserRepository.findByEmail("user@example.com")
+                .orElseGet(() -> {
+                    AppUser newUser = new AppUser();
+                    newUser.setFullName("Demo User");
+                    newUser.setEmail("user@example.com");
+                    newUser.setPassword(passwordEncoder.encode("123456"));
+                    newUser.setRole(Role.USER);
+                    newUser.setProvider(AuthProvider.LOCAL);
+                    return newUser;
+                });
 
-        AppUser user = new AppUser();
-        user.setFullName("Demo User");
-        user.setEmail("user@example.com");
-        user.setPassword(passwordEncoder.encode("123456"));
-        user.setRole(Role.USER);
-        user.setProvider(AuthProvider.LOCAL);
-        appUserRepository.save(user);
+        if (!user.isEmailVerified()) {
+            user.setEmailVerified(true);
+            appUserRepository.save(user);
+        }
     }
 
     private void seedAdminUser() {
@@ -235,9 +240,20 @@ public class DataSeeder implements CommandLineRunner {
         movie.setDurationMinutes(durationMinutes);
         movie.setPosterUrl("https://example.com/" + title.toLowerCase().replaceAll("[^a-z0-9]+", "-") + ".jpg");
         movie.setReleaseDate(releaseDate);
+        movie.setDisplayStatus(resolveFallbackDisplayStatus(releaseDate));
         movie.setGenres(new HashSet<>(Set.of(genres)));
         movieSlugService.ensureSlug(movie);
         return movieRepository.save(movie);
+    }
+
+    private MovieDisplayStatus resolveFallbackDisplayStatus(LocalDate releaseDate) {
+        if (releaseDate == null) {
+            return MovieDisplayStatus.SHOWING_NOW;
+        }
+
+        return releaseDate.isAfter(LocalDate.now())
+                ? MovieDisplayStatus.COMING_SOON
+                : MovieDisplayStatus.SHOWING_NOW;
     }
 
     private Genre getOrCreateGenre(String name) {

@@ -49,12 +49,15 @@ public class EmailService {
     @Value("${app.email.console-fallback:false}")
     private boolean consoleFallback;
 
+    @Value("${app.auth.verification-token-expiry-hours:24}")
+    private long verificationTokenExpiryHours;
+
     public void sendVerificationEmail(String toEmail, String token) {
         String link = baseUrl + "/api/auth/verify-email?token=" + token;
         sendEmail(toEmail,
                 "🎬 Ticketor Account Verification",
                 "Please click the following link to verify your email address:\n\n" + link +
-                        "\n\nThis link will expire in 24 hours"
+                        "\n\nThis link will expire in " + verificationTokenExpiryHours + " hours"
         );
     }
 
