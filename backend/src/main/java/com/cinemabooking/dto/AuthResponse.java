@@ -8,6 +8,7 @@ public record AuthResponse(
         String email,
         String role,
         String provider,
+        String avatarUrl,
         String accessToken
 ) {
 }

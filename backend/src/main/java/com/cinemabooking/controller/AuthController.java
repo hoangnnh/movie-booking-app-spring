@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,11 +16,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.cinemabooking.dto.AuthResponse;
 import com.cinemabooking.dto.AuthSettingsResponse;
+import com.cinemabooking.dto.ChangePasswordRequest;
 import com.cinemabooking.dto.ForgotPasswordRequest;
 import com.cinemabooking.dto.LoginRequest;
 import com.cinemabooking.dto.MessageResponse;
+import com.cinemabooking.dto.ProfileResponse;
 import com.cinemabooking.dto.RegisterRequest;
 import com.cinemabooking.dto.ResetPasswordRequest;
+import com.cinemabooking.dto.UpdateProfileRequest;
+import com.cinemabooking.dto.UpdateAvatarRequest;
 import com.cinemabooking.security.AuthenticatedUser;
 import com.cinemabooking.service.AuthService;
 
@@ -54,6 +59,37 @@ public class AuthController {
     public AuthResponse me(Authentication authentication) {
         AuthenticatedUser authenticatedUser = (AuthenticatedUser) authentication.getPrincipal();
         return authService.getCurrentUser(authenticatedUser);
+    }
+
+    @GetMapping("/profile")
+    public ProfileResponse profile(Authentication authentication) {
+        AuthenticatedUser authenticatedUser = (AuthenticatedUser) authentication.getPrincipal();
+        return authService.getProfile(authenticatedUser);
+    }
+
+    @PatchMapping("/profile")
+    public ProfileResponse updateProfile(
+            Authentication authentication,
+            @RequestBody UpdateProfileRequest request) {
+        AuthenticatedUser authenticatedUser = (AuthenticatedUser) authentication.getPrincipal();
+        return authService.updateProfile(authenticatedUser, request);
+    }
+
+    @PatchMapping("/profile/avatar")
+    public ProfileResponse updateAvatar(
+            Authentication authentication,
+            @RequestBody UpdateAvatarRequest request) {
+        AuthenticatedUser authenticatedUser = (AuthenticatedUser) authentication.getPrincipal();
+        return authService.updateAvatar(authenticatedUser, request);
+    }
+
+    @PatchMapping("/password")
+    public ResponseEntity<MessageResponse> changePassword(
+            Authentication authentication,
+            @RequestBody ChangePasswordRequest request) {
+        AuthenticatedUser authenticatedUser = (AuthenticatedUser) authentication.getPrincipal();
+        authService.changePassword(authenticatedUser, request);
+        return ResponseEntity.ok(new MessageResponse("Password has been changed successfully."));
     }
 
     @GetMapping("/verify-email")

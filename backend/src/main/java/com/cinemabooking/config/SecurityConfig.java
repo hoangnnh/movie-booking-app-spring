@@ -103,7 +103,7 @@ public class SecurityConfig {
                                 "/api/auth/forgot-password",
                                 "/api/auth/reset-password"
                         ).permitAll()
-                        .requestMatchers(GET, "/api/auth/me").authenticated()
+                        .requestMatchers("/api/auth/me", "/api/auth/profile", "/api/auth/profile/**", "/api/auth/password").authenticated()
                         .requestMatchers(GET, "/api/payments/**").permitAll()
                         .requestMatchers(POST, "/api/payments/**").permitAll()
                         .requestMatchers(GET, "/api/movies/**", "/api/showtimes/**").permitAll()

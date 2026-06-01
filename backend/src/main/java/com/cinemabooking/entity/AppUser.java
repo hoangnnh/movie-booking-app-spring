@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -34,6 +35,17 @@ public class AppUser extends BaseEntity {
 
     @Column(nullable = false, length = 150)
     private String email;
+
+    @Column(length = 30)
+    private String phoneNumber;
+
+    private LocalDate dateOfBirth;
+
+    @Column(length = 20)
+    private String gender;
+
+    @Column(columnDefinition = "TEXT")
+    private String avatarUrl;
 
     @Column(nullable = false)
     private String password;

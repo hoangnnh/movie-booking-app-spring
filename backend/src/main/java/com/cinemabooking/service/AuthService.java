@@ -12,8 +12,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.cinemabooking.dto.AuthResponse;
+import com.cinemabooking.dto.ChangePasswordRequest;
 import com.cinemabooking.dto.LoginRequest;
+import com.cinemabooking.dto.ProfileResponse;
 import com.cinemabooking.dto.RegisterRequest;
+import com.cinemabooking.dto.UpdateProfileRequest;
+import com.cinemabooking.dto.UpdateAvatarRequest;
 import com.cinemabooking.entity.AppUser;
 import com.cinemabooking.enums.AuthProvider;
 import com.cinemabooking.enums.Role;
@@ -79,6 +83,60 @@ public class AuthService {
         return toAuthResponse(user);
     }
 
+    public ProfileResponse getProfile(AuthenticatedUser authenticatedUser) {
+        return toProfileResponse(findCurrentUser(authenticatedUser));
+    }
+
+    @Transactional
+    public ProfileResponse updateProfile(AuthenticatedUser authenticatedUser, UpdateProfileRequest request) {
+        AppUser user = findCurrentUser(authenticatedUser);
+        String fullName = normalizeRequired(request.fullName(), "Full name", 150);
+        String phoneNumber = normalizeOptional(request.phoneNumber(), "Phone number", 30);
+        String gender = normalizeGender(request.gender());
+        String avatarUrl = normalizeAvatarUrl(request.avatarUrl());
+
+        user.setFullName(fullName);
+        user.setPhoneNumber(phoneNumber);
+        user.setDateOfBirth(request.dateOfBirth());
+        user.setGender(gender);
+        user.setAvatarUrl(avatarUrl);
+
+        return toProfileResponse(appUserRepository.save(user));
+    }
+
+    @Transactional
+    public ProfileResponse updateAvatar(AuthenticatedUser authenticatedUser, UpdateAvatarRequest request) {
+        AppUser user = findCurrentUser(authenticatedUser);
+        user.setAvatarUrl(normalizeAvatarUrl(request.avatarUrl()));
+        return toProfileResponse(appUserRepository.save(user));
+    }
+
+    @Transactional
+    public void changePassword(AuthenticatedUser authenticatedUser, ChangePasswordRequest request) {
+        AppUser user = findCurrentUser(authenticatedUser);
+
+        if (user.getProvider() != AuthProvider.LOCAL) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Password changes are unavailable for this account"
+            );
+        }
+
+        String currentPassword = requirePassword(request.currentPassword(), "Current password", 1);
+        String newPassword = requirePassword(request.newPassword(), "New password", 8);
+
+        if (!newPassword.equals(request.confirmNewPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New passwords do not match");
+        }
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        appUserRepository.save(user);
+    }
+
     public AuthResponse loginWithGoogle(OAuth2User oauth2User) {
         String email = oauth2User.getAttribute("email");
 
@@ -125,8 +183,104 @@ public class AuthService {
                 user.getEmail(),
                 user.getRole().name(),
                 user.getProvider().name(),
+                user.getAvatarUrl(),
                 jwtService.generateToken(user)
         );
+    }
+
+    private ProfileResponse toProfileResponse(AppUser user) {
+        return new ProfileResponse(
+                user.getId(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getPhoneNumber(),
+                user.getDateOfBirth(),
+                user.getGender(),
+                user.getAvatarUrl(),
+                user.getProvider().name()
+        );
+    }
+
+    private AppUser findCurrentUser(AuthenticatedUser authenticatedUser) {
+        return appUserRepository.findById(authenticatedUser.userId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+    }
+
+    private String normalizeRequired(String value, String fieldName, int maxLength) {
+        String normalizedValue = value == null ? "" : value.trim();
+
+        if (normalizedValue.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is required");
+        }
+
+        if (normalizedValue.length() > maxLength) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is too long");
+        }
+
+        return normalizedValue;
+    }
+
+    private String normalizeOptional(String value, String fieldName, int maxLength) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        String normalizedValue = value.trim();
+
+        if (normalizedValue.length() > maxLength) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is too long");
+        }
+
+        return normalizedValue;
+    }
+
+    private String normalizeGender(String gender) {
+        if (gender == null || gender.isBlank()) {
+            return null;
+        }
+
+        String normalizedGender = gender.trim().toUpperCase();
+
+        if (!normalizedGender.equals("MALE")
+                && !normalizedGender.equals("FEMALE")
+                && !normalizedGender.equals("OTHER")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Gender is invalid");
+        }
+
+        return normalizedGender;
+    }
+
+    private String requirePassword(String value, String fieldName, int minLength) {
+        if (value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is required");
+        }
+
+        if (value.length() < minLength) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    fieldName + " must contain at least " + minLength + " characters"
+            );
+        }
+
+        return value;
+    }
+
+    private String normalizeAvatarUrl(String avatarUrl) {
+        if (avatarUrl == null || avatarUrl.isBlank()) {
+            return null;
+        }
+
+        if (avatarUrl.length() > 500_000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Profile photo is too large");
+        }
+
+        if (!avatarUrl.startsWith("data:image/jpeg;base64,")
+                && !avatarUrl.startsWith("data:image/png;base64,")
+                && !avatarUrl.startsWith("data:image/webp;base64,")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Profile photo format is invalid");
+        }
+
+        return avatarUrl;
     }
 
     // Thêm dependency
