@@ -2,6 +2,7 @@ package com.cinemabooking.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public record AdminBookingListItemResponse(
@@ -21,6 +22,7 @@ public record AdminBookingListItemResponse(
         String cinemaName,
         String roomName,
         LocalDateTime startTime,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        List<BookingFoodItemResponse> foodItems
 ) {
 }

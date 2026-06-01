@@ -504,7 +504,10 @@ function OverviewPanel({ summary, users, bookings, onOpenTab, onImport }) {
                         <p className="type-body-xs mt-[3px] text-app-text-muted">{formatDateTime(booking.startTime)}</p>
                       </td>
                       <td className="px-[12px] py-[12px] type-body-s text-app-text-muted">{booking.movieTitle || "Unknown movie"}</td>
-                      <td className="px-[12px] py-[12px] type-body-s text-app-text-muted">{formatVnd(booking.totalAmount)}</td>
+                      <td className="px-[12px] py-[12px]">
+                        <p className="type-body-s text-app-text-muted">{formatVnd(booking.totalAmount)}</p>
+                        <FoodItemSummary foodItems={booking.foodItems} />
+                      </td>
                       <td className="py-[12px] pl-[12px]">
                         <StatusBadge status={booking.status} />
                       </td>
@@ -826,7 +829,10 @@ function BookingsPanel({
             <p className="type-body-s text-app-text-muted">{formatPaymentMethod(booking.paymentMethod)}</p>
             <p className="type-body-xs text-app-text-muted">{booking.paymentStatus || "PAID"}</p>
           </td>
-          <td className="px-[14px] py-[12px] type-body-s text-app-text-muted">{formatVnd(booking.totalAmount)}</td>
+          <td className="px-[14px] py-[12px]">
+            <p className="type-body-s text-app-text-muted">{formatVnd(booking.totalAmount)}</p>
+            <FoodItemSummary foodItems={booking.foodItems} />
+          </td>
           <td className="px-[14px] py-[12px]">
             <StatusBadge status={booking.status} />
           </td>
@@ -953,9 +959,20 @@ function getSortTime(value) {
 
 function formatPaymentMethod(value) {
   if (value === "VNPAY_QR") return "VNPAY QR";
-  if (value === "MOMO_WALLET") return "MoMo Wallet";
   if (value === "DEMO_CARD") return "Demo Card";
   return value || "Demo Card";
+}
+
+function FoodItemSummary({ foodItems }) {
+  if (!Array.isArray(foodItems) || foodItems.length === 0) {
+    return null;
+  }
+
+  return (
+    <p className="type-body-xs mt-[3px] max-w-[180px] text-app-text-subtle">
+      {foodItems.map((item) => `${item.quantity}x ${item.name}`).join(", ")}
+    </p>
+  );
 }
 
 function formatMovieDisplayStatus(value) {

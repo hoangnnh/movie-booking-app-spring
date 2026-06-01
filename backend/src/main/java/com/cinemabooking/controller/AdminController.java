@@ -255,7 +255,8 @@ public class AdminController {
                 booking.getShowtime().getRoom().getCinema().getName(),
                 booking.getShowtime().getRoom().getName(),
                 booking.getShowtime().getStartTime(),
-                booking.getCreatedAt()
+                booking.getCreatedAt(),
+                bookingService.getFoodItemsByBooking(booking.getId())
         );
     }
 
