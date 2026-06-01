@@ -10,30 +10,15 @@ import {
   QrCode,
   ShieldCheck,
   Ticket,
-  Wallet,
 } from "lucide-react";
-import { bookingApi, movieApi, showtimeApi } from "../api/api";
+import { bookingApi, concessionApi, movieApi, showtimeApi } from "../api/api";
 import BookingProgress from "../components/booking/BookingProgress";
 import Button from "../components/common/Button";
 import { formatDuration, getPosterUrl } from "../components/home/homeUtils";
 import { useAuth } from "../context/useAuth";
 import { cn } from "../utils/cn";
 import { formatVnd } from "../utils/currency";
-
-const snackCatalog = {
-  "chicken-taco": { name: "Chicken Taco", price: 70000 },
-  burger: { name: "Burger", price: 95000 },
-  fries: { name: "Fries", price: 50000 },
-  "hot-dog": { name: "Hot Dog", price: 42000 },
-  "onion-rings": { name: "Onion Rings", price: 60000 },
-  taco: { name: "Taco", price: 35000 },
-  "iced-tea": { name: "Iced Tea", price: 65000 },
-  "grape-soda": { name: "Grape Soda", price: 50000 },
-  "ice-coffee": { name: "Ice Coffee", price: 40000 },
-  "chocolate-drink": { name: "Chocolate drink", price: 42000 },
-  popcorn: { name: "Popcorn", price: 70000 },
-  "fanta-orange": { name: "Fanta Orange", price: 52000 },
-};
+import { clearFoodDraft, loadFoodDraft } from "../utils/checkoutDraft";
 
 const paymentMethods = [
   {
@@ -41,12 +26,6 @@ const paymentMethods = [
     title: "VNPAY QR",
     label: "Redirects to VNPAY sandbox",
     icon: QrCode,
-  },
-  {
-    key: "MOMO_WALLET",
-    title: "MoMo Wallet",
-    label: "Redirects to MoMo sandbox",
-    icon: Wallet,
   },
   {
     key: "DEMO_CARD",
@@ -89,14 +68,12 @@ export default function PaymentPage({ onRequireAuth }) {
         .filter(Boolean),
     [searchParams]
   );
-  const selectedFoodItems = useMemo(
-    () => parseSnackParam(searchParams.get("snacks")),
-    [searchParams]
-  );
+  const selectedFoodDraft = useMemo(() => loadFoodDraft(showtimeId), [showtimeId]);
 
   const [movie, setMovie] = useState(null);
   const [showtime, setShowtime] = useState(null);
   const [seats, setSeats] = useState([]);
+  const [foodItems, setFoodItems] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("VNPAY_QR");
   const [booking, setBooking] = useState(null);
   const [bookingError, setBookingError] = useState("");
@@ -111,14 +88,16 @@ export default function PaymentPage({ onRequireAuth }) {
         setError("");
 
         const showtimeData = await showtimeApi.getById(showtimeId);
-        const [movieData, seatData] = await Promise.all([
+        const [movieData, seatData, foodData] = await Promise.all([
           movieApi.getById(showtimeData.movieId),
           bookingApi.getSeats(showtimeId),
+          concessionApi.getByShowtime(showtimeId),
         ]);
 
         setShowtime(showtimeData);
         setMovie(movieData);
         setSeats(seatData);
+        setFoodItems(foodData);
       } catch {
         setError("Cannot load payment details.");
       } finally {
@@ -155,6 +134,18 @@ export default function PaymentPage({ onRequireAuth }) {
   );
 
   const displayCinemaName = selectedCinemaNameParam || showtime?.cinemaName || "";
+  const selectedFoodItems = useMemo(
+    () => {
+      const quantities = new Map(
+        selectedFoodDraft.map((item) => [item.foodItemId, item.quantity])
+      );
+
+      return foodItems
+        .map((item) => ({ ...item, quantity: quantities.get(item.id) || 0 }))
+        .filter((item) => item.quantity > 0);
+    },
+    [foodItems, selectedFoodDraft]
+  );
   const ticketCount = selectedSeatIds.length;
   const ticketUnitPrice = Number(showtime?.price) || 0;
   const ticketTotal = ticketUnitPrice * ticketCount;
@@ -162,9 +153,7 @@ export default function PaymentPage({ onRequireAuth }) {
     (total, item) => total + item.price * item.quantity,
     0
   );
-  const fallbackFoodTotal = Number(searchParams.get("foodTotal")) || 0;
-  const payableFoodTotal = foodTotal || fallbackFoodTotal;
-  const grandTotal = ticketTotal + payableFoodTotal;
+  const grandTotal = ticketTotal + foodTotal;
   const seatsReady = ticketCount > 0;
 
   function goBackToFood() {
@@ -200,9 +189,14 @@ export default function PaymentPage({ onRequireAuth }) {
         userId: user.userId,
         showtimeId,
         seatIds: selectedSeatIds,
-        foodAmount: Number(payableFoodTotal.toFixed(2)),
+        foodItems: selectedFoodItems.map((item) => ({
+          foodItemId: item.id,
+          quantity: item.quantity,
+        })),
         paymentMethod,
       });
+
+      clearFoodDraft(showtimeId);
 
       if (response?.redirectRequired && response?.checkoutUrl) {
         window.location.assign(response.checkoutUrl);
@@ -284,7 +278,7 @@ export default function PaymentPage({ onRequireAuth }) {
 
               <div className="mt-[24px] grid gap-[12px]">
                 <SummaryRow label="Tickets" value={formatVnd(ticketTotal)} />
-                <SummaryRow label="Food & Drink" value={formatVnd(payableFoodTotal)} />
+                <SummaryRow label="Food & Drink" value={formatVnd(foodTotal)} />
                 <SummaryRow label="Service Fee" value={formatVnd(0)} />
               </div>
 
@@ -293,7 +287,7 @@ export default function PaymentPage({ onRequireAuth }) {
                   <p className="type-body-xs text-app-text-muted">Snack Items</p>
                   <div className="mt-[8px] grid gap-[8px]">
                     {selectedFoodItems.map((item) => (
-                      <div key={item.key} className="flex items-center justify-between gap-[12px] type-body-xs">
+                      <div key={item.id} className="flex items-center justify-between gap-[12px] type-body-xs">
                         <span className="text-app-text-muted">
                           {item.quantity}x {item.name}
                         </span>
@@ -505,47 +499,19 @@ function SummaryRow({ label, value }) {
   );
 }
 
-function parseSnackParam(value) {
-  if (!value) return [];
-
-  return value
-    .split(",")
-    .map((entry) => {
-      const [key, quantityValue] = entry.split(":");
-      const item = snackCatalog[key];
-      const quantity = Math.max(0, Number(quantityValue) || 0);
-
-      return item && quantity > 0
-        ? {
-            key,
-            name: item.name,
-            price: item.price,
-            quantity,
-          }
-        : null;
-    })
-    .filter(Boolean);
-}
-
 function formatPaymentMethod(value) {
   if (value === "VNPAY_QR") return "VNPAY QR";
-  if (value === "MOMO_WALLET") return "MoMo Wallet";
   return "Demo Card";
 }
 
 function getPaymentButtonLabel(value) {
   if (value === "VNPAY_QR") return "Continue to VNPAY";
-  if (value === "MOMO_WALLET") return "Continue to MoMo";
   return "Confirm Demo Payment";
 }
 
 function getPaymentHelpText(value) {
   if (value === "VNPAY_QR") {
     return "Seats are reserved while VNPAY sandbox confirms the payment.";
-  }
-
-  if (value === "MOMO_WALLET") {
-    return "Seats are reserved while MoMo sandbox confirms the payment.";
   }
 
   return "Demo Card confirms locally without an external gateway.";

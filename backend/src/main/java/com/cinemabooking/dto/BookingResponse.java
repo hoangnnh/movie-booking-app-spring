@@ -22,6 +22,7 @@ public record BookingResponse(
         LocalDateTime startTime,
         LocalDateTime bookedAt,
         String seatSummary,
-        List<TicketResponse> tickets
+        List<TicketResponse> tickets,
+        List<BookingFoodItemResponse> foodItems
 ) {
 }

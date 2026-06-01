@@ -27,9 +27,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.cinemabooking.dto.CreateBookingRequest;
+import com.cinemabooking.dto.BookingFoodItemRequest;
 import com.cinemabooking.entity.AppUser;
 import com.cinemabooking.entity.Booking;
 import com.cinemabooking.entity.Cinema;
+import com.cinemabooking.entity.FoodItem;
 import com.cinemabooking.entity.Movie;
 import com.cinemabooking.entity.Room;
 import com.cinemabooking.entity.Seat;
@@ -39,6 +41,8 @@ import com.cinemabooking.enums.BookingStatus;
 import com.cinemabooking.enums.MovieDisplayStatus;
 import com.cinemabooking.repository.AppUserRepository;
 import com.cinemabooking.repository.BookingRepository;
+import com.cinemabooking.repository.BookingFoodItemRepository;
+import com.cinemabooking.repository.FoodItemRepository;
 import com.cinemabooking.repository.SeatRepository;
 import com.cinemabooking.repository.ShowtimeRepository;
 import com.cinemabooking.repository.TicketRepository;
@@ -60,6 +64,12 @@ class BookingServiceTests {
 
     @Mock
     private TicketRepository ticketRepository;
+
+    @Mock
+    private FoodItemRepository foodItemRepository;
+
+    @Mock
+    private BookingFoodItemRepository bookingFoodItemRepository;
 
     @Mock
     private PaymentGatewayService paymentGatewayService;
@@ -113,6 +123,8 @@ class BookingServiceTests {
 
     @Test
     void createBookingConfirmsBookingWithSortedSeatSummaryAndTotals() {
+        FoodItem popcorn = foodItem("Sweet Popcorn", 65_000);
+
         when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
         when(showtimeRepository.findById(showtimeId)).thenReturn(Optional.of(showtime));
         when(seatRepository.findAllById(List.of(seatB2.getId(), seatA1.getId())))
@@ -134,6 +146,8 @@ class BookingServiceTests {
             return ticket;
         });
         when(ticketRepository.findByBooking_Id(any())).thenReturn(List.of());
+        when(foodItemRepository.findByIdInAndActiveTrue(any())).thenReturn(List.of(popcorn));
+        when(bookingFoodItemRepository.findByBooking_IdOrderByCreatedAtAsc(any())).thenReturn(List.of());
 
         bookingService.createBooking(
                 userId,
@@ -141,7 +155,7 @@ class BookingServiceTests {
                         userId,
                         showtimeId,
                         List.of(seatB2.getId(), seatA1.getId()),
-                        BigDecimal.valueOf(5_000),
+                        List.of(new BookingFoodItemRequest(popcorn.getId(), 2)),
                         " demo_card "
                 ),
                 "127.0.0.1"
@@ -153,11 +167,12 @@ class BookingServiceTests {
 
         assertThat(savedBooking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
         assertThat(savedBooking.getTicketAmount()).isEqualByComparingTo("150000");
-        assertThat(savedBooking.getFoodAmount()).isEqualByComparingTo("5000");
-        assertThat(savedBooking.getTotalAmount()).isEqualByComparingTo("155000");
+        assertThat(savedBooking.getFoodAmount()).isEqualByComparingTo("130000");
+        assertThat(savedBooking.getTotalAmount()).isEqualByComparingTo("280000");
         assertThat(savedBooking.getPaymentMethod()).isEqualTo("DEMO_CARD");
         assertThat(savedBooking.getSeatSummary()).isEqualTo("A1, B2");
         verify(ticketRepository, times(2)).save(any(Ticket.class));
+        verify(bookingFoodItemRepository).save(any());
     }
 
     @Test
@@ -170,7 +185,7 @@ class BookingServiceTests {
 
         assertThatThrownBy(() -> bookingService.createBooking(
                 userId,
-                new CreateBookingRequest(userId, showtimeId, List.of(seatA1.getId()), BigDecimal.ZERO, "DEMO_CARD"),
+                new CreateBookingRequest(userId, showtimeId, List.of(seatA1.getId()), List.of(), "DEMO_CARD"),
                 "127.0.0.1"
         ))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
@@ -181,7 +196,9 @@ class BookingServiceTests {
     }
 
     @Test
-    void createBookingRejectsInvalidFoodAmountBeforeSaving() {
+    void createBookingRejectsInvalidFoodQuantityBeforeSaving() {
+        FoodItem popcorn = foodItem("Sweet Popcorn", 65_000);
+
         when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
         when(showtimeRepository.findById(showtimeId)).thenReturn(Optional.of(showtime));
         when(seatRepository.findAllById(List.of(seatA1.getId()))).thenReturn(List.of(seatA1));
@@ -194,7 +211,13 @@ class BookingServiceTests {
 
         assertThatThrownBy(() -> bookingService.createBooking(
                 userId,
-                new CreateBookingRequest(userId, showtimeId, List.of(seatA1.getId()), BigDecimal.valueOf(-1), "DEMO_CARD"),
+                new CreateBookingRequest(
+                        userId,
+                        showtimeId,
+                        List.of(seatA1.getId()),
+                        List.of(new BookingFoodItemRequest(popcorn.getId(), 10)),
+                        "DEMO_CARD"
+                ),
                 "127.0.0.1"
         ))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
@@ -226,7 +249,7 @@ class BookingServiceTests {
                         userId,
                         showtimeId,
                         List.of(seatA1.getId(), seatA3.getId()),
-                        BigDecimal.ZERO,
+                        List.of(),
                         "DEMO_CARD"
                 ),
                 "127.0.0.1"
@@ -263,7 +286,7 @@ class BookingServiceTests {
                         userId,
                         showtimeId,
                         List.of(seatA3.getId()),
-                        BigDecimal.ZERO,
+                        List.of(),
                         "DEMO_CARD"
                 ),
                 "127.0.0.1"
@@ -298,7 +321,7 @@ class BookingServiceTests {
                         userId,
                         showtimeId,
                         List.of(seatA2.getId()),
-                        BigDecimal.ZERO,
+                        List.of(),
                         "DEMO_CARD"
                 ),
                 "127.0.0.1"
@@ -343,5 +366,14 @@ class BookingServiceTests {
         ticket.setSeat(seat);
         ticket.setShowtime(showtime);
         return ticket;
+    }
+
+    private FoodItem foodItem(String name, long price) {
+        FoodItem foodItem = new FoodItem();
+        foodItem.setId(UUID.randomUUID());
+        foodItem.setName(name);
+        foodItem.setPrice(BigDecimal.valueOf(price));
+        foodItem.setActive(true);
+        return foodItem;
     }
 }

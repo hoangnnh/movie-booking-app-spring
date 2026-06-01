@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   CalendarDays,
   CircleAlert,
@@ -58,18 +58,17 @@ function normalizeBooking(booking) {
         } - Seat ${booking.seatSummary}`
       : formatSeatSummary(booking?.tickets),
     isUpcoming: startTime ? startTime.getTime() >= Date.now() && isConfirmed : false,
-    canCancel: Boolean(startTime) && startTime.getTime() > Date.now() && isConfirmed,
   };
 }
 
 export default function MyBookingPage({ onRequireAuth }) {
   const navigate = useNavigate();
+  const { bookingId } = useParams();
   const { user, isAuthenticated } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [selectedBookingId, setSelectedBookingId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [cancelingBookingId, setCancelingBookingId] = useState("");
 
   useEffect(() => {
     let ignore = false;
@@ -124,41 +123,15 @@ export default function MyBookingPage({ onRequireAuth }) {
 
   const selectedBooking = useMemo(() => {
     return (
-      bookings.find((booking) => booking.id === selectedBookingId) ||
+      bookings.find((booking) => booking.id === (bookingId || selectedBookingId)) ||
       bookings[0] ||
       null
     );
-  }, [bookings, selectedBookingId]);
+  }, [bookingId, bookings, selectedBookingId]);
 
-  async function handleCancelBooking(booking) {
-    if (!booking?.id || cancelingBookingId) {
-      return;
-    }
-
-    const shouldCancel = window.confirm(
-      `Cancel booking ${String(booking.id).slice(0, 8).toUpperCase()} for ${booking.movieTitle}?`
-    );
-
-    if (!shouldCancel) {
-      return;
-    }
-
-    try {
-      setCancelingBookingId(booking.id);
-      setError("");
-      const updatedBooking = normalizeBooking(await bookingApi.cancelBooking(booking.id));
-
-      setBookings((currentBookings) =>
-        currentBookings.map((currentBooking) =>
-          currentBooking.id === updatedBooking.id ? updatedBooking : currentBooking
-        )
-      );
-      setSelectedBookingId(updatedBooking.id);
-    } catch (cancelError) {
-      setError(cancelError?.message || "We couldn't cancel this booking right now.");
-    } finally {
-      setCancelingBookingId("");
-    }
+  function selectBooking(booking) {
+    setSelectedBookingId(booking.id);
+    navigate(`/my-booking/${booking.id}`);
   }
 
   if (!isAuthenticated) {
@@ -210,7 +183,7 @@ export default function MyBookingPage({ onRequireAuth }) {
               actionText={selectedBooking ? "View Selected Booking" : "Browse Movies"}
               onAction={() => {
                 if (selectedBooking?.showtimeId) {
-                  setSelectedBookingId(selectedBooking.id);
+                  selectBooking(selectedBooking);
                   return;
                 }
 
@@ -262,7 +235,7 @@ export default function MyBookingPage({ onRequireAuth }) {
                       dateTime={booking.dateTimeLabel}
                       cinemaName={booking.cinemaName}
                       seats={booking.seatsLabel}
-                      onViewDetails={() => setSelectedBookingId(booking.id)}
+                      onViewDetails={() => selectBooking(booking)}
                       className={
                         selectedBooking?.id === booking.id
                           ? "border-primary-600"
@@ -278,8 +251,6 @@ export default function MyBookingPage({ onRequireAuth }) {
               <BookingDetailPanel
                 booking={selectedBooking}
                 onBrowseMovies={() => navigate("/movies/showing-now")}
-                onCancelBooking={() => handleCancelBooking(selectedBooking)}
-                canceling={cancelingBookingId === selectedBooking.id}
               />
             )}
 
@@ -297,7 +268,7 @@ export default function MyBookingPage({ onRequireAuth }) {
                     <button
                       key={booking.id}
                       type="button"
-                      onClick={() => setSelectedBookingId(booking.id)}
+                      onClick={() => selectBooking(booking)}
                       className={`flex items-center justify-between gap-[16px] rounded-tk-8 border px-[16px] py-[14px] text-left transition-colors ${
                         selectedBooking?.id === booking.id
                           ? "border-primary-600 bg-app-background"
@@ -329,7 +300,7 @@ export default function MyBookingPage({ onRequireAuth }) {
   );
 }
 
-function BookingDetailPanel({ booking, onBrowseMovies, onCancelBooking, canceling }) {
+function BookingDetailPanel({ booking, onBrowseMovies }) {
   const ticketCount = booking?.tickets?.length || 0;
 
   return (
@@ -418,6 +389,13 @@ function BookingDetailPanel({ booking, onBrowseMovies, onCancelBooking, cancelin
           <div className="mt-[14px] grid gap-[12px]">
             <SummaryRow label={`Tickets (${ticketCount})`} value={formatVnd(booking.ticketAmount)} />
             <SummaryRow label="Food & Drink" value={formatVnd(booking.foodAmount)} />
+            {(booking.foodItems || []).map((item) => (
+              <SummaryRow
+                key={`${item.foodItemId || item.name}:${item.quantity}`}
+                label={`${item.quantity}x ${item.name}`}
+                value={formatVnd(item.lineTotal)}
+              />
+            ))}
             <SummaryRow label="Total" value={formatVnd(booking.totalAmount)} emphasized />
           </div>
 
@@ -444,17 +422,6 @@ function BookingDetailPanel({ booking, onBrowseMovies, onCancelBooking, cancelin
         <Button size={40} variant="outline" tone="base" onClick={onBrowseMovies}>
           Book Another Movie
         </Button>
-        {booking.canCancel && (
-          <Button
-            size={40}
-            variant="outline"
-            tone="base"
-            disabled={canceling}
-            onClick={onCancelBooking}
-          >
-            {canceling ? "Cancelling..." : "Cancel Ticket"}
-          </Button>
-        )}
       </div>
     </section>
   );
@@ -485,6 +452,5 @@ function SummaryRow({ label, value, emphasized = false }) {
 
 function formatPaymentMethod(value) {
   if (value === "VNPAY_QR") return "VNPAY QR";
-  if (value === "MOMO_WALLET") return "MoMo Wallet";
   return "Demo Card";
 }

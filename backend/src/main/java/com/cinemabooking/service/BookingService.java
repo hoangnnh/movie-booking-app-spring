@@ -16,12 +16,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.cinemabooking.dto.BookingResponse;
+import com.cinemabooking.dto.BookingFoodItemRequest;
+import com.cinemabooking.dto.BookingFoodItemResponse;
 import com.cinemabooking.dto.CreateBookingRequest;
 import com.cinemabooking.dto.PaymentCheckoutResponse;
 import com.cinemabooking.dto.SeatStatusResponse;
 import com.cinemabooking.dto.TicketResponse;
 import com.cinemabooking.entity.AppUser;
 import com.cinemabooking.entity.Booking;
+import com.cinemabooking.entity.BookingFoodItem;
+import com.cinemabooking.entity.FoodItem;
 import com.cinemabooking.entity.Seat;
 import com.cinemabooking.entity.Showtime;
 import com.cinemabooking.entity.Ticket;
@@ -29,6 +33,8 @@ import com.cinemabooking.enums.BookingStatus;
 import com.cinemabooking.enums.MovieDisplayStatus;
 import com.cinemabooking.repository.AppUserRepository;
 import com.cinemabooking.repository.BookingRepository;
+import com.cinemabooking.repository.BookingFoodItemRepository;
+import com.cinemabooking.repository.FoodItemRepository;
 import com.cinemabooking.repository.SeatRepository;
 import com.cinemabooking.repository.ShowtimeRepository;
 import com.cinemabooking.repository.TicketRepository;
@@ -49,11 +55,12 @@ public class BookingService {
     private final SeatRepository seatRepository;
     private final BookingRepository bookingRepository;
     private final TicketRepository ticketRepository;
+    private final FoodItemRepository foodItemRepository;
+    private final BookingFoodItemRepository bookingFoodItemRepository;
     private final PaymentGatewayService paymentGatewayService;
 
     private static final Set<String> SUPPORTED_PAYMENT_METHODS = Set.of(
             "VNPAY_QR",
-            "MOMO_WALLET",
             "DEMO_CARD"
     );
 
@@ -149,7 +156,10 @@ public class BookingService {
 
         BigDecimal ticketAmount = showtime.getPrice()
                 .multiply(BigDecimal.valueOf(seats.size()));
-        BigDecimal foodAmount = normalizeFoodAmount(request.foodAmount());
+        List<ValidatedFoodItem> validatedFoodItems = validateFoodItems(request.foodItems());
+        BigDecimal foodAmount = validatedFoodItems.stream()
+                .map(ValidatedFoodItem::lineTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalAmount = ticketAmount.add(foodAmount);
         String paymentMethod = normalizePaymentMethod(request.paymentMethod());
 
@@ -178,6 +188,18 @@ public class BookingService {
             ticketRepository.save(ticket);
         }
 
+        for (ValidatedFoodItem validatedFoodItem : validatedFoodItems) {
+            BookingFoodItem bookingFoodItem = new BookingFoodItem();
+            bookingFoodItem.setBooking(booking);
+            bookingFoodItem.setFoodItem(validatedFoodItem.foodItem());
+            bookingFoodItem.setItemNameSnapshot(validatedFoodItem.foodItem().getName());
+            bookingFoodItem.setUnitPriceSnapshot(validatedFoodItem.foodItem().getPrice());
+            bookingFoodItem.setQuantity(validatedFoodItem.quantity());
+            bookingFoodItem.setLineTotal(validatedFoodItem.lineTotal());
+
+            bookingFoodItemRepository.save(bookingFoodItem);
+        }
+
         BookingResponse bookingResponse = toBookingResponse(booking);
 
         if ("DEMO_CARD".equals(paymentMethod)) {
@@ -185,7 +207,7 @@ public class BookingService {
                     bookingResponse,
                     "",
                     false,
-                    "Demo card confirmed locally. Use VNPAY or MoMo for sandbox gateway checkout."
+                    "Demo card confirmed locally. Use VNPAY for sandbox gateway checkout."
             );
         }
 
@@ -223,19 +245,16 @@ public class BookingService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
 
         ticketRepository.deleteByBooking_Id(booking.getId());
+        bookingFoodItemRepository.deleteByBooking_Id(booking.getId());
         bookingRepository.delete(booking);
     }
 
-    @Transactional
-    public BookingResponse cancelBooking(UUID authenticatedUserId, UUID bookingId) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
-
-        if (!booking.getUser().getId().equals(authenticatedUserId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only cancel your own bookings");
-        }
-
-        return cancelBookingInternal(booking);
+    @Transactional(readOnly = true)
+    public List<BookingFoodItemResponse> getFoodItemsByBooking(UUID bookingId) {
+        return bookingFoodItemRepository.findByBooking_IdOrderByCreatedAtAsc(bookingId)
+                .stream()
+                .map(this::toBookingFoodItemResponse)
+                .toList();
     }
 
     @Transactional
@@ -280,6 +299,8 @@ public class BookingService {
                 ))
                 .toList();
 
+        List<BookingFoodItemResponse> foodItemResponses = getFoodItemsByBooking(booking.getId());
+
         return new BookingResponse(
                 booking.getId(),
                 booking.getStatus().name(),
@@ -297,30 +318,9 @@ public class BookingService {
                 booking.getShowtime().getStartTime(),
                 booking.getCreatedAt(),
                 booking.getSeatSummary(),
-                ticketResponses
+                ticketResponses,
+                foodItemResponses
         );
-    }
-
-    private BookingResponse cancelBookingInternal(Booking booking) {
-        if (booking.getStatus() == BookingStatus.CANCELLED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This booking has already been cancelled");
-        }
-
-        if (booking.getStatus() != BookingStatus.CONFIRMED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only confirmed bookings can be cancelled");
-        }
-
-        if (!booking.getShowtime().getStartTime().isAfter(LocalDateTime.now())) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "This booking can no longer be cancelled because the showtime has started"
-            );
-        }
-
-        booking.setStatus(BookingStatus.CANCELLED);
-        booking.setPaymentStatus("REFUNDED");
-        ticketRepository.deleteByBooking_Id(booking.getId());
-        return toBookingResponse(bookingRepository.save(booking));
     }
 
     private String formatSeatSummary(List<Seat> seats) {
@@ -329,6 +329,16 @@ public class BookingService {
                 .sorted()
                 .reduce((left, right) -> left + ", " + right)
                 .orElse("");
+    }
+
+    private BookingFoodItemResponse toBookingFoodItemResponse(BookingFoodItem item) {
+        return new BookingFoodItemResponse(
+                item.getFoodItem() == null ? null : item.getFoodItem().getId(),
+                item.getItemNameSnapshot(),
+                item.getUnitPriceSnapshot(),
+                item.getQuantity(),
+                item.getLineTotal()
+        );
     }
 
     private void validateSeatSpacing(Showtime showtime, List<Seat> selectedSeats) {
@@ -386,16 +396,42 @@ public class BookingService {
         }
     }
 
-    private BigDecimal normalizeFoodAmount(BigDecimal value) {
-        if (value == null) {
-            return BigDecimal.ZERO;
+    private List<ValidatedFoodItem> validateFoodItems(List<BookingFoodItemRequest> requestedItems) {
+        if (requestedItems == null || requestedItems.isEmpty()) {
+            return List.of();
         }
 
-        if (value.compareTo(BigDecimal.ZERO) < 0 || value.compareTo(BigDecimal.valueOf(5_000_000)) > 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Food amount is invalid");
+        Set<UUID> foodItemIds = new HashSet<>();
+        for (BookingFoodItemRequest requestedItem : requestedItems) {
+            if (requestedItem == null || requestedItem.foodItemId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Food item is invalid");
+            }
+
+            if (!foodItemIds.add(requestedItem.foodItemId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Food item cannot be repeated");
+            }
+
+            if (requestedItem.quantity() == null || requestedItem.quantity() < 1 || requestedItem.quantity() > 9) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Food item quantity must be between 1 and 9");
+            }
         }
 
-        return value;
+        Map<UUID, FoodItem> activeFoodItems = foodItemRepository.findByIdInAndActiveTrue(foodItemIds)
+                .stream()
+                .collect(Collectors.toMap(FoodItem::getId, item -> item));
+
+        if (activeFoodItems.size() != foodItemIds.size()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more food items are unavailable");
+        }
+
+        return requestedItems.stream()
+                .map(requestedItem -> {
+                    FoodItem foodItem = activeFoodItems.get(requestedItem.foodItemId());
+                    BigDecimal lineTotal = foodItem.getPrice()
+                            .multiply(BigDecimal.valueOf(requestedItem.quantity()));
+                    return new ValidatedFoodItem(foodItem, requestedItem.quantity(), lineTotal);
+                })
+                .toList();
     }
 
     private String normalizePaymentMethod(String value) {
@@ -417,5 +453,8 @@ public class BookingService {
 
     private String generateTicketCode() {
         return "TICKET-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
+    private record ValidatedFoodItem(FoodItem foodItem, int quantity, BigDecimal lineTotal) {
     }
 }
