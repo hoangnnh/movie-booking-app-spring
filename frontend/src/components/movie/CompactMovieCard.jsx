@@ -7,7 +7,7 @@ export default function CompactMovieCard({
   posterUrl = "",
   duration = "2h 2m",
   rating = "8.5",
-  ageRating = "PG-13",
+  ageRating = "T13",
   onGetTicket,
   className = "",
 }) {

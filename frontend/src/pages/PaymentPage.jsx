@@ -74,7 +74,7 @@ export default function PaymentPage({ onRequireAuth }) {
   const [showtime, setShowtime] = useState(null);
   const [seats, setSeats] = useState([]);
   const [foodItems, setFoodItems] = useState([]);
-  const [paymentMethod, setPaymentMethod] = useState("VNPAY_QR");
+  const [paymentMethod, setPaymentMethod] = useState("DEMO_CARD");
   const [booking, setBooking] = useState(null);
   const [bookingError, setBookingError] = useState("");
   const [submitting, setSubmitting] = useState(false);

@@ -10,7 +10,7 @@ export default function MovieCard({
     genres = "Action, Drama",
     duration = "2h 2m",
     rating = "8.5",
-    ageRating = "PG-13",
+    ageRating = "T13",
     posterUrl = "",
     trailerUrl = "",
     status = "released", // released | coming-soon | hidden

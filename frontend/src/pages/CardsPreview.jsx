@@ -22,7 +22,7 @@ export default function CardsPreview() {
               genres="Action, Drama"
               duration="2h 2m"
               rating="8.5"
-              ageRating="PG-13"
+              ageRating="T16"
               trailerUrl="https://www.youtube.com/watch?v=EXeTwQWrcwY"
               status="released"
               onBook={() => alert("Book Now")}
@@ -35,7 +35,7 @@ export default function CardsPreview() {
               genres="Action, Drama"
               duration="2h 2m"
               rating="8.5"
-              ageRating="PG-13"
+              ageRating="T13"
               trailerUrl="https://www.youtube.com/watch?v=EXeTwQWrcwY"
               status="coming-soon"
               releaseText="Releases March 15, 2025"
@@ -53,7 +53,7 @@ export default function CardsPreview() {
               title="The Dark Knight"
               duration="2h 2m"
               rating="8.5"
-              ageRating="PG-13"
+              ageRating="T18"
               onGetTicket={() => alert("Get Ticket")}
             />
 
@@ -62,7 +62,7 @@ export default function CardsPreview() {
               title="The Dark Knight"
               duration="2h 2m"
               rating="8.5"
-              ageRating="PG-13"
+              ageRating="T13"
               onGetTicket={() => alert("Get Ticket")}
             />
           </div>

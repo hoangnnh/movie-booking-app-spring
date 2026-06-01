@@ -29,7 +29,7 @@ export function normalizeMovie(movie) {
     genres: Array.isArray(movie.genres) ? movie.genres.join(", ") : "Drama",
     duration: formatDuration(movie.durationMinutes),
     rating: movie.rating ? Number(movie.rating).toFixed(1) : "8.5",
-    ageRating: movie.ageRating || "PG-13",
+    ageRating: movie.ageRating || "T13",
     posterUrl: getPosterUrl(movie),
     trailerUrl: movie.trailerUrl || "",
     releaseDate: movie.releaseDate,

@@ -109,7 +109,7 @@ export default function ActorMoviesPage() {
                 }
                 duration={movie.duration}
                 rating={movie.rating || "8.5"}
-                ageRating={movie.ageRating || "PG-13"}
+                ageRating={movie.ageRating || "T13"}
                 posterUrl={movie.posterUrl}
                 trailerUrl={movie.trailerUrl}
                 status={movie.comingSoon ? "coming-soon" : "released"}

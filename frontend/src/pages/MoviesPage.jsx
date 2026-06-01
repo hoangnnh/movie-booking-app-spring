@@ -131,7 +131,7 @@ export default function MoviesPage({ statusFilter = "released" }) {
                     }
                     duration={formatDuration(movie.durationMinutes)}
                     rating={movie.rating || "8.5"}
-                    ageRating={movie.ageRating || "PG-13"}
+                    ageRating={movie.ageRating || "T13"}
                     posterUrl={getPosterUrl(movie, index)}
                     trailerUrl={movie.trailerUrl}
                     status={cardStatus}
