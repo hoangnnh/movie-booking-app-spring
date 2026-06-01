@@ -7,6 +7,8 @@ export default function ProfileSummaryCard({
   avatarSrc = "",
   className = "",
 }) {
+  const resolvedAvatarSrc = avatarSrc || user?.avatarUrl || "";
+
   return (
     <section
       className={cn(
@@ -17,7 +19,7 @@ export default function ProfileSummaryCard({
       <h2 className="type-h6 mb-[20px] text-app-text">My Account</h2>
 
       <div className="flex items-center gap-[16px]">
-        <Avatar size={56} src={avatarSrc} alt={user?.fullName || "User"} />
+        <Avatar size={56} src={resolvedAvatarSrc} alt={user?.fullName || "User"} />
 
         <div className="min-w-0">
           <h3 className="type-h6 truncate text-app-text">
