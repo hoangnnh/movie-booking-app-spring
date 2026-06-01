@@ -3,6 +3,22 @@ export const API_BASE_URL =
 
 export const AUTH_STORAGE_KEY = "ticketor.auth";
 
+function getTunnelHeaders() {
+  try {
+    const hostname = new URL(API_BASE_URL).hostname;
+
+    if (hostname.endsWith(".ngrok-free.app") || hostname.endsWith(".ngrok-free.dev")) {
+      return {
+        "ngrok-skip-browser-warning": "true",
+      };
+    }
+  } catch {
+    return {};
+  }
+
+  return {};
+}
+
 export function loadStoredAuth() {
   const storedValue = localStorage.getItem(AUTH_STORAGE_KEY);
 
@@ -47,6 +63,7 @@ export async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...getTunnelHeaders(),
       ...getAuthHeaders(),
       ...(options.headers || {}),
     },
