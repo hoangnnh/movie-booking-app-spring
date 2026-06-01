@@ -60,6 +60,47 @@ The project is built with a Java Spring Boot backend, React frontend, PostgreSQL
 ### Database
 
 - PostgreSQL
+- Flyway versioned SQL migrations in `backend/src/main/resources/db/migration/`
+
+On startup, Flyway applies migrations and Hibernate validates the schema (`JPA_DDL_AUTO=validate` by default). Do not rely on `ddl-auto=update` for schema changes; add a new `V{n}__description.sql` file instead.
+
+- **New deployment (empty database)**: Flyway runs `V1` through the latest migration automatically when the backend starts.
+- **Legacy local database** (created earlier with Hibernate `ddl-auto=update`): set `FLYWAY_BASELINE_ON_MIGRATE=true` and `FLYWAY_BASELINE_VERSION=12` once, start the app, then remove those variables.
+
+---
+
+## Database migrations and deployment
+
+### Local development (Supabase or Postgres)
+
+Copy `backend/.env.example` to `backend/.env.local` and set `DATABASE_URL`, `DATABASE_USERNAME`, and `DATABASE_PASSWORD` (for example Supabase pooler or session URL). Start the backend — Flyway creates the schema on first run.
+
+### Production / Supabase
+
+1. Create an **empty** database (or a dedicated schema).
+2. Set environment variables from `backend/.env.example`:
+   - `JPA_DDL_AUTO=validate`
+   - `FLYWAY_ENABLED=true`
+   - `FLYWAY_BASELINE_ON_MIGRATE=false` (default)
+   - `SPRING_PROFILES_ACTIVE=prod` (disables demo seeding)
+3. Prefer a **session/direct** Postgres URL (Supabase port `5432`) for the **first** migration if the transaction pooler (`6543`) rejects Flyway locking. After `flyway_schema_history` exists, the pooler URL is usually fine for the app.
+4. Deploy/start the backend — migrations run before the API serves traffic.
+
+Optional CI/CD step (migrate before app rollout):
+
+```bash
+export DATABASE_URL='jdbc:postgresql://host:5432/movie_booking_app'
+export DATABASE_USERNAME='postgres'
+export DATABASE_PASSWORD='secret'
+chmod +x scripts/migrate-db.sh
+./scripts/migrate-db.sh
+```
+
+### Adding a schema change
+
+1. Add `backend/src/main/resources/db/migration/V13__your_change.sql`.
+2. Update JPA entities to match.
+3. Run tests (`./mvnw test` in `backend/`). `FlywayMigrationIntegrationTest` uses Testcontainers when Docker is available (skipped otherwise).
 
 ---
 
@@ -134,7 +175,9 @@ DATABASE_USERNAME=postgres.your-project-ref
 DATABASE_PASSWORD=your-supabase-database-password
 DATABASE_MAX_POOL_SIZE=5
 DATABASE_MIN_IDLE=1
-JPA_DDL_AUTO=update
+JPA_DDL_AUTO=validate
+FLYWAY_ENABLED=true
+FLYWAY_BASELINE_ON_MIGRATE=false
 TMDB_API_READ_ACCESS_TOKEN=your_tmdb_read_access_token_here
 JWT_SECRET=replace_with_a_long_random_secret
 JWT_EXPIRATION_MS=86400000
@@ -184,7 +227,10 @@ spring.datasource.username=${DATABASE_USERNAME:postgres}
 spring.datasource.password=${DATABASE_PASSWORD:postgres}
 spring.datasource.driver-class-name=org.postgresql.Driver
 
-spring.jpa.hibernate.ddl-auto=${JPA_DDL_AUTO:update}
+spring.jpa.hibernate.ddl-auto=${JPA_DDL_AUTO:validate}
+spring.flyway.enabled=${FLYWAY_ENABLED:true}
+spring.flyway.baseline-on-migrate=${FLYWAY_BASELINE_ON_MIGRATE:false}
+spring.flyway.baseline-version=${FLYWAY_BASELINE_VERSION:12}
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
 
