@@ -1,15 +1,12 @@
 package com.cinemabooking.controller;
 
 import java.net.URI;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -48,22 +45,6 @@ public class PaymentController {
         );
     }
 
-    @GetMapping("/momo/return")
-    public ResponseEntity<Void> handleMomoReturn(@RequestParam Map<String, String> params) {
-        BookingResponse booking = processMomoResult(params);
-        return redirectToFrontend(booking);
-    }
-
-    @PostMapping("/momo/ipn")
-    public Map<String, Object> handleMomoIpn(@RequestBody Map<String, Object> body) {
-        BookingResponse booking = processMomoResult(toStringMap(body));
-        return Map.of(
-                "resultCode", 0,
-                "message", "Confirm Success",
-                "bookingId", booking.id().toString()
-        );
-    }
-
     private BookingResponse processVnpayResult(Map<String, String> params) {
         if (!paymentGatewayService.verifyVnpaySignature(params)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid VNPAY signature");
@@ -78,21 +59,12 @@ public class PaymentController {
                 : bookingService.failProviderPayment(paymentReference);
     }
 
-    private BookingResponse processMomoResult(Map<String, String> params) {
-        if (!paymentGatewayService.verifyMomoSignature(params)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid MoMo signature");
-        }
-
-        String paymentReference = params.get("orderId");
-        boolean success = "0".equals(params.get("resultCode"));
-
-        return success
-                ? bookingService.confirmProviderPayment(paymentReference)
-                : bookingService.failProviderPayment(paymentReference);
-    }
-
     private ResponseEntity<Void> redirectToFrontend(BookingResponse booking) {
-        String paymentResult = "PAID".equals(booking.paymentStatus()) ? "success" : "failed";
+        String paymentResult = switch (booking.paymentStatus()) {
+            case "PAID" -> "success";
+            case "PENDING" -> "pending";
+            default -> "failed";
+        };
         URI target = URI.create(
                 frontendBaseUrl
                         + "/my-booking?payment="
@@ -102,11 +74,5 @@ public class PaymentController {
         );
 
         return ResponseEntity.status(HttpStatus.FOUND).location(target).build();
-    }
-
-    private Map<String, String> toStringMap(Map<String, Object> body) {
-        Map<String, String> result = new HashMap<>();
-        body.forEach((key, value) -> result.put(key, value == null ? "" : value.toString()));
-        return result;
     }
 }
