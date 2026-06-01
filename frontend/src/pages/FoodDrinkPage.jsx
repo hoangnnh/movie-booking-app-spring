@@ -11,113 +11,27 @@ import {
   ShoppingCart,
   Ticket,
 } from "lucide-react";
-import { bookingApi, movieApi, showtimeApi } from "../api/api";
+import { bookingApi, concessionApi, movieApi, showtimeApi } from "../api/api";
 import BookingProgress from "../components/booking/BookingProgress";
 import Button from "../components/common/Button";
 import { formatDuration, getPosterUrl } from "../components/home/homeUtils";
 import { useAuth } from "../context/useAuth";
 import { formatVnd } from "../utils/currency";
+import { loadFoodDraft, saveFoodDraft } from "../utils/checkoutDraft";
 
 const ticketPrice = 75000;
 
-const snacks = [
-  {
-    key: "chicken-taco",
-    name: "Chicken Taco",
-    description: "Grilled chicken with crisp lettuce and chili sauce.",
-    price: 70000,
-    palette: ["#f38e30", "#f9c378", "#74cfcf"],
-    shape: "taco",
-  },
-  {
-    key: "burger",
-    name: "Burger",
-    description: "Two juicy beef patties with cheese and house sauce.",
-    price: 95000,
-    palette: ["#f5a042", "#34b35b", "#df4e4e"],
-    shape: "burger",
-  },
-  {
-    key: "fries",
-    name: "Fries",
-    description: "Crispy salted fries in a classic cinema box.",
-    price: 50000,
-    palette: ["#df4e4e", "#fdfd82", "#f5a042"],
-    shape: "fries",
-  },
-  {
-    key: "hot-dog",
-    name: "Hot Dog",
-    description: "Grilled sausage in a warm bun with mustard.",
-    price: 42000,
-    palette: ["#f9c378", "#df4e4e", "#fbfb1e"],
-    shape: "hotdog",
-  },
-  {
-    key: "onion-rings",
-    name: "Onion Rings",
-    description: "Crispy golden onion rings with ranch dip.",
-    price: 60000,
-    palette: ["#f9c378", "#f5a042", "#f1f1f3"],
-    shape: "rings",
-  },
-  {
-    key: "taco",
-    name: "Taco",
-    description: "Crunchy shell with beef, salsa, and fresh greens.",
-    price: 35000,
-    palette: ["#f5a042", "#34b35b", "#df4e4e"],
-    shape: "taco",
-  },
-  {
-    key: "iced-tea",
-    name: "Iced Tea",
-    description: "Chilled black tea with lemon over ice.",
-    price: 65000,
-    palette: ["#f38e30", "#f9c378", "#e0e0e4"],
-    shape: "cup",
-  },
-  {
-    key: "grape-soda",
-    name: "Grape Soda",
-    description: "Refreshing fizzy grape soda with crushed ice.",
-    price: 50000,
-    palette: ["#7e4fe3", "#c9b6ff", "#f1f1f3"],
-    shape: "cup",
-  },
-  {
-    key: "ice-coffee",
-    name: "Ice Coffee",
-    description: "Cold brew coffee served with sweet cream.",
-    price: 40000,
-    palette: ["#8a5a37", "#f9c378", "#f1f1f3"],
-    shape: "cup",
-  },
-  {
-    key: "chocolate-drink",
-    name: "Chocolate drink",
-    description: "Creamy chocolate milk with shaved cocoa.",
-    price: 42000,
-    palette: ["#6f3f25", "#f9c378", "#f1f1f3"],
-    shape: "cup",
-  },
-  {
-    key: "popcorn",
-    name: "Popcorn",
-    description: "Buttery cinema-style popcorn in a striped tub.",
-    price: 70000,
-    palette: ["#df4e4e", "#f1f1f3", "#fdfd82"],
-    shape: "popcorn",
-  },
-  {
-    key: "fanta-orange",
-    name: "Fanta Orange",
-    description: "Fizzy orange soda served ice cold.",
-    price: 52000,
-    palette: ["#f38e30", "#f9c378", "#f1f1f3"],
-    shape: "can",
-  },
-];
+const foodVisuals = {
+  "sweet-popcorn": { palette: ["#df4e4e", "#f1f1f3", "#fdfd82"], shape: "popcorn" },
+  "caramel-popcorn": { palette: ["#8a5a37", "#f9c378", "#fdfd82"], shape: "popcorn" },
+  "cheese-popcorn": { palette: ["#f5a042", "#fdfd82", "#f1f1f3"], shape: "popcorn" },
+  "hot-dog": { palette: ["#f9c378", "#df4e4e", "#fbfb1e"], shape: "hotdog" },
+  sausage: { palette: ["#f9c378", "#df4e4e", "#fbfb1e"], shape: "hotdog" },
+  "large-soft-drink": { palette: ["#df4e4e", "#f1f1f3", "#e0e0e4"], shape: "cup" },
+  "bottled-water": { palette: ["#3db1b1", "#b3e5e5", "#f1f1f3"], shape: "cup" },
+  "my-combo": { palette: ["#df4e4e", "#fdfd82", "#f1f1f3"], shape: "popcorn" },
+  "couple-combo": { palette: ["#f38e30", "#fdfd82", "#f1f1f3"], shape: "popcorn" },
+};
 
 function formatDateTime(value) {
   const date = new Date(value);
@@ -227,10 +141,34 @@ function getSnackShape(shape, primary, secondary, accent) {
   `;
 }
 
-const snackItems = snacks.map((item) => ({
-  ...item,
-  imageUrl: createSnackImage(item),
-}));
+function toSnackView(item) {
+  const visual = foodVisuals[item.slug] || {
+    palette: ["#f38e30", "#f9c378", "#f1f1f3"],
+    shape: "popcorn",
+  };
+  const nextItem = {
+    ...item,
+    key: item.id,
+    ...visual,
+  };
+
+  return {
+    ...nextItem,
+    imageUrl: item.imageUrl || createSnackImage(nextItem),
+  };
+}
+
+function toQuantities(foodItems) {
+  return Object.fromEntries(
+    foodItems.map((item) => [item.foodItemId, item.quantity])
+  );
+}
+
+function toFoodItemRequests(quantities) {
+  return Object.entries(quantities)
+    .filter(([, quantity]) => quantity > 0)
+    .map(([foodItemId, quantity]) => ({ foodItemId, quantity }));
+}
 
 export default function FoodDrinkPage({ onRequireAuth }) {
   const { showtimeId } = useParams();
@@ -253,9 +191,8 @@ export default function FoodDrinkPage({ onRequireAuth }) {
   const [movie, setMovie] = useState(null);
   const [showtime, setShowtime] = useState(null);
   const [seats, setSeats] = useState([]);
-  const [quantities, setQuantities] = useState(() =>
-    Object.fromEntries(snackItems.map((item) => [item.key, 0]))
-  );
+  const [foodItems, setFoodItems] = useState([]);
+  const [quantities, setQuantities] = useState({});
   const [cartStatus, setCartStatus] = useState("");
   const [bookingError, setBookingError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -268,14 +205,17 @@ export default function FoodDrinkPage({ onRequireAuth }) {
         setError("");
 
         const showtimeData = await showtimeApi.getById(showtimeId);
-        const [movieData, seatData] = await Promise.all([
+        const [movieData, seatData, foodData] = await Promise.all([
           movieApi.getById(showtimeData.movieId),
           bookingApi.getSeats(showtimeId),
+          concessionApi.getByShowtime(showtimeId),
         ]);
 
         setShowtime(showtimeData);
         setMovie(movieData);
         setSeats(seatData);
+        setFoodItems(foodData);
+        setQuantities(toQuantities(loadFoodDraft(showtimeId)));
       } catch {
         setError("Cannot load food and drink selection.");
       } finally {
@@ -313,12 +253,17 @@ export default function FoodDrinkPage({ onRequireAuth }) {
     [seats, selectedSeatIds]
   );
 
+  const snackItems = useMemo(
+    () => foodItems.map(toSnackView),
+    [foodItems]
+  );
+
   const selectedSnackItems = useMemo(
     () =>
       snackItems
         .map((item) => ({ ...item, quantity: quantities[item.key] || 0 }))
         .filter((item) => item.quantity > 0),
-    [quantities]
+    [quantities, snackItems]
   );
 
   const foodTotal = selectedSnackItems.reduce(
@@ -335,14 +280,19 @@ export default function FoodDrinkPage({ onRequireAuth }) {
   function updateQuantity(itemKey, direction) {
     setCartStatus("");
     setBookingError("");
-    setQuantities((current) => ({
-      ...current,
-      [itemKey]: Math.max(0, Math.min(9, (current[itemKey] || 0) + direction)),
-    }));
+    setQuantities((current) => {
+      const next = {
+        ...current,
+        [itemKey]: Math.max(0, Math.min(9, (current[itemKey] || 0) + direction)),
+      };
+      saveFoodDraft(showtimeId, toFoodItemRequests(next));
+      return next;
+    });
   }
 
   function skipSnacks() {
-    setQuantities(Object.fromEntries(snackItems.map((item) => [item.key, 0])));
+    setQuantities({});
+    saveFoodDraft(showtimeId, []);
     setCartStatus("Food and drink skipped.");
   }
 
@@ -364,17 +314,7 @@ export default function FoodDrinkPage({ onRequireAuth }) {
     const nextParams = new URLSearchParams({
       tickets: String(ticketCount),
       seats: selectedSeatIds.join(","),
-      foodTotal: foodTotal.toFixed(2),
     });
-
-    if (selectedSnackItems.length > 0) {
-      nextParams.set(
-        "snacks",
-        selectedSnackItems
-          .map((item) => `${item.key}:${item.quantity}`)
-          .join(",")
-      );
-    }
 
     if (selectedDateParam) {
       nextParams.set("date", selectedDateParam);
