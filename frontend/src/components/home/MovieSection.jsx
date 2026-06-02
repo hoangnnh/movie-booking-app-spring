@@ -21,10 +21,10 @@ export default function MovieSection({
   const carouselRef = useRef(null);
   const [startIndex, setStartIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(1);
+  const [slideDistance, setSlideDistance] = useState(0);
 
   const visibleMovies = movies.slice(0, limit).map(normalizeMovie);
   const maxStartIndex = Math.max(0, visibleMovies.length - visibleCount);
-  const renderedMovies = visibleMovies.slice(startIndex, startIndex + visibleCount);
 
   useEffect(() => {
     const carousel = carouselRef.current;
@@ -42,6 +42,10 @@ export default function MovieSection({
       );
 
       setVisibleCount(nextVisibleCount);
+      setSlideDistance(
+        (carousel.clientWidth - CARD_GAP * (nextVisibleCount - 1)) / nextVisibleCount
+          + CARD_GAP
+      );
       setStartIndex((current) =>
         Math.min(current, Math.max(0, visibleMovies.length - nextVisibleCount))
       );
@@ -81,39 +85,44 @@ export default function MovieSection({
 
         <div
           ref={carouselRef}
-          className="grid gap-[24px] overflow-hidden pb-[12px]"
-          style={{
-            gridTemplateColumns: `repeat(${renderedMovies.length}, minmax(0, 1fr))`,
-          }}
+          className="overflow-hidden pb-[12px]"
         >
-          {renderedMovies.map((movie) => (
-            <MovieCard
-              key={movie.id}
-              title={movie.title}
-              genres={movie.genres}
-              duration={movie.duration}
-              rating={movie.rating}
-              ageRating={movie.ageRating}
-              posterUrl={movie.posterUrl}
-              trailerUrl={movie.trailerUrl}
-              status={status}
-              releaseText={
-                movie.releaseDate
-                  ? `Releases ${new Date(movie.releaseDate).toLocaleDateString(
-                      "en-US",
-                      {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      }
-                    )}`
-                  : "Releases March 15, 2025"
-              }
-              className="!w-full min-w-0"
-              onBook={() => navigate(getMovieDetailPath(movie))}
-              onOpenDetails={() => navigate(getMovieDetailPath(movie))}
-            />
-          ))}
+          <div
+            className="flex gap-[24px] transition-transform duration-500 ease-in-out motion-reduce:transition-none"
+            style={{ transform: `translateX(-${startIndex * slideDistance}px)` }}
+          >
+            {visibleMovies.map((movie) => (
+              <MovieCard
+                key={movie.id}
+                title={movie.title}
+                genres={movie.genres}
+                duration={movie.duration}
+                rating={movie.rating}
+                ageRating={movie.ageRating}
+                posterUrl={movie.posterUrl}
+                trailerUrl={movie.trailerUrl}
+                status={status}
+                releaseText={
+                  movie.releaseDate
+                    ? `Releases ${new Date(movie.releaseDate).toLocaleDateString(
+                        "en-US",
+                        {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        }
+                      )}`
+                    : "Releases March 15, 2025"
+                }
+                className="min-w-0"
+                style={{
+                  flex: `0 0 calc((100% - ${(visibleCount - 1) * CARD_GAP}px) / ${visibleCount})`,
+                }}
+                onBook={() => navigate(getMovieDetailPath(movie))}
+                onOpenDetails={() => navigate(getMovieDetailPath(movie))}
+              />
+            ))}
+          </div>
         </div>
 
         {startIndex < maxStartIndex && (

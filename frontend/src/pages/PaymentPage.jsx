@@ -5,20 +5,28 @@ import {
   CheckCircle2,
   ChevronLeft,
   CreditCard,
+  Download,
   Landmark,
   MapPin,
   QrCode,
+  Share2,
   ShieldCheck,
   Ticket,
 } from "lucide-react";
 import { bookingApi, concessionApi, movieApi, showtimeApi } from "../api/api";
 import BookingProgress from "../components/booking/BookingProgress";
 import Button from "../components/common/Button";
+import Footer from "../components/layout/Footer";
 import { formatDuration, getPosterUrl } from "../components/home/homeUtils";
 import { useAuth } from "../context/useAuth";
 import { cn } from "../utils/cn";
 import { formatVnd } from "../utils/currency";
-import { clearFoodDraft, loadFoodDraft } from "../utils/checkoutDraft";
+import {
+  clearFoodDraft,
+  loadConfirmedBooking,
+  loadFoodDraft,
+  saveConfirmedBooking,
+} from "../utils/checkoutDraft";
 import { notifyNotificationsUpdated } from "../utils/notificationEvents";
 
 const paymentMethods = [
@@ -76,7 +84,9 @@ export default function PaymentPage({ onRequireAuth }) {
   const [seats, setSeats] = useState([]);
   const [foodItems, setFoodItems] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("DEMO_CARD");
-  const [booking, setBooking] = useState(null);
+  const [booking, setBooking] = useState(() =>
+    loadConfirmedBooking(showtimeId, user?.userId, selectedSeatIds)
+  );
   const [bookingError, setBookingError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -205,7 +215,9 @@ export default function PaymentPage({ onRequireAuth }) {
         return;
       }
 
-      setBooking(response?.booking || response);
+      const confirmedBooking = response?.booking || response;
+      saveConfirmedBooking(showtimeId, user.userId, confirmedBooking);
+      setBooking(confirmedBooking);
     } catch (err) {
       setBookingError(cleanBookingError(err));
     } finally {
@@ -235,6 +247,20 @@ export default function PaymentPage({ onRequireAuth }) {
     );
   }
 
+  if (booking) {
+    return (
+      <PaymentSuccessPage
+        booking={booking}
+        movieView={movieView}
+        timeView={timeView}
+        cinemaName={displayCinemaName}
+        roomName={showtime.roomName}
+        user={user}
+        onViewBooking={() => navigate(`/my-booking/${booking.id}`)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-app-background text-app-text">
       <main className="ticketor-container py-[24px] sm:py-[40px]">
@@ -247,7 +273,7 @@ export default function PaymentPage({ onRequireAuth }) {
           Back to food and drink
         </button>
 
-        <BookingProgress currentStep={booking ? 3 : 2} className="mb-[32px] sm:mb-[56px]" />
+        <BookingProgress currentStep={2} className="mb-[32px] sm:mb-[56px]" />
 
         <div className="grid gap-[20px] xl:grid-cols-[280px_minmax(0,1fr)_300px]">
           <aside className="xl:order-1">
@@ -261,14 +287,10 @@ export default function PaymentPage({ onRequireAuth }) {
           </aside>
 
           <section className="xl:order-2">
-            {booking ? (
-              <TicketPanel booking={booking} paymentMethod={paymentMethod} />
-            ) : (
-              <PaymentMethodPanel
-                paymentMethod={paymentMethod}
-                onPaymentMethodChange={setPaymentMethod}
-              />
-            )}
+            <PaymentMethodPanel
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
+            />
           </section>
 
           <aside className="xl:order-3">
@@ -311,28 +333,15 @@ export default function PaymentPage({ onRequireAuth }) {
                 </div>
               </div>
 
-              {!booking && (
-                <Button
-                  size={48}
-                  variant="primary"
-                  className="mt-[24px] w-full"
-                  disabled={submitting || !seatsReady}
-                  onClick={completePayment}
-                >
-                  {submitting ? "Processing..." : getPaymentButtonLabel(paymentMethod)}
-                </Button>
-              )}
-
-              {booking && (
-                <Button
-                  size={48}
-                  variant="primary"
-                  className="mt-[24px] w-full"
-                  onClick={() => navigate("/my-booking")}
-                >
-                  View My Booking
-                </Button>
-              )}
+              <Button
+                size={48}
+                variant="primary"
+                className="mt-[24px] w-full"
+                disabled={submitting || !seatsReady}
+                onClick={completePayment}
+              >
+                {submitting ? "Processing..." : getPaymentButtonLabel(paymentMethod)}
+              </Button>
 
               {bookingError && (
                 <p className="mt-[12px] rounded-tk-4 border border-error-500 bg-app-background px-[10px] py-[8px] type-body-xs text-error-500">
@@ -445,39 +454,157 @@ function PaymentMethodPanel({ paymentMethod, onPaymentMethodChange }) {
   );
 }
 
-function TicketPanel({ booking, paymentMethod }) {
+function PaymentSuccessPage({
+  booking,
+  movieView,
+  timeView,
+  cinemaName,
+  roomName,
+  user,
+  onViewBooking,
+}) {
+  const seats = booking.seatSummary || (booking.tickets || []).map((ticket) => ticket.seatLabel).join(", ");
+  const orderNumber = String(booking.id).slice(0, 8).toUpperCase();
+
   return (
-    <div className="rounded-tk-8 border border-primary-600 bg-app-surface p-[28px]">
-      <div className="flex items-start gap-[16px]">
-        <span className="flex h-[46px] w-[46px] items-center justify-center rounded-tk-4 bg-primary-600 text-neutral-900">
-          <CheckCircle2 className="h-[24px] w-[24px]" />
-        </span>
-        <div>
-          <p className="type-label-s text-brand">Ticket Confirmed</p>
-          <h2 className="type-h4 mt-[4px] text-app-text">
-            Booking {String(booking.id).slice(0, 8).toUpperCase()}
-          </h2>
-          <p className="type-body-s mt-[6px] text-app-text-muted">
-            {formatPaymentMethod(paymentMethod)} / {booking.paymentReference || "PAY-DEMO"}
-          </p>
+    <div className="min-h-screen bg-app-background text-app-text">
+      <div className="border-b border-app-border bg-app-surface-soft">
+        <div className="ticketor-container py-[28px] sm:py-[56px]">
+          <BookingProgress currentStep={3} />
         </div>
       </div>
 
-      <div className="mt-[24px] grid gap-[10px]">
-        {(booking.tickets || []).map((ticket) => (
-          <div
-            key={ticket.id}
-            className="flex items-center justify-between rounded-tk-4 border border-app-border bg-app-background px-[14px] py-[12px]"
-          >
-            <div>
-              <p className="type-body-s text-app-text">Seat {ticket.seatLabel}</p>
-              <p className="type-body-xs text-app-text-muted">{ticket.code}</p>
+      <main className="ticketor-container py-[32px] sm:py-[56px]">
+        <div className="grid gap-[28px] lg:grid-cols-[330px_minmax(0,1fr)] lg:gap-[64px]">
+          <aside>
+            <SuccessMovieCard
+              movieView={movieView}
+              timeView={timeView}
+              cinemaName={cinemaName}
+              roomName={roomName}
+              seats={seats}
+            />
+            <div className="mt-[2px] rounded-b-tk-8 bg-app-surface p-[20px]">
+              <p className="type-body-xs text-app-text-muted">Order Number</p>
+              <p className="type-body-m mt-[5px] text-app-text">{orderNumber}</p>
             </div>
-            <Ticket className="h-[18px] w-[18px] text-brand" />
-          </div>
-        ))}
+          </aside>
+
+          <section className="pt-[4px]">
+            <p className="type-label-s text-brand">Ticket Confirmed</p>
+            <h1 className="type-h3 mt-[6px] text-brand">Payment Successful!</h1>
+            <p className="type-body-s mt-[8px] text-app-text-muted">
+              Your ticket for {movieView.title} has been successfully purchased.
+            </p>
+
+            <div className="mt-[38px] grid gap-[32px] xl:grid-cols-2">
+              <SuccessDetails title="Item Details">
+                <SuccessRow label="Movie" value={movieView.title} />
+                <SuccessRow label="Date" value={`${timeView.date}, ${timeView.time}`} />
+                <SuccessRow label="Cinema" value={cinemaName} />
+                <SuccessRow label="Room" value={roomName} />
+                <SuccessRow label="Seats" value={seats || "Seats unavailable"} />
+                {(booking.foodItems || []).map((item) => (
+                  <SuccessRow
+                    key={`${item.foodItemId || item.name}:${item.quantity}`}
+                    label="Food & Drink"
+                    value={`${item.quantity}x ${item.name} - ${formatVnd(item.lineTotal)}`}
+                  />
+                ))}
+                <SuccessRow label="Total order" value={formatVnd(booking.totalAmount)} />
+              </SuccessDetails>
+
+              <SuccessDetails title="Customer Details">
+                <SuccessRow label="Name" value={user?.fullName || "Signed-in customer"} />
+                <SuccessRow label="Email Address" value={user?.email || "Not available"} />
+                <SuccessRow label="Payment" value={formatPaymentMethod(booking.paymentMethod)} />
+                <SuccessRow label="Reference" value={booking.paymentReference || "PAY-DEMO"} />
+              </SuccessDetails>
+            </div>
+
+            <div className="mt-[34px] flex flex-wrap gap-[12px]">
+              <button
+                type="button"
+                disabled
+                title="Ticket download will be added next."
+                className="inline-flex h-[48px] min-w-[220px] cursor-not-allowed items-center justify-center gap-[10px] rounded-button border border-primary-600 bg-primary-600 px-[22px] type-button-l text-neutral-900 opacity-60"
+              >
+                <Download className="h-[20px] w-[20px]" />
+                Download ticket
+              </button>
+              <button
+                type="button"
+                disabled
+                title="Ticket sharing will be added with ticket download."
+                className="inline-flex h-[48px] min-w-[180px] cursor-not-allowed items-center justify-center gap-[10px] rounded-button border border-primary-600 px-[22px] type-button-l text-brand opacity-60"
+              >
+                <Share2 className="h-[20px] w-[20px]" />
+                Share ticket
+              </button>
+              <Button size={48} variant="outline" onClick={onViewBooking}>
+                View My Booking
+              </Button>
+            </div>
+
+            <p className="type-body-s mt-[20px] max-w-[560px] text-secondary-600">
+              Thank you for choosing CinemaTick to purchase your tickets. We appreciate your trust in us.
+            </p>
+          </section>
+        </div>
+      </main>
+
+      <Footer variant="plain" />
+    </div>
+  );
+}
+
+function SuccessMovieCard({ movieView, timeView, cinemaName, roomName, seats }) {
+  return (
+    <div className="overflow-hidden rounded-t-tk-8 bg-app-surface">
+      <img
+        src={movieView.posterUrl}
+        alt={movieView.title}
+        className="h-[280px] w-full object-cover"
+      />
+      <div className="p-[20px]">
+        <h2 className="type-h5 text-app-text">{movieView.title}</h2>
+        <p className="type-body-xs mt-[5px] text-app-text-muted">{movieView.duration}</p>
+        <p className="type-body-s mt-[16px] text-app-text">{cinemaName}</p>
+        <p className="type-body-xs mt-[5px] text-secondary-600">{roomName}</p>
+
+        <div className="mt-[18px] grid grid-cols-3 gap-[12px] border-t border-app-border pt-[14px]">
+          <ReceiptMeta label="Date" value={timeView.date} />
+          <ReceiptMeta label="Time" value={timeView.time} />
+          <ReceiptMeta label="Seats" value={seats || "-"} />
+        </div>
       </div>
     </div>
+  );
+}
+
+function ReceiptMeta({ label, value }) {
+  return (
+    <div className="min-w-0">
+      <p className="type-body-xs text-app-text-muted">{label}</p>
+      <p className="type-body-s mt-[5px] break-words text-app-text">{value}</p>
+    </div>
+  );
+}
+
+function SuccessDetails({ title, children }) {
+  return (
+    <div>
+      <h2 className="type-h5 text-app-text">{title}</h2>
+      <div className="mt-[16px] grid gap-[9px]">{children}</div>
+    </div>
+  );
+}
+
+function SuccessRow({ label, value }) {
+  return (
+    <p className="type-body-s text-app-text-muted">
+      <span className="text-app-text">{label}:</span> {value}
+    </p>
   );
 }
 
