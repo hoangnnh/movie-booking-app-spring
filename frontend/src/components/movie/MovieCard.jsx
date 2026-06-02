@@ -18,6 +18,7 @@ export default function MovieCard({
     onBook,
     onOpenDetails,
     className = "",
+    style,
 }) {
     const [isTrailerOpen, setIsTrailerOpen] = useState(false);
     const isComingSoon = status === "coming-soon";
@@ -46,6 +47,7 @@ export default function MovieCard({
             tabIndex={0}
             onClick={openDetails}
             onKeyDown={handleCardKeyDown}
+            style={style}
             className={cn(
                 "group w-[172px] shrink-0 cursor-pointer overflow-hidden bg-app-background text-app-text outline-none transition-transform focus-visible:ring-2 focus-visible:ring-brand",
                 className
