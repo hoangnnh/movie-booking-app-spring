@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { ChevronDown, LockKeyhole, LogIn, Menu, Moon, Search, Sun, X } from "lucide-react";
-import { movieApi } from "../../api/api";
+import { Bell, ChevronDown, LockKeyhole, LogIn, Menu, Moon, Search, Sun, X } from "lucide-react";
+import { movieApi, notificationApi } from "../../api/api";
 import { cn } from "../../utils/cn";
+import {
+    NOTIFICATIONS_UPDATED_EVENT,
+    notifyNotificationsUpdated,
+} from "../../utils/notificationEvents";
 import Avatar from "../common/Avatar";
 import Button from "../common/Button";
 import Logo from "../common/Logo";
@@ -244,6 +248,8 @@ export default function Navbar({
                         )}
                     </div>}
 
+                        {isLoggedIn && <NotificationBell userId={user.userId} />}
+
                         <div className="hidden h-[24px] w-px bg-app-border xl:block" />
 
                         {isLoggedIn ? (
@@ -404,6 +410,175 @@ export default function Navbar({
             </div>
         </header>
     );
+}
+
+function NotificationBell({ userId }) {
+    const notificationContainerRef = useRef(null);
+    const [open, setOpen] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    const loadNotifications = useCallback(async () => {
+        try {
+            const data = await notificationApi.getAll();
+            setNotifications(Array.isArray(data?.notifications) ? data.notifications : []);
+            setUnreadCount(Number(data?.unreadCount) || 0);
+        } catch {
+            setNotifications([]);
+            setUnreadCount(0);
+        }
+    }, []);
+
+    useEffect(() => {
+        const timeoutId = window.setTimeout(loadNotifications, 0);
+
+        window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, loadNotifications);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+            window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, loadNotifications);
+        };
+    }, [loadNotifications, userId]);
+
+    useEffect(() => {
+        if (!open) {
+            return undefined;
+        }
+
+        function closeOnOutsideClick(event) {
+            if (!notificationContainerRef.current?.contains(event.target)) {
+                setOpen(false);
+            }
+        }
+
+        document.addEventListener("pointerdown", closeOnOutsideClick);
+
+        return () => {
+            document.removeEventListener("pointerdown", closeOnOutsideClick);
+        };
+    }, [open]);
+
+    async function markRead(notification) {
+        setOpen(false);
+
+        if (notification.read) {
+            return;
+        }
+
+        try {
+            await notificationApi.markRead(notification.id);
+            setNotifications((current) =>
+                current.map((item) =>
+                    item.id === notification.id ? { ...item, read: true } : item
+                )
+            );
+            setUnreadCount((current) => Math.max(0, current - 1));
+            notifyNotificationsUpdated();
+        } catch {
+            loadNotifications();
+        }
+    }
+
+    async function markAllRead() {
+        try {
+            await notificationApi.markAllRead();
+            setNotifications((current) =>
+                current.map((notification) => ({ ...notification, read: true }))
+            );
+            setUnreadCount(0);
+            notifyNotificationsUpdated();
+        } catch {
+            loadNotifications();
+        }
+    }
+
+    return (
+        <div ref={notificationContainerRef} className="relative">
+            <Button
+                variant="text"
+                size={40}
+                iconOnly
+                rightIcon={<Bell />}
+                onClick={() => {
+                    setOpen((current) => !current);
+                    loadNotifications();
+                }}
+                aria-label="Open notifications"
+                title="Notifications"
+            />
+            {unreadCount > 0 && (
+                <span className="pointer-events-none absolute right-[1px] top-[1px] flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-brand px-[4px] text-[10px] font-bold text-black">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+            )}
+
+            {open && (
+                <div className="absolute right-0 top-[calc(100%+12px)] z-50 w-[min(92vw,380px)] overflow-hidden rounded-tk-12 border border-app-border bg-app-surface shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
+                    <div className="flex items-center justify-between gap-[12px] border-b border-app-border px-[16px] py-[14px]">
+                        <div>
+                            <p className="type-body-m font-bold text-app-text">Notifications</p>
+                            <p className="type-body-xs text-app-text-muted">
+                                {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
+                            </p>
+                        </div>
+                        {unreadCount > 0 && (
+                            <button
+                                type="button"
+                                onClick={markAllRead}
+                                className="type-body-xs font-bold text-brand transition-colors hover:text-brand-hover"
+                            >
+                                Mark all read
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="max-h-[420px] overflow-y-auto">
+                        {notifications.length === 0 ? (
+                            <p className="px-[16px] py-[24px] text-center type-body-s text-app-text-muted">
+                                No notifications yet.
+                            </p>
+                        ) : (
+                            notifications.map((notification) => (
+                                <Link
+                                    key={notification.id}
+                                    to={notification.actionUrl || "/profile"}
+                                    onClick={() => markRead(notification)}
+                                    className={cn(
+                                        "block border-b border-app-border px-[16px] py-[14px] transition-colors last:border-b-0 hover:bg-app-background",
+                                        !notification.read && "bg-brand/5"
+                                    )}
+                                >
+                                    <div className="flex items-start gap-[10px]">
+                                        <span
+                                            className={cn(
+                                                "mt-[6px] h-[8px] w-[8px] shrink-0 rounded-full",
+                                                notification.read ? "bg-app-border" : "bg-brand"
+                                            )}
+                                        />
+                                        <div className="min-w-0">
+                                            <p className="type-body-s font-bold text-app-text">{notification.title}</p>
+                                            <p className="mt-[3px] type-body-xs text-app-text-muted">{notification.message}</p>
+                                            <p className="mt-[6px] text-[11px] text-app-text-subtle">
+                                                {formatNotificationTime(notification.createdAt)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function formatNotificationTime(value) {
+    if (!value) {
+        return "";
+    }
+
+    return new Date(value).toLocaleString();
 }
 
 function NavbarLink({ to, children }) {

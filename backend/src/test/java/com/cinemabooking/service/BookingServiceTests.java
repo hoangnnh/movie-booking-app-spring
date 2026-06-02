@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -73,6 +76,12 @@ class BookingServiceTests {
 
     @Mock
     private PaymentGatewayService paymentGatewayService;
+
+    @Mock
+    private NotificationService notificationService;
+
+    @Mock
+    private ShowtimeAvailabilityService showtimeAvailabilityService;
 
     @InjectMocks
     private BookingService bookingService;
@@ -173,6 +182,45 @@ class BookingServiceTests {
         assertThat(savedBooking.getSeatSummary()).isEqualTo("A1, B2");
         verify(ticketRepository, times(2)).save(any(Ticket.class));
         verify(bookingFoodItemRepository).save(any());
+        verify(notificationService).createBookingNotification(savedBooking);
+    }
+
+    @Test
+    void createBookingReleasesInactiveTicketRowsBeforeSavingReplacement() {
+        when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(showtimeRepository.findById(showtimeId)).thenReturn(Optional.of(showtime));
+        when(seatRepository.findAllById(List.of(seatA1.getId()))).thenReturn(List.of(seatA1));
+        when(ticketRepository.existsByShowtime_IdAndSeat_IdAndBooking_StatusIn(eq(showtimeId), eq(seatA1.getId()), anySet()))
+                .thenReturn(false);
+        when(ticketRepository.findByShowtime_IdAndBooking_StatusIn(eq(showtimeId), anySet()))
+                .thenReturn(List.of());
+        when(seatRepository.findByRoom_IdOrderByRowNameAscSeatNumberAsc(showtime.getRoom().getId()))
+                .thenReturn(List.of(seatA1));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> {
+            Booking booking = invocation.getArgument(0);
+            booking.setId(UUID.randomUUID());
+            return booking;
+        });
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> {
+            Ticket ticket = invocation.getArgument(0);
+            ticket.setId(UUID.randomUUID());
+            return ticket;
+        });
+        when(ticketRepository.findByBooking_Id(any())).thenReturn(List.of());
+        when(bookingFoodItemRepository.findByBooking_IdOrderByCreatedAtAsc(any())).thenReturn(List.of());
+
+        bookingService.createBooking(
+                userId,
+                new CreateBookingRequest(userId, showtimeId, List.of(seatA1.getId()), List.of(), "DEMO_CARD"),
+                "127.0.0.1"
+        );
+
+        InOrder ticketOperations = inOrder(ticketRepository);
+        ticketOperations.verify(ticketRepository).deleteInactiveTicketsByShowtimeId(showtimeId, Set.of(
+                BookingStatus.PENDING,
+                BookingStatus.CONFIRMED
+        ));
+        ticketOperations.verify(ticketRepository).save(any(Ticket.class));
     }
 
     @Test

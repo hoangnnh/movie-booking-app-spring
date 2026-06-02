@@ -19,6 +19,7 @@ import { useAuth } from "../context/useAuth";
 import { cn } from "../utils/cn";
 import { formatVnd } from "../utils/currency";
 import { clearFoodDraft, loadFoodDraft } from "../utils/checkoutDraft";
+import { notifyNotificationsUpdated } from "../utils/notificationEvents";
 
 const paymentMethods = [
   {
@@ -98,8 +99,8 @@ export default function PaymentPage({ onRequireAuth }) {
         setMovie(movieData);
         setSeats(seatData);
         setFoodItems(foodData);
-      } catch {
-        setError("Cannot load payment details.");
+      } catch (loadError) {
+        setError(loadError?.message || "Cannot load payment details.");
       } finally {
         setLoading(false);
       }
@@ -197,6 +198,7 @@ export default function PaymentPage({ onRequireAuth }) {
       });
 
       clearFoodDraft(showtimeId);
+      notifyNotificationsUpdated();
 
       if (response?.redirectRequired && response?.checkoutUrl) {
         window.location.assign(response.checkoutUrl);

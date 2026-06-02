@@ -16,6 +16,7 @@ import com.cinemabooking.entity.Showtime;
 import com.cinemabooking.enums.MovieDisplayStatus;
 import com.cinemabooking.repository.ShowtimeRepository;
 import com.cinemabooking.service.BookingService;
+import com.cinemabooking.service.ShowtimeAvailabilityService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,12 +27,14 @@ public class ShowtimeController {
 
     private final ShowtimeRepository showtimeRepository;
     private final BookingService bookingService;
+    private final ShowtimeAvailabilityService showtimeAvailabilityService;
 
     @GetMapping("/movies/{movieId}/showtimes")
     public List<ShowtimeResponse> getShowtimesByMovie(@PathVariable UUID movieId) {
         return showtimeRepository.findByMovie_IdOrderByStartTimeAsc(movieId)
                 .stream()
                 .filter((showtime) -> showtime.getMovie().getDisplayStatus() == MovieDisplayStatus.SHOWING_NOW)
+                .filter((showtime) -> !showtimeAvailabilityService.isExpired(showtime))
                 .map(this::toResponse)
                 .toList();
     }
@@ -44,6 +47,8 @@ public class ShowtimeController {
         if (showtime.getMovie().getDisplayStatus() != MovieDisplayStatus.SHOWING_NOW) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This movie is not currently available for booking");
         }
+
+        showtimeAvailabilityService.requireBookable(showtime);
 
         return toResponse(showtime);
     }

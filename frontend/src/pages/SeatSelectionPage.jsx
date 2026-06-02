@@ -120,8 +120,8 @@ export default function SeatSelectionPage() {
         setShowtime(showtimeData);
         setMovie(movieData);
         setSeats(seatData);
-      } catch {
-        setError("Cannot load seat selection.");
+      } catch (loadError) {
+        setError(loadError?.message || "Cannot load seat selection.");
       } finally {
         setLoading(false);
       }

@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.cinemabooking.dto.FoodItemResponse;
 import com.cinemabooking.repository.FoodItemRepository;
 import com.cinemabooking.repository.ShowtimeRepository;
+import com.cinemabooking.service.ShowtimeAvailabilityService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,12 +24,14 @@ public class FoodItemController {
 
     private final ShowtimeRepository showtimeRepository;
     private final FoodItemRepository foodItemRepository;
+    private final ShowtimeAvailabilityService showtimeAvailabilityService;
 
     @GetMapping("/{showtimeId}/food-items")
     public List<FoodItemResponse> getFoodItems(@PathVariable UUID showtimeId) {
-        if (!showtimeRepository.existsById(showtimeId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Showtime not found");
-        }
+        showtimeAvailabilityService.requireBookable(
+                showtimeRepository.findById(showtimeId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Showtime not found"))
+        );
 
         return foodItemRepository.findByActiveTrueOrderBySortOrderAscNameAsc()
                 .stream()

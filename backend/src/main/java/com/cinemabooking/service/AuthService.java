@@ -35,6 +35,7 @@ public class AuthService {
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final NotificationService notificationService;
 
     @Value("${app.auth.verification-token-expiry-hours:24}")
     private long verificationTokenExpiryHours;
@@ -140,6 +141,7 @@ public class AuthService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         appUserRepository.save(user);
+        notificationService.createPasswordChangedNotification(user);
     }
 
     public AuthResponse loginWithGoogle(OAuth2User oauth2User) {
@@ -377,6 +379,7 @@ public class AuthService {
         user.setResetPasswordToken(null);
         user.setResetTokenExpiry(null);
         appUserRepository.save(user);
+        notificationService.createPasswordChangedNotification(user);
     }
 
     private LocalDateTime newVerificationTokenExpiry() {

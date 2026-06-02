@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   BellRing,
   CalendarDays,
@@ -17,14 +17,18 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { authApi, bookingApi } from "../api/api";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { authApi, bookingApi, notificationApi } from "../api/api";
 import Avatar from "../components/common/Avatar";
 import Button from "../components/common/Button";
 import { getPosterUrl } from "../components/home/homeUtils";
 import { useAuth } from "../context/useAuth";
 import { cn } from "../utils/cn";
 import { formatVnd } from "../utils/currency";
+import {
+  NOTIFICATIONS_UPDATED_EVENT,
+  notifyNotificationsUpdated,
+} from "../utils/notificationEvents";
 
 const sections = [
   { id: "personal", label: "Personal Information", icon: UserRound },
@@ -431,10 +435,119 @@ function PersonalInformationSection({ profile, saving, onChange, onSubmit, onOpe
 }
 
 function NotificationsSection() {
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const data = await notificationApi.getAll();
+      setNotifications(Array.isArray(data?.notifications) ? data.notifications : []);
+      setUnreadCount(Number(data?.unreadCount) || 0);
+    } catch (loadError) {
+      setError(loadError?.message || "We couldn't load your notifications right now.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(loadNotifications, 0);
+
+    window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, loadNotifications);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, loadNotifications);
+    };
+  }, [loadNotifications]);
+
+  async function markRead(notification) {
+    if (notification.read) {
+      return;
+    }
+
+    try {
+      await notificationApi.markRead(notification.id);
+      setNotifications((current) =>
+        current.map((item) =>
+          item.id === notification.id ? { ...item, read: true } : item
+        )
+      );
+      setUnreadCount((current) => Math.max(0, current - 1));
+      notifyNotificationsUpdated();
+    } catch {
+      loadNotifications();
+    }
+  }
+
+  async function markAllRead() {
+    try {
+      await notificationApi.markAllRead();
+      setNotifications((current) =>
+        current.map((notification) => ({ ...notification, read: true }))
+      );
+      setUnreadCount(0);
+      notifyNotificationsUpdated();
+    } catch {
+      loadNotifications();
+    }
+  }
+
   return (
     <section className="mt-[24px] rounded-tk-12 border border-app-border bg-app-surface p-[20px] sm:p-[24px]">
-      <p className="type-label-m text-brand">NOTIFICATIONS</p>
-      <p className="type-body-s mt-[8px] text-app-text-muted">You don't have any notifications yet.</p>
+      <div className="flex items-center justify-between gap-[16px]">
+        <div>
+          <p className="type-label-m text-brand">NOTIFICATIONS</p>
+          <p className="type-body-s mt-[8px] text-app-text-muted">
+            {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}` : "You're all caught up."}
+          </p>
+        </div>
+        {unreadCount > 0 && (
+          <Button type="button" variant="outline" tone="base" size={32} onClick={markAllRead}>
+            Mark all read
+          </Button>
+        )}
+      </div>
+
+      {loading && <p className="type-body-s mt-[18px] text-app-text-muted">Loading notifications...</p>}
+      {!loading && error && <p className="type-body-s mt-[18px] text-error-500">{error}</p>}
+      {!loading && !error && notifications.length === 0 && (
+        <p className="type-body-s mt-[18px] text-app-text-muted">You don't have any notifications yet.</p>
+      )}
+
+      {!loading && !error && notifications.length > 0 && (
+        <div className="mt-[18px] grid gap-[10px]">
+          {notifications.map((notification) => (
+            <Link
+              key={notification.id}
+              to={notification.actionUrl || "/profile"}
+              onClick={() => markRead(notification)}
+              className={cn(
+                "flex items-start gap-[12px] rounded-tk-8 border border-app-border bg-app-background p-[14px] transition-colors hover:border-app-text",
+                !notification.read && "border-brand/50 bg-brand/5"
+              )}
+            >
+              <span
+                className={cn(
+                  "mt-[6px] h-[9px] w-[9px] shrink-0 rounded-full",
+                  notification.read ? "bg-app-border" : "bg-brand"
+                )}
+              />
+              <div className="min-w-0">
+                <p className="type-body-s font-bold text-app-text">{notification.title}</p>
+                <p className="type-body-xs mt-[4px] text-app-text-muted">{notification.message}</p>
+                <p className="mt-[7px] text-[11px] text-app-text-subtle">
+                  {formatNotificationDate(notification.createdAt)}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -520,6 +633,7 @@ function PasswordChangeModal({ onClose, onChanged }) {
         newPassword,
         confirmNewPassword,
       });
+      notifyNotificationsUpdated();
       onChanged();
     } catch (saveError) {
       setError(saveError?.message || "We couldn't change your password right now.");
@@ -688,6 +802,10 @@ function formatBookingDate(value) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatNotificationDate(value) {
+  return value ? new Date(value).toLocaleString() : "";
 }
 
 function formatProvider(provider) {

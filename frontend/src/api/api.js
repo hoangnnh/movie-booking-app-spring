@@ -72,7 +72,7 @@ export async function apiRequest(path, options = {}) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "API request failed");
+    throw new Error(extractApiErrorMessage(errorText));
   }
 
   if (response.status === 204) return null;
@@ -83,6 +83,19 @@ export async function apiRequest(path, options = {}) {
   }
 
   return JSON.parse(responseText);
+}
+
+function extractApiErrorMessage(errorText) {
+  if (!errorText) {
+    return "API request failed";
+  }
+
+  try {
+    const error = JSON.parse(errorText);
+    return error.detail || error.message || error.error || errorText;
+  } catch {
+    return errorText;
+  }
 }
 
 export const authApi = {
@@ -279,4 +292,18 @@ export const bookingApi = {
 
   getUserBookings: (userId) => apiRequest(`/users/${userId}/bookings`),
 
+};
+
+export const notificationApi = {
+  getAll: () => apiRequest("/notifications"),
+
+  markRead: (notificationId) =>
+    apiRequest(`/notifications/${notificationId}/read`, {
+      method: "PATCH",
+    }),
+
+  markAllRead: () =>
+    apiRequest("/notifications/read-all", {
+      method: "PATCH",
+    }),
 };

@@ -216,8 +216,8 @@ export default function FoodDrinkPage({ onRequireAuth }) {
         setSeats(seatData);
         setFoodItems(foodData);
         setQuantities(toQuantities(loadFoodDraft(showtimeId)));
-      } catch {
-        setError("Cannot load food and drink selection.");
+      } catch (loadError) {
+        setError(loadError?.message || "Cannot load food and drink selection.");
       } finally {
         setLoading(false);
       }

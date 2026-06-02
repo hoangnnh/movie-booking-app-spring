@@ -59,6 +59,8 @@ public class BookingService {
     private final FoodItemRepository foodItemRepository;
     private final BookingFoodItemRepository bookingFoodItemRepository;
     private final PaymentGatewayService paymentGatewayService;
+    private final NotificationService notificationService;
+    private final ShowtimeAvailabilityService showtimeAvailabilityService;
 
     private static final Set<String> SUPPORTED_PAYMENT_METHODS = Set.of(
             "VNPAY_QR",
@@ -80,6 +82,9 @@ public class BookingService {
         if (showtime.getMovie().getDisplayStatus() != MovieDisplayStatus.SHOWING_NOW) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This movie is not currently available for booking");
         }
+
+        showtimeAvailabilityService.requireBookable(showtime);
+        releaseInactiveTickets(showtimeId);
 
         List<Ticket> bookedTickets = ticketRepository.findByShowtime_IdAndBooking_StatusIn(
                 showtimeId,
@@ -131,6 +136,9 @@ public class BookingService {
         if (showtime.getMovie().getDisplayStatus() != MovieDisplayStatus.SHOWING_NOW) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This movie is not currently available for booking");
         }
+
+        showtimeAvailabilityService.requireBookable(showtime);
+        releaseInactiveTickets(showtime.getId());
 
         List<Seat> seats = seatRepository.findAllById(request.seatIds());
 
@@ -211,6 +219,7 @@ public class BookingService {
         }
 
         BookingResponse bookingResponse = toBookingResponse(booking);
+        notificationService.createBookingNotification(booking);
 
         if ("DEMO_CARD".equals(paymentMethod)) {
             return new PaymentCheckoutResponse(
@@ -302,9 +311,16 @@ public class BookingService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This booking can no longer be confirmed");
         }
 
+        boolean wasConfirmed = booking.getStatus() == BookingStatus.CONFIRMED;
         booking.setStatus(BookingStatus.CONFIRMED);
         booking.setPaymentStatus("PAID");
-        return toBookingResponse(bookingRepository.save(booking));
+        Booking savedBooking = bookingRepository.save(booking);
+
+        if (!wasConfirmed) {
+            notificationService.createBookingNotification(savedBooking);
+        }
+
+        return toBookingResponse(savedBooking);
     }
 
     @Transactional
@@ -430,6 +446,10 @@ public class BookingService {
                 }
             }
         }
+    }
+
+    private void releaseInactiveTickets(UUID showtimeId) {
+        ticketRepository.deleteInactiveTicketsByShowtimeId(showtimeId, ACTIVE_BOOKING_STATUSES);
     }
 
     private List<ValidatedFoodItem> validateFoodItems(List<BookingFoodItemRequest> requestedItems) {

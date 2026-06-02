@@ -47,6 +47,9 @@ class AuthServiceTests {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private NotificationService notificationService;
+
     private AuthService authService;
     private UUID userId;
     private AppUser user;
@@ -54,7 +57,7 @@ class AuthServiceTests {
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(appUserRepository, passwordEncoder, jwtService, emailService);
+        authService = new AuthService(appUserRepository, passwordEncoder, jwtService, notificationService, emailService);
         userId = UUID.randomUUID();
         user = new AppUser();
         user.setId(userId);
@@ -116,6 +119,7 @@ class AuthServiceTests {
 
         assertThat(user.getPassword()).isEqualTo("encoded-new-password");
         verify(appUserRepository).save(user);
+        verify(notificationService).createPasswordChangedNotification(user);
     }
 
     @Test
@@ -172,6 +176,7 @@ class AuthServiceTests {
         assertThat(user.getResetPasswordToken()).isNull();
         assertThat(user.getResetTokenExpiry()).isNull();
         verify(appUserRepository).save(user);
+        verify(notificationService).createPasswordChangedNotification(user);
     }
 
     @Test

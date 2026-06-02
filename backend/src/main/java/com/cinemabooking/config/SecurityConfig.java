@@ -110,6 +110,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/tmdb/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/bookings", "/api/bookings/**", "/api/users/**").authenticated()
+                        .requestMatchers("/api/notifications", "/api/notifications/**").authenticated()
                         .anyRequest().permitAll()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

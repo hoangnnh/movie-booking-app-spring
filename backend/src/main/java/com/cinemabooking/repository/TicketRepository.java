@@ -7,6 +7,9 @@ import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.cinemabooking.entity.Ticket;
 import com.cinemabooking.enums.BookingStatus;
@@ -30,6 +33,17 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
 
     @Transactional
     void deleteByBooking_IdIn(Collection<UUID> bookingIds);
+
+    @Modifying
+    @Query("""
+            delete from Ticket ticket
+            where ticket.showtime.id = :showtimeId
+              and ticket.booking.status not in :activeStatuses
+            """)
+    int deleteInactiveTicketsByShowtimeId(
+            @Param("showtimeId") UUID showtimeId,
+            @Param("activeStatuses") Collection<BookingStatus> activeStatuses
+    );
 
     long countByShowtime_Movie_Id(UUID movieId);
 }
