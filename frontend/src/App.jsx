@@ -29,6 +29,7 @@ export default function App() {
   const { theme, toggleTheme } = useTheme();
   const [authMode, setAuthMode] = useState(null);
   const isHome = location.pathname === "/";
+  const isAdminPage = location.pathname.startsWith("/admin") || location.pathname === "/tmdb";
   const hideFooter = /^\/booking\/[^/]+\/(seats|food|payment)$/.test(location.pathname)
     || location.pathname.startsWith("/admin")
     || location.pathname === "/tmdb"
@@ -49,7 +50,7 @@ export default function App() {
         theme={theme}
         onThemeToggle={toggleTheme}
         variant={isHome ? "overlay" : "solid"}
-        showSearch={!isHome}
+        showSearch={isAdminPage}
       />
 
       <Routes>

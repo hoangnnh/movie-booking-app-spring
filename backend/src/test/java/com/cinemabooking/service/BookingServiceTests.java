@@ -383,6 +383,39 @@ class BookingServiceTests {
     }
 
     @Test
+    void getBookingsByUserBatchLoadsHistoryWithoutRunningExpirySweep() {
+        UUID bookingId = UUID.randomUUID();
+        Booking booking = new Booking();
+        booking.setId(bookingId);
+        booking.setUser(user);
+        booking.setShowtime(showtime);
+        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setTotalAmount(BigDecimal.valueOf(75_000));
+        booking.setTicketAmount(BigDecimal.valueOf(75_000));
+        booking.setFoodAmount(BigDecimal.ZERO);
+        booking.setSeatSummary("A1");
+
+        Ticket ticket = ticket(seatA1);
+        ticket.setBooking(booking);
+        ticket.setPrice(BigDecimal.valueOf(75_000));
+        ticket.setCode("TICKET-A1");
+
+        when(bookingRepository.findByUser_IdOrderByCreatedAtDesc(userId)).thenReturn(List.of(booking));
+        when(ticketRepository.findByBooking_IdIn(List.of(bookingId))).thenReturn(List.of(ticket));
+        when(bookingFoodItemRepository.findByBooking_IdInOrderByCreatedAtAsc(List.of(bookingId)))
+                .thenReturn(List.of());
+
+        assertThat(bookingService.getBookingsByUser(userId)).hasSize(1);
+
+        verify(ticketRepository).findByBooking_IdIn(List.of(bookingId));
+        verify(bookingFoodItemRepository).findByBooking_IdInOrderByCreatedAtAsc(List.of(bookingId));
+        verify(ticketRepository, never()).findByBooking_Id(any());
+        verify(bookingFoodItemRepository, never()).findByBooking_IdOrderByCreatedAtAsc(any());
+        verify(bookingRepository, never()).findAbandonedPendingPaymentBookingIds(any(), any(), any());
+        verify(bookingRepository, never()).expirePassedShowtimeBookings(any(), any(), any());
+    }
+
+    @Test
     void expirePassedShowtimeBookingsMarksActiveBookingsAsExpired() {
         when(bookingRepository.expirePassedShowtimeBookings(
                 anySet(),

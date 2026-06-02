@@ -19,6 +19,12 @@ import com.cinemabooking.entity.Booking;
 import com.cinemabooking.enums.BookingStatus;
 
 public interface BookingRepository extends JpaRepository<Booking, UUID> {
+    @EntityGraph(attributePaths = {
+            "showtime",
+            "showtime.movie",
+            "showtime.room",
+            "showtime.room.cinema"
+    })
     List<Booking> findByUser_IdOrderByCreatedAtDesc(UUID userId);
 
     @EntityGraph(attributePaths = {

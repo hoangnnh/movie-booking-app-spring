@@ -278,6 +278,16 @@
     html[data-theme="light"] .cinematick-logo {
         filter: none;
     }
+
+    .ticketor-autofill:-webkit-autofill,
+    .ticketor-autofill:-webkit-autofill:hover,
+    .ticketor-autofill:-webkit-autofill:focus,
+    .ticketor-autofill:-webkit-autofill:active {
+        -webkit-text-fill-color: var(--color-app-text);
+        caret-color: var(--color-app-text);
+        box-shadow: 0 0 0 1000px var(--color-app-background) inset;
+        transition: background-color 9999s ease-out;
+    }
 }
 
 @layer components {

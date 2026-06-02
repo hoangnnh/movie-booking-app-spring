@@ -39,6 +39,7 @@ class NotificationServiceTests {
 
         Movie movie = new Movie();
         movie.setTitle("Test Movie");
+        movie.setPosterUrl("https://image.example/test-movie.jpg");
 
         Showtime showtime = new Showtime();
         showtime.setMovie(movie);
@@ -73,6 +74,7 @@ class NotificationServiceTests {
         assertThat(notification.getType()).isEqualTo("BOOKING_CONFIRMED");
         assertThat(notification.getTitle()).isEqualTo("Booking confirmed");
         assertThat(notification.getMessage()).contains("confirmed", "Test Movie", "A1, A2");
+        assertThat(notification.getImageUrl()).isEqualTo("https://image.example/test-movie.jpg");
     }
 
     private Notification captureSavedNotification() {

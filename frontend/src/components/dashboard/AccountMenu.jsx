@@ -4,7 +4,7 @@ import { cn } from "../../utils/cn";
 const menuItems = [
   {
     key: "booking",
-    label: "My Booking",
+    label: "My Tickets",
     icon: Ticket,
   },
 ];

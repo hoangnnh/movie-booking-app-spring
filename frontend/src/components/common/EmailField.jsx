@@ -55,7 +55,7 @@ export default function EmailField({
           type={inputType}
           disabled={disabled}
           className={cn(
-            "h-full min-w-0 flex-1 bg-transparent px-[12px]",
+            "ticketor-autofill h-full min-w-0 flex-1 bg-transparent px-[12px]",
             "type-body-m text-app-text placeholder:text-app-text-muted",
             "outline-none",
             disabled && "cursor-not-allowed text-neutral-400"

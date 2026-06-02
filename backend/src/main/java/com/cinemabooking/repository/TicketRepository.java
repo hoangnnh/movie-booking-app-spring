@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -20,6 +21,9 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
     List<Ticket> findByShowtime_IdAndBooking_StatusIn(UUID showtimeId, Collection<BookingStatus> statuses);
 
     List<Ticket> findByBooking_Id(UUID bookingId);
+
+    @EntityGraph(attributePaths = "seat")
+    List<Ticket> findByBooking_IdIn(Collection<UUID> bookingIds);
 
     boolean existsByShowtime_IdAndSeat_Id(UUID showtimeId, UUID seatId);
 
