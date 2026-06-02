@@ -1,141 +1,149 @@
 # Movie Booking App Spring
 
-A full-stack movie ticket booking web application for a university Java project (Class name: IE303.Q21.CNVN). The system allows users to browse movies, view movie details, select showtimes, choose seats, create bookings, and view their tickets.
+A full-stack movie ticket booking web application for a university Java project (Class name: IE303.Q21.CNVN). Users can browse movies, view details, pick showtimes and seats, add concessions, pay (sandbox gateways), and manage bookings and profile.
 
-The project is built with a Java Spring Boot backend, React frontend, PostgreSQL database, and TMDB integration for movie data.
+Built with **Spring Boot**, **React (Vite)**, **PostgreSQL** (typically **Supabase**), **Flyway** migrations, and **TMDB** for catalog data.
+
+---
+
+## Quick start
+
+1. **Database** — Create a Supabase project (or any PostgreSQL). See [SUPABASE_SETUP.md](./SUPABASE_SETUP.md).
+2. **Backend** — `cp backend/.env.example backend/.env.local`, fill in `DATABASE_*`, `JWT_SECRET`, and optional TMDB/email keys, then:
+
+   ```bash
+   cd backend
+   ./mvnw spring-boot:run
+   ```
+
+   Flyway applies migrations on startup (`FLYWAY_ENABLED=true`). Hibernate only **validates** the schema (`JPA_DDL_AUTO=validate`).
+
+3. **Frontend** — `cp frontend/.env.example frontend/.env`, set `VITE_API_BASE_URL=http://localhost:8080/api`, then:
+
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+4. Open `http://localhost:5173` (API at `http://localhost:8080`).
+
+Do not commit `backend/.env.local` or `frontend/.env`.
 
 ---
 
 ## Features
 
-### Current MVP Features
+### Implemented
 
-- User registration and login
-- Movie browsing page
-- Movie detail page
-- TMDB movie search/import support
-- Showtime selection
-- Seat selection
-- Ticket booking flow
-- User ticket/booking pages
-- Desktop-first UI based on the Ticketor design system
-
-### Planned / Future Features
-
-- JWT authentication
+- JWT authentication and protected routes
 - Google OAuth login
-- Forgot password and email verification
-- Real payment gateway integration
-- Food and drink ordering
-- Watchlist / favorites
-- Admin dashboard
-- Movie recommendation feature
+- Email verification, forgot password, and reset password
+- Movie catalog (showing now / coming soon), search, autocomplete, slug URLs
+- Movie detail, cast, showtimes, age rating display
+- Seat selection, booking lifecycle, and expiry for unpaid bookings
+- Food and drink (concessions) in checkout
+- VNPay payment integration (sandbox, feature-flagged)
+- User profile, avatar, password change
+- In-app notifications for bookings and password changes
+- My bookings and booking detail
+- Movie recommendations
+- Admin dashboard (movies, users, bookings) and TMDB import
+- TMDB sync / backfill jobs (optional, env-controlled)
+- Dark/light theme toggle
+
+### Planned / future
+
+- Production payment go-live and webhooks hardening
+- Email/SMS notification channels beyond current in-app and auth emails
+- Mobile-first layout polish
+- Further recommendation tuning
 
 ---
 
-## Tech Stack
+## Tech stack
 
-### Backend
-
-- Java
-- Spring Boot
-- Spring Web / WebMVC
-- Spring Data JPA
-- Spring Security
-- PostgreSQL
-- Lombok
-- Maven
-- TMDB API
-
-### Frontend
-
-- React
-- Vite
-- Tailwind CSS
-- React Router DOM
-- Lucide React
-- React Icons
-- Fetch API
-
-### Database
-
-- PostgreSQL
-- Flyway versioned SQL migrations in `backend/src/main/resources/db/migration/`
-
-On startup, Flyway applies migrations and Hibernate validates the schema (`JPA_DDL_AUTO=validate` by default). Do not rely on `ddl-auto=update` for schema changes; add a new `V{n}__description.sql` file instead.
-
-- **New deployment (empty database)**: Flyway runs `V1` through the latest migration automatically when the backend starts.
-- **Legacy local database** (created earlier with Hibernate `ddl-auto=update`): set `FLYWAY_BASELINE_ON_MIGRATE=true` and `FLYWAY_BASELINE_VERSION=12` once, start the app, then remove those variables.
+| Layer | Technologies |
+|--------|----------------|
+| Backend | Java 21, Spring Boot, Spring Security, Spring Data JPA, Flyway, Lombok, Maven |
+| Frontend | React 19, Vite, Tailwind CSS, React Router, Lucide React |
+| Database | PostgreSQL (Supabase) |
+| Integrations | TMDB API, SMTP (Gmail), VNPay, Google OAuth |
 
 ---
 
-## Database migrations and deployment
+## Supabase and Flyway
 
-### Local development (Supabase or Postgres)
+**Supabase** is hosted PostgreSQL. **Flyway** is how this app creates and updates tables—it is not replaced by Supabase.
 
-Copy `backend/.env.example` to `backend/.env.local` and set `DATABASE_URL`, `DATABASE_USERNAME`, and `DATABASE_PASSWORD` (for example Supabase pooler or session URL). Start the backend — Flyway creates the schema on first run.
+| Concern | Tool |
+|---------|------|
+| Where data lives | Supabase (or any Postgres) via `DATABASE_URL` |
+| Schema versions | SQL files in `backend/src/main/resources/db/migration/` (`V1` … `V16`) |
+| When migrations run | Backend startup (or `./scripts/migrate-db.sh` before deploy) |
+| Entity ↔ table match | Hibernate `ddl-auto=validate` (no auto `update` in prod) |
 
-### Production / Supabase
+**Supabase connection tips**
 
-1. Create an **empty** database (or a dedicated schema).
-2. Set environment variables from `backend/.env.example`:
-   - `JPA_DDL_AUTO=validate`
-   - `FLYWAY_ENABLED=true`
-   - `FLYWAY_BASELINE_ON_MIGRATE=false` (default)
-   - `SPRING_PROFILES_ACTIVE=prod` (disables demo seeding)
-3. Prefer a **session/direct** Postgres URL (Supabase port `5432`) for the **first** migration if the transaction pooler (`6543`) rejects Flyway locking. After `flyway_schema_history` exists, the pooler URL is usually fine for the app.
-4. Deploy/start the backend — migrations run before the API serves traffic.
+- **App runtime:** transaction pooler URL (port `6543`) with `?sslmode=require` is fine.
+- **First migration on a new project:** if Flyway fails on locking, use the **session/direct** URL (port `5432`) once, then switch back to the pooler.
+- `spring.flyway.postgresql.transactional-lock=false` is set for PgBouncer/Supabase pooler compatibility.
 
-Optional CI/CD step (migrate before app rollout):
+**Adding a schema change**
+
+1. Add `backend/src/main/resources/db/migration/V17__your_change.sql` (next version after `V16`).
+2. Update JPA entities and DTOs to match.
+3. Run `./mvnw test` in `backend/`. `FlywayMigrationIntegrationTest` runs when Docker is available (skipped otherwise).
+
+**Legacy databases** created before Flyway: set `FLYWAY_BASELINE_ON_MIGRATE=true` and `FLYWAY_BASELINE_VERSION=12` once, start the app, then remove those flags.
+
+**Optional migrate-before-deploy**
 
 ```bash
-export DATABASE_URL='jdbc:postgresql://host:5432/movie_booking_app'
+export DATABASE_URL='jdbc:postgresql://host:5432/postgres?sslmode=require'
 export DATABASE_USERNAME='postgres'
 export DATABASE_PASSWORD='secret'
 chmod +x scripts/migrate-db.sh
 ./scripts/migrate-db.sh
 ```
 
-### Adding a schema change
-
-1. Add `backend/src/main/resources/db/migration/V13__your_change.sql`.
-2. Update JPA entities to match.
-3. Run tests (`./mvnw test` in `backend/`). `FlywayMigrationIntegrationTest` uses Testcontainers when Docker is available (skipped otherwise).
+**Production profile** — `SPRING_PROFILES_ACTIVE=prod` uses `application-prod.properties` (Flyway on, demo seeding off).
 
 ---
 
-## Project Structure
+## Project structure
 
 ```text
 movie-booking-app-spring/
 ├── backend/
 │   ├── src/main/java/com/cinemabooking/
-│   │   ├── config/
+│   │   ├── ai/              # recommendation engine
+│   │   ├── config/          # security, seeders, Flyway helpers
 │   │   ├── controller/
 │   │   ├── dto/
 │   │   ├── entity/
-│   │   ├── enums/
 │   │   ├── repository/
+│   │   ├── security/
 │   │   └── service/
 │   ├── src/main/resources/
 │   │   ├── application.properties
-│   │   └── db/
+│   │   ├── application-prod.properties
+│   │   └── db/migration/    # Flyway SQL (V1–V16)
+│   ├── src/test/
+│   ├── .env.example
 │   └── pom.xml
-│
 ├── frontend/
-│   ├── public/
 │   ├── src/
 │   │   ├── api/
 │   │   ├── components/
 │   │   ├── context/
 │   │   ├── pages/
-│   │   ├── routes/
-│   │   ├── utils/
-│   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   └── index.css
+│   │   └── utils/
+│   ├── .env.example
 │   └── package.json
-│
+├── scripts/
+│   └── migrate-db.sh
+├── SUPABASE_SETUP.md
 └── README.md
 ```
 
@@ -143,31 +151,22 @@ movie-booking-app-spring/
 
 ## Prerequisites
 
-Make sure these are installed:
-
 - Java 21
-- Maven
 - Node.js and npm
-- PostgreSQL
 - Git
+- A PostgreSQL database (Supabase account is enough; no local Postgres or Docker required)
+- Optional: Docker — only for `FlywayMigrationIntegrationTest` (Testcontainers)
 
 ---
 
-## Backend Setup
-
-Go to the backend folder:
+## Backend setup
 
 ```bash
 cd backend
+cp .env.example .env.local
 ```
 
-Create a local environment file:
-
-```bash
-touch .env.local
-```
-
-Example local values:
+Edit `backend/.env.local`. Minimum for Supabase:
 
 ```env
 DATABASE_URL=jdbc:postgresql://your-pooler-host.supabase.com:6543/postgres?sslmode=require
@@ -175,289 +174,244 @@ DATABASE_USERNAME=postgres.your-project-ref
 DATABASE_PASSWORD=your-supabase-database-password
 DATABASE_MAX_POOL_SIZE=5
 DATABASE_MIN_IDLE=1
+
 JPA_DDL_AUTO=validate
 FLYWAY_ENABLED=true
 FLYWAY_BASELINE_ON_MIGRATE=false
-TMDB_API_READ_ACCESS_TOKEN=your_tmdb_read_access_token_here
+
 JWT_SECRET=replace_with_a_long_random_secret
 JWT_EXPIRATION_MS=86400000
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
+
 APP_BACKEND_BASE_URL=http://localhost:8080
 APP_FRONTEND_BASE_URL=http://localhost:5173
 
-APP_EMAIL_PROVIDER=smtp
-APP_EMAIL_FROM=your-gmail-address@gmail.com
-EMAIL=your-gmail-address@gmail.com
-EMAIL_PASSWORD=your-google-app-password
-APP_EMAIL_CONSOLE_FALLBACK=false
-
-PAYMENT_VNPAY_ENABLED=false
-PAYMENT_VNPAY_PAY_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-PAYMENT_VNPAY_TMN_CODE=your-vnpay-tmn-code
-PAYMENT_VNPAY_HASH_SECRET=your-vnpay-hash-secret
-
+TMDB_API_READ_ACCESS_TOKEN=your_tmdb_read_access_token
 ```
 
-Do not commit `.env.local`.
+Optional (see `backend/.env.example` for full list): Google OAuth, SMTP email, VNPay, TMDB sync/backfill flags, dummy user seeding (`APP_SEED_DUMMY_USERS_*`).
 
-For deployed verification and password reset emails, configure the same SMTP
-variables in the backend host. Use a Google app password, not the account
-password. Do not commit either value.
-
-Leave the gateway flags disabled until real sandbox credentials are configured. When testing provider callbacks locally, set `APP_BACKEND_BASE_URL` to a public tunnel URL that forwards to the backend.
-
-For Supabase, use the Transaction pooler connection details from Project Settings > Database. The JDBC URL must use port `6543` and include `?sslmode=require`.
-
-Tracked defaults live in:
-
-```text
-backend/src/main/resources/application.properties
-```
-
-The committed file reads database credentials from environment variables:
-
-```properties
-spring.application.name=cinema-booking-server
-
-server.port=8080
-
-spring.datasource.url=${DATABASE_URL:jdbc:postgresql://localhost:5432/cinema_booking}
-spring.datasource.username=${DATABASE_USERNAME:postgres}
-spring.datasource.password=${DATABASE_PASSWORD:postgres}
-spring.datasource.driver-class-name=org.postgresql.Driver
-
-spring.jpa.hibernate.ddl-auto=${JPA_DDL_AUTO:validate}
-spring.flyway.enabled=${FLYWAY_ENABLED:true}
-spring.flyway.baseline-on-migrate=${FLYWAY_BASELINE_ON_MIGRATE:false}
-spring.flyway.baseline-version=${FLYWAY_BASELINE_VERSION:12}
-spring.jpa.show-sql=true
-spring.jpa.properties.hibernate.format_sql=true
-
-tmdb.api.read-access-token=${TMDB_API_READ_ACCESS_TOKEN}
-jwt.secret=${JWT_SECRET}
-jwt.expiration-ms=${JWT_EXPIRATION_MS}
-```
-
-Run the backend:
+Run:
 
 ```bash
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
-Backend should be available at:
+API base: `http://localhost:8080` — e.g. `GET http://localhost:8080/api/movies`.
 
-```text
-http://localhost:8080
-```
+Configuration is loaded from `backend/.env.local` (or repo-root `.env.local`) via `spring.config.import` in `application.properties`. Tracked defaults live in `backend/src/main/resources/application.properties`.
 
-Test movie API:
+For deployed email (verification / reset), configure SMTP (`EMAIL`, `EMAIL_PASSWORD`, `APP_EMAIL_FROM`). Use a Google **app password**, not your account password.
 
-```text
-http://localhost:8080/api/movies
-```
+For payment sandbox callbacks, set `APP_BACKEND_BASE_URL` to a public URL (e.g. ngrok) when testing gateways locally.
 
 ---
 
-## Frontend Setup
-
-Go to the frontend folder:
+## Frontend setup
 
 ```bash
 cd frontend
-```
-
-Install dependencies:
-
-```bash
+cp .env.example .env
 npm install
 ```
-
-Create a frontend environment file:
-
-```bash
-cp .env.example .env
-```
-
-Add the backend API URL:
 
 ```env
 VITE_API_BASE_URL=http://localhost:8080/api
 ```
 
-For Google OAuth, add `http://localhost:8080/login/oauth2/code/google` as an authorized redirect URI in your Google Cloud OAuth client.
-
-See `SUPABASE_SETUP.md` for the full Supabase checklist.
-
-Run the frontend:
+Google OAuth: add `http://localhost:8080/login/oauth2/code/google` as an authorized redirect URI in Google Cloud Console.
 
 ```bash
 npm run dev
 ```
 
-Frontend should be available at:
+App: `http://localhost:5173`
+
+---
+
+## Main API endpoints
+
+Prefix: `/api` unless noted.
+
+### Auth — `/api/auth`
+
+```http
+POST   /register
+POST   /login
+GET    /me
+GET    /profile
+PATCH  /profile
+PATCH  /profile/avatar
+PATCH  /password
+GET    /verify-email?token=...
+POST   /resend-verification
+POST   /forgot-password
+POST   /reset-password
+GET    /settings
+```
+
+OAuth: `GET /oauth2/authorization/google` (Spring Security).
+
+### Movies — `/api/movies`
+
+```http
+GET    /
+GET    /now-playing
+GET    /coming-soon
+GET    /trending/week
+GET    /autocomplete?q=...
+GET    /by-actor?name=...
+GET    /{reference}          # id or slug
+GET    /{id}/similar
+```
+
+### Showtimes & seats — `/api`
+
+```http
+GET    /movies/{movieId}/showtimes
+GET    /showtimes/{showtimeId}
+GET    /showtimes/{showtimeId}/seats
+GET    /showtimes/{showtimeId}/food-items
+```
+
+### Bookings — `/api`
+
+```http
+POST   /bookings
+GET    /users/{userId}/bookings
+```
+
+### Users — `/api/users/{userId}`
+
+```http
+GET/POST/DELETE /favorites
+GET             /favorites/{movieId}
+GET             /recommendations
+```
+
+### Admin — `/api/admin` (admin role)
+
+```http
+GET    /summary
+GET    /movies
+PATCH  /movies/{movieId}
+DELETE /movies/{movieId}
+GET    /users
+PATCH  /users/{userId}/role
+GET    /bookings
+...
+```
+
+### TMDB — `/api/tmdb`
+
+```http
+GET    /movies/search?q=...
+POST   /movies/{tmdbId}/import
+POST   /movies/import
+```
+
+### Other
+
+```http
+GET    /cinemas
+GET    /cinemas/{id}
+GET    /notifications
+PATCH  /notifications/{id}/read
+PATCH  /notifications/read-all
+GET    /payments/vnpay/return
+```
+
+---
+
+## Main frontend routes
+
+Auth uses a modal on most pages (no dedicated `/login` route).
 
 ```text
-http://localhost:5173
+/                              Home
+/movies/showing-now            Now showing
+/movies/coming-soon            Coming soon
+/movies/:movieRef              Movie detail (id or slug)
+/booking/:movieRef             Movie detail (booking entry)
+/booking/:showtimeId/seats     Seat selection
+/booking/:showtimeId/food      Food & drink
+/booking/:showtimeId/payment   Payment
+/my-booking                    Bookings list
+/my-booking/:bookingId         Booking detail
+/profile                       Profile
+/cinemas                       Cinemas
+/actors/:actorName/movies      Actor filmography
+/admin                         Admin dashboard
+/admin/movies, /admin/imports  TMDB import (admin)
+/tmdb                          TMDB import (admin)
+/oauth/callback                OAuth return
+/reset-password                Password reset
+/contact, /terms, /privacy     Info pages
 ```
 
 ---
 
-## Main API Endpoints
+## Design system
 
-### Authentication
-
-```http
-POST /api/auth/register
-POST /api/auth/login
-```
-
-### Movies
-
-```http
-GET /api/movies
-GET /api/movies/{movieId}
-GET /api/movies/{movieId}/showtimes
-```
-
-### TMDB
-
-```http
-GET  /api/tmdb/search
-POST /api/tmdb/import/{tmdbId}
-```
-
-Exact TMDB endpoint paths may vary depending on the current backend controller implementation.
-
-### Booking
-
-```http
-GET  /api/showtimes/{showtimeId}/seats
-POST /api/bookings
-GET  /api/users/{userId}/bookings
-```
-
----
-
-## Main Frontend Routes
+Core UI building blocks:
 
 ```text
-/                       Home page
-/movies                 Movie list
-/movies/:movieId        Movie detail
-/booking/:showtimeId    Seat booking
-/my-tickets             User tickets
-/profile                User profile/dashboard
-/login                  Login
-/register               Sign up
+Button, Navbar, Footer, Logo, Avatar
+MovieCard, ScoreBadge, RatingBadge
+DateChip, SeatButton, SeatMap, BookingProgress
+AuthModal, User dashboard cards (profile / bookings)
 ```
 
 ---
 
-## Design System
+## Git ignore
 
-The frontend uses a desktop-first Ticketor-style UI.
+Already covered in root `.gitignore`. Never commit:
 
-Main design choices:
-
-- Dark theme
-- Manrope font
-- Yellow-green primary accent
-- Teal secondary accent
-- 12-column centered desktop layout
-- Rounded components
-- Tailwind CSS tokens in `src/index.css`
-
-Important reusable components include:
-
-```text
-Button
-Navbar
-Footer
-MovieCard
-CompactMovieCard
-PromotionCard
-DateChip
-TimeChip
-SeatButton
-SeatMap
-BookingProgress
-TimeSelection
-UserDashboard
-```
+- `backend/.env.local`, `backend/.env`, `backend/target/`
+- `frontend/.env`, `frontend/.env.local`, `frontend/node_modules/`, `frontend/dist/`
 
 ---
 
-## Git Ignore Notes
+## Common issues
 
-The project should not commit generated files or local secrets.
+### Frontend cannot reach the API
 
-Recommended ignored files:
-
-```gitignore
-backend/.env.local
-backend/.env
-backend/target/
-
-frontend/.env.local
-frontend/node_modules/
-frontend/dist/
-
-.vscode/
-.idea/
-.DS_Store
-```
-
----
-
-## Common Development Issues
-
-### Frontend cannot connect to backend
-
-Check:
-
-1. Backend is running.
-2. Backend port matches `VITE_API_BASE_URL`.
-3. Vite was restarted after editing `.env`.
-4. Spring Security CORS allows `http://localhost:5173`.
+1. Backend is running on port 8080.
+2. `VITE_API_BASE_URL` ends with `/api`.
+3. Restart Vite after changing `.env`.
+4. CORS allows `http://localhost:5173` (configured in Spring Security).
 
 ### `ERR_CONNECTION_REFUSED`
 
-This usually means the backend is not running on the port configured in the frontend `.env`.
+Backend is not running or the URL/port in `frontend/.env` is wrong.
 
-### TMDB import does not work
+### Flyway / Supabase errors on startup
 
-Check:
+1. `DATABASE_URL`, username, and password are correct and include `sslmode=require`.
+2. Try session URL (port `5432`) for the first migration.
+3. Check Supabase dashboard — project not paused, IP allowlist if enabled.
 
-1. `TMDB_API_KEY` exists.
-2. Backend can read the environment variable.
-3. The API key is not committed directly to Git.
-4. TMDB controller/service paths match the frontend request.
+### TMDB import fails
+
+1. Set `TMDB_API_READ_ACCESS_TOKEN` in `backend/.env.local` (v4 read token, not legacy API key name).
+2. Restart the backend after changing env vars.
+
+### Hibernate schema validation failed
+
+Database schema is behind the code. Ensure `FLYWAY_ENABLED=true` and restart, or run `scripts/migrate-db.sh` against the same database.
 
 ---
 
-## MVP Demo Flow
-
-Recommended flow for demonstration:
+## Demo flow
 
 ```text
-Open homepage
-→ Browse movies
-→ Open movie detail
-→ Select showtime
-→ Select seats
-→ Confirm booking
-→ View ticket / booking history
+Home → Movies → Movie detail → Pick date/showtime → Seats → Food (optional) → Payment → My booking
 ```
 
----
-
-## Project Status
-
-This project is currently under active development. The core booking flow is being implemented first. Advanced features such as real payment, watchlist, notifications, admin management, and AI recommendations are future improvements.
+Admin: `/admin` for stats; `/admin/imports` for TMDB import.
 
 ---
 
 ## Author
 
-Nguyen Ngoc Huy Hoang - hoangnnh
+Nguyen Ngoc Huy Hoang — hoangnnh

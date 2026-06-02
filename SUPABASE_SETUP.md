@@ -1,15 +1,19 @@
 # Supabase Setup
 
-This app uses Supabase as a managed PostgreSQL database. The frontend still talks to the Spring Boot API; it does not need Supabase keys unless you later add Supabase Auth or Storage.
+This app uses **Supabase as managed PostgreSQL**. The React frontend talks only to the **Spring Boot API**—it does not need Supabase API keys unless you later add Supabase Auth or Storage.
+
+**Schema management:** Flyway applies SQL migrations on backend startup. Hibernate uses `JPA_DDL_AUTO=validate` (it does not create tables). See [README.md](./README.md#supabase-and-flyway) for details.
+
+---
 
 ## 1. Create the Supabase project
 
-1. Create a new Supabase project.
-2. Go to Project Settings > Database.
-3. Copy the Transaction pooler connection details.
-4. Use port `6543`, database `postgres`, and SSL mode `require`.
+1. Create a new project at [supabase.com](https://supabase.com).
+2. Open **Project Settings → Database**.
+3. Under **Connection string**, choose **Transaction pooler** (or **Session pooler** for the first migration—see below).
+4. Use database `postgres`, port **`6543`** (pooler) or **`5432`** (session/direct), and **`sslmode=require`**.
 
-For this Spring Boot app, the JDBC URL should look like:
+Example JDBC values for the **transaction pooler** (normal app runtime):
 
 ```properties
 DATABASE_URL=jdbc:postgresql://aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require
@@ -17,18 +21,28 @@ DATABASE_USERNAME=postgres.your-project-ref
 DATABASE_PASSWORD=your-database-password
 ```
 
-Use your actual pooler host, project ref, and password from Supabase.
+Replace host, project ref, and password with your project’s values.
+
+### First-time migration tip
+
+On a **new empty** database, if the backend fails during Flyway with locking or pooler errors:
+
+1. Temporarily switch `DATABASE_URL` to the **session/direct** host (port `5432`, same user/password).
+2. Start the backend once so Flyway runs `V1` through `V16` and creates `flyway_schema_history`.
+3. Switch back to the transaction pooler URL (`6543`) for day-to-day development.
+
+`spring.flyway.postgresql.transactional-lock=false` is already set in `application.properties` for PgBouncer/Supabase compatibility.
+
+---
 
 ## 2. Configure the backend
-
-Create `backend/.env.local` from the example:
 
 ```bash
 cd backend
 cp .env.example .env.local
 ```
 
-Edit `backend/.env.local`:
+Edit `backend/.env.local` (minimum):
 
 ```properties
 DATABASE_URL=jdbc:postgresql://your-pooler-host.supabase.com:6543/postgres?sslmode=require
@@ -36,82 +50,125 @@ DATABASE_USERNAME=postgres.your-project-ref
 DATABASE_PASSWORD=your-supabase-database-password
 DATABASE_MAX_POOL_SIZE=5
 DATABASE_MIN_IDLE=1
-JPA_DDL_AUTO=update
+
+# Flyway creates/updates tables; Hibernate only checks they match entities.
+JPA_DDL_AUTO=validate
+FLYWAY_ENABLED=true
+FLYWAY_BASELINE_ON_MIGRATE=false
 
 JWT_SECRET=replace-with-at-least-32-random-characters
-APP_FRONTEND_BASE_URL=http://localhost:5173
+JWT_EXPIRATION_MS=86400000
+
 APP_BACKEND_BASE_URL=http://localhost:8080
+APP_FRONTEND_BASE_URL=http://localhost:5173
+
+# Optional
+TMDB_API_READ_ACCESS_TOKEN=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 APP_SEED_TMDB_ENABLED=false
+APP_SEED_DUMMY_USERS_ENABLED=false
 
 PAYMENT_VNPAY_ENABLED=false
 PAYMENT_VNPAY_PAY_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-PAYMENT_VNPAY_TMN_CODE=your-vnpay-tmn-code
-PAYMENT_VNPAY_HASH_SECRET=your-vnpay-hash-secret
-
-PAYMENT_MOMO_ENABLED=false
-PAYMENT_MOMO_CREATE_URL=https://test-payment.momo.vn/v2/gateway/api/create
-PAYMENT_MOMO_PARTNER_CODE=your-momo-partner-code
-PAYMENT_MOMO_ACCESS_KEY=your-momo-access-key
-PAYMENT_MOMO_SECRET_KEY=your-momo-secret-key
+PAYMENT_VNPAY_TMN_CODE=
+PAYMENT_VNPAY_HASH_SECRET=
 ```
 
-Keep `JPA_DDL_AUTO=update` for local development so Hibernate can create/update the schema in Supabase. For a production deployment, change it to `validate` after the schema is stable and manage schema changes through migrations.
+Do **not** use `JPA_DDL_AUTO=update` with this project—the canonical schema lives in `backend/src/main/resources/db/migration/`.
 
-Set `PAYMENT_VNPAY_ENABLED=true` or `PAYMENT_MOMO_ENABLED=true` only after the matching sandbox credentials are filled in. Keep the backend base URL reachable by the gateway callback; for local external callbacks, expose `http://localhost:8080` through a tunnel and use that tunnel URL as `APP_BACKEND_BASE_URL`.
+**Legacy database** (tables existed before Flyway): set `FLYWAY_BASELINE_ON_MIGRATE=true` and `FLYWAY_BASELINE_VERSION=12` once, start the app, then remove those flags. See README.
+
+**Production:** set `SPRING_PROFILES_ACTIVE=prod` on the host (disables demo seeding; see `application-prod.properties`).
+
+Enable `PAYMENT_VNPAY_ENABLED=true` only after sandbox credentials are set. For gateway callbacks from the internet, point `APP_BACKEND_BASE_URL` at a public URL (e.g. ngrok tunnel to port 8080).
+
+---
 
 ## 3. Configure the frontend
-
-Create `frontend/.env`:
 
 ```bash
 cd frontend
 cp .env.example .env
 ```
 
-For local development:
-
 ```properties
 VITE_API_BASE_URL=http://localhost:8080/api
 ```
 
+Google OAuth (optional): add `http://localhost:8080/login/oauth2/code/google` as an authorized redirect URI in Google Cloud Console.
+
+---
+
 ## 4. Run the app
 
-Backend:
+Backend (applies Flyway migrations on startup):
 
 ```bash
 cd backend
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
 Frontend:
 
 ```bash
 cd frontend
+npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`.
+Open `http://localhost:5173` (API: `http://localhost:8080`).
 
-## 5. Useful Supabase checks
+Optional: run migrations without starting the app:
 
-After the backend starts, open Supabase Table Editor. You should see tables such as `app_users`, `movies`, `cinemas`, `rooms`, `seats`, `showtimes`, `bookings`, and `tickets`.
+```bash
+export DATABASE_URL='jdbc:postgresql://...'
+export DATABASE_USERNAME='postgres.your-project-ref'
+export DATABASE_PASSWORD='...'
+./scripts/migrate-db.sh
+```
 
-If startup fails with authentication or connection errors, re-check:
+---
 
-- The URL is the transaction pooler JDBC URL, not the REST API URL.
-- The username includes the project ref, for example `postgres.your-project-ref`.
-- The URL includes `?sslmode=require`.
-- The database password is the database password, not the anon key or service-role key.
-- Your Supabase project is active and not paused.
+## 5. Verify in Supabase
 
-If startup or signup fails with `ERROR: prepared statement "S_..." does not exist`, keep this datasource property enabled:
+After a successful backend start:
+
+1. Open **Table Editor** in the Supabase dashboard.
+2. Confirm tables exist, for example: `users`, `movies`, `cinemas`, `rooms`, `seats`, `showtimes`, `bookings`, `tickets`, `food_items`, `notifications`, `flyway_schema_history`.
+3. Check **Database → Migrations** is not required for this app—Flyway history is in `flyway_schema_history`.
+
+If startup fails, re-check:
+
+| Check | Detail |
+|--------|--------|
+| URL type | JDBC Postgres URL, not the Supabase REST or anon URL |
+| Username | Includes project ref, e.g. `postgres.abcdef123456` |
+| Password | Database password from Supabase, not anon/service_role JWT |
+| SSL | `?sslmode=require` on the JDBC URL |
+| Project state | Project is not paused |
+| Pooler | Try session URL (`5432`) for first Flyway run |
+
+### `prepared statement "S_..." does not exist`
+
+The transaction pooler (PgBouncer) can break server-side prepared statements. This project sets:
 
 ```properties
 spring.datasource.hikari.data-source-properties.prepareThreshold=0
 ```
 
-Supabase's transaction pooler uses PgBouncer, and server-side prepared statements can break when a transaction uses a different pooled connection.
+in `application.properties`—keep it enabled when using Supabase pooler.
 
-## 6. Security note
+### Hibernate validation failed after pull
 
-Do not commit `backend/.env.local`, `backend/.env`, `frontend/.env`, or Supabase passwords. If a real database password was committed before, rotate it in Supabase before sharing the repository.
+Your database schema is behind the code. Ensure `FLYWAY_ENABLED=true`, restart the backend, or run `./scripts/migrate-db.sh` against the same database.
+
+---
+
+## 6. Security
+
+- Do not commit `backend/.env.local`, `backend/.env`, or `frontend/.env`.
+- Do not put Supabase passwords or JWT secrets in Git.
+- If a password was ever committed, **rotate** it in Supabase → Database settings before sharing the repo.
+
+For full API, routes, and feature list, see [README.md](./README.md).
