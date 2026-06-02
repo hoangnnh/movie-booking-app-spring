@@ -26,6 +26,7 @@ dist-ssr
 # Backend local env
 backend/.env.local
 backend/.env
+backend/.env.production
 
 # Maven build output
 backend/target/

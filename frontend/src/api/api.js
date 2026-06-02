@@ -1,5 +1,10 @@
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+// export const API_BASE_URL =
+//   import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+
+// Remove trailing slashes from the base URL to ensure consistent URL construction
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api"
+).replace(/\/+$/, "");
 
 export const AUTH_STORAGE_KEY = "ticketor.auth";
 
@@ -61,6 +66,8 @@ function getAuthHeaders() {
 
 export async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    // Prevent browser cache from giving 304 response
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
       ...getTunnelHeaders(),
