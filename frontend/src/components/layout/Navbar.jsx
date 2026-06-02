@@ -11,6 +11,7 @@ import Avatar from "../common/Avatar";
 import Button from "../common/Button";
 import Logo from "../common/Logo";
 import SearchInput from "../common/SearchInput";
+import NotificationAvatar from "../notifications/NotificationAvatar";
 
 export default function Navbar({
     user = null,
@@ -108,7 +109,7 @@ export default function Navbar({
             className={cn(
                 variant === "overlay"
                     ? "absolute left-0 top-0 z-30 w-full bg-transparent"
-                    : "w-full bg-app-background",
+                    : "relative z-30 w-full bg-app-background",
                 variant === "bordered" && "rounded-card border border-app-border",
                 className
             )}
@@ -116,13 +117,10 @@ export default function Navbar({
             <div className={cn("ticketor-container py-[12px]", variant === "overlay" && "pt-[18px]")}>
                 <div
                     className={cn(
-                        "flex items-center justify-between gap-[12px]",
-                        variant === "overlay" &&
-                            "ticketor-overlay-nav mx-auto max-w-[980px] rounded-tk-8 border px-[22px] py-[8px] shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-md",
-                        variant === "overlay" &&
-                            (theme === "light"
-                                ? "ticketor-overlay-nav-light border-[#d8cfbc]/90 bg-[#fffdf8]/92"
-                                : "border-white/10 bg-[#03040a]/95")
+                        "ticketor-overlay-nav mx-auto flex max-w-[980px] items-center justify-between gap-[12px] rounded-tk-8 border px-[22px] py-[8px] shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-md",
+                        theme === "light"
+                            ? "ticketor-overlay-nav-light border-[#d8cfbc]/90 bg-[#fffdf8]/92"
+                            : "border-white/10 bg-[#03040a]/95"
                     )}
                 >
                     <Link to="/" onClick={closeMobileMenu}>
@@ -146,7 +144,6 @@ export default function Navbar({
                                 { label: "Special Theaters", to: "/cinemas?type=special" },
                             ]}
                         />
-                        {isLoggedIn && <NavbarLink to="/my-booking">My Booking</NavbarLink>}
                         {user?.role === "ADMIN" && <NavbarLink to="/admin">Admin</NavbarLink>}
                     </nav>
 
@@ -269,27 +266,27 @@ export default function Navbar({
                                 <div className="rounded-tk-8 border border-app-border bg-app-surface p-[8px] shadow-xl">
                                     <Link
                                         to="/profile"
-                                        className="block w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text-muted transition-colors hover:bg-app-background hover:text-brand"
+                                        className="block w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text transition-colors hover:bg-app-background hover:text-brand"
                                     >
-                                        Profile Settings
+                                        Profile
                                     </Link>
                                     <Link
                                         to="/my-booking"
-                                        className="block w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text-muted transition-colors hover:bg-app-background hover:text-brand"
+                                        className="block w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text transition-colors hover:bg-app-background hover:text-brand"
                                     >
-                                        My Booking
+                                        My Tickets
                                     </Link>
                                     {user?.role === "ADMIN" && (
                                         <Link
                                             to="/admin"
-                                            className="block w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text-muted transition-colors hover:bg-app-background hover:text-brand"
+                                            className="block w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text transition-colors hover:bg-app-background hover:text-brand"
                                         >
                                             Admin Dashboard
                                         </Link>
                                     )}
                                     <button
                                         type="button"
-                                        className="w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text-muted transition-colors hover:bg-app-background hover:text-brand"
+                                        className="w-full rounded-tk-4 px-[12px] py-[10px] text-left type-body-s text-app-text transition-colors hover:bg-app-background hover:text-brand"
                                         onClick={onLogout}
                                     >
                                         Logout
@@ -345,10 +342,7 @@ export default function Navbar({
                             <MobileNavLink to="/cinemas?type=3d" onNavigate={closeMobileMenu}>3D Theaters</MobileNavLink>
                             <MobileNavLink to="/cinemas?type=special" onNavigate={closeMobileMenu}>Special Theaters</MobileNavLink>
                             {isLoggedIn && (
-                                <MobileNavLink to="/profile" onNavigate={closeMobileMenu}>Profile Settings</MobileNavLink>
-                            )}
-                            {isLoggedIn && (
-                                <MobileNavLink to="/my-booking" onNavigate={closeMobileMenu}>My Booking</MobileNavLink>
+                                <MobileNavLink to="/profile" onNavigate={closeMobileMenu}>Profile</MobileNavLink>
                             )}
                             {user?.role === "ADMIN" && (
                                 <MobileNavLink to="/admin" onNavigate={closeMobileMenu}>Admin</MobileNavLink>
@@ -414,6 +408,7 @@ export default function Navbar({
 
 function NotificationBell({ userId }) {
     const notificationContainerRef = useRef(null);
+    const markingReadIdsRef = useRef(new Set());
     const [open, setOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -459,11 +454,11 @@ function NotificationBell({ userId }) {
     }, [open]);
 
     async function markRead(notification) {
-        setOpen(false);
-
-        if (notification.read) {
+        if (notification.read || markingReadIdsRef.current.has(notification.id)) {
             return;
         }
+
+        markingReadIdsRef.current.add(notification.id);
 
         try {
             await notificationApi.markRead(notification.id);
@@ -476,6 +471,8 @@ function NotificationBell({ userId }) {
             notifyNotificationsUpdated();
         } catch {
             loadNotifications();
+        } finally {
+            markingReadIdsRef.current.delete(notification.id);
         }
     }
 
@@ -542,19 +539,14 @@ function NotificationBell({ userId }) {
                                 <Link
                                     key={notification.id}
                                     to={notification.actionUrl || "/profile"}
-                                    onClick={() => markRead(notification)}
+                                    onMouseEnter={() => markRead(notification)}
                                     className={cn(
                                         "block border-b border-app-border px-[16px] py-[14px] transition-colors last:border-b-0 hover:bg-app-background",
                                         !notification.read && "bg-brand/5"
                                     )}
                                 >
                                     <div className="flex items-start gap-[10px]">
-                                        <span
-                                            className={cn(
-                                                "mt-[6px] h-[8px] w-[8px] shrink-0 rounded-full",
-                                                notification.read ? "bg-app-border" : "bg-brand"
-                                            )}
-                                        />
+                                        <NotificationAvatar notification={notification} />
                                         <div className="min-w-0">
                                             <p className="type-body-s font-bold text-app-text">{notification.title}</p>
                                             <p className="mt-[3px] type-body-xs text-app-text-muted">{notification.message}</p>
@@ -623,12 +615,12 @@ function NavbarDropdown({ label, to, items }) {
             )}
 
             <div className="invisible absolute left-1/2 top-full z-40 w-[196px] -translate-x-1/2 pt-[16px] opacity-0 transition-opacity duration-150 group-hover:visible group-hover:opacity-100">
-                <div className="rounded-tk-4 border border-[#565669] bg-[#24242c] p-[6px] shadow-[0_18px_40px_rgba(0,0,0,0.36)]">
+                <div className="rounded-tk-4 border border-app-border bg-app-surface p-[6px] shadow-[0_18px_40px_rgba(0,0,0,0.24)]">
                     {items.map((item) => (
                         <Link
                             key={item.to}
                             to={item.to}
-                            className="block cursor-pointer rounded-tk-4 px-[12px] py-[10px] type-body-s font-bold text-[#f1f1f3] transition-colors hover:bg-white/10 hover:text-[#fbfb1e]"
+                            className="block cursor-pointer rounded-tk-4 px-[12px] py-[10px] type-body-s font-bold text-app-text transition-colors hover:bg-app-surface-soft hover:text-brand"
                         >
                             {item.label}
                         </Link>

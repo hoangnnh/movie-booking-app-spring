@@ -10,11 +10,12 @@ import {
   Receipt,
   ShieldCheck,
   Ticket,
+  X,
 } from "lucide-react";
 import { bookingApi } from "../api/api";
+import TicketBarcode from "../components/booking/TicketBarcode";
 import Button from "../components/common/Button";
-import DashboardNotice from "../components/dashboard/DashboardNotice";
-import ProfileSummaryCard from "../components/dashboard/ProfileSummaryCard";
+import ProfileSidebar from "../components/dashboard/ProfileSidebar";
 import UpcomingBookingCard from "../components/dashboard/UpcomingBookingCard";
 import { getPosterUrl } from "../components/home/homeUtils";
 import { useAuth } from "../context/useAuth";
@@ -89,9 +90,6 @@ export default function MyBookingPage({ onRequireAuth }) {
         if (!ignore) {
           const normalizedBookings = (Array.isArray(data) ? data : []).map(normalizeBooking);
           setBookings(normalizedBookings);
-          setSelectedBookingId(
-            normalizedBookings[0]?.id || ""
-          );
         }
       } catch {
         if (!ignore) {
@@ -124,7 +122,6 @@ export default function MyBookingPage({ onRequireAuth }) {
   const selectedBooking = useMemo(() => {
     return (
       bookings.find((booking) => booking.id === (bookingId || selectedBookingId)) ||
-      bookings[0] ||
       null
     );
   }, [bookingId, bookings, selectedBookingId]);
@@ -134,11 +131,16 @@ export default function MyBookingPage({ onRequireAuth }) {
     navigate(`/my-booking/${booking.id}`);
   }
 
+  function closeBookingDetails() {
+    setSelectedBookingId("");
+    navigate("/my-booking", { replace: true });
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="ticketor-container py-[72px]">
         <div className="rounded-card border border-app-border bg-app-surface p-[32px] text-center">
-          <p className="type-label-m text-brand">MY BOOKING</p>
+          <p className="type-label-m text-brand">MY TICKETS</p>
           <h1 className="type-h4 mt-[12px] text-app-text">
             Sign in to see your movie tickets.
           </h1>
@@ -158,39 +160,12 @@ export default function MyBookingPage({ onRequireAuth }) {
   return (
     <div className="min-h-screen bg-app-background text-app-text">
       <main className="ticketor-container py-[48px]">
-        <section className="rounded-tk-12 border border-app-border bg-app-surface p-[28px]">
-          <p className="type-label-m text-brand">MY BOOKING</p>
-          <div className="mt-[10px] flex flex-wrap items-end justify-between gap-[16px]">
-            <div>
-              <h1 className="type-h3 text-app-text">Tickets, schedules, and payment details</h1>
-              <p className="type-body-m mt-[8px] text-app-text-muted">
-                Track upcoming shows and revisit older bookings without leaving your account.
-              </p>
-            </div>
-            <div className="rounded-full border border-app-border px-[14px] py-[8px] type-body-s text-app-text-muted">
-              {bookings.length} booking{bookings.length === 1 ? "" : "s"}
-            </div>
-          </div>
-        </section>
+        <div className="grid grid-cols-12 gap-[28px] lg:gap-[48px]">
+          <aside className="col-span-12 lg:col-span-3">
+            <ProfileSidebar user={user} activeKey="tickets" />
+          </aside>
 
-        <div className="mt-[28px] grid grid-cols-12 gap-[16px]">
-          <div className="col-span-12 flex flex-col gap-[24px] lg:col-span-9">
-            <DashboardNotice
-              title="Coming Up For You"
-              description={`You have ${upcomingBookings.length} upcoming movie${
-                upcomingBookings.length === 1 ? "" : "s"
-              }`}
-              actionText={selectedBooking ? "View Selected Booking" : "Browse Movies"}
-              onAction={() => {
-                if (selectedBooking?.showtimeId) {
-                  selectBooking(selectedBooking);
-                  return;
-                }
-
-                navigate("/movies/showing-now");
-              }}
-            />
-
+          <div className="col-span-12 flex flex-col gap-[42px] lg:col-span-9">
             {loading && (
               <div className="rounded-card border border-app-border bg-app-surface p-[24px]">
                 <p className="type-body-m text-app-text-muted">Loading your bookings...</p>
@@ -218,13 +193,8 @@ export default function MyBookingPage({ onRequireAuth }) {
             )}
 
             {!loading && !error && upcomingBookings.length > 0 && (
-              <section className="rounded-tk-8 border border-app-border bg-app-surface p-[16px]">
-                <div className="mb-[14px] flex items-center justify-between gap-[12px]">
-                  <h2 className="type-h6 text-app-text">Upcoming Bookings</h2>
-                  <span className="type-body-xs text-app-text-muted">
-                    Confirmed tickets for your next visits
-                  </span>
-                </div>
+              <section>
+                <h1 className="type-h5 mb-[22px] text-app-text">Upcoming Tickets And Orders</h1>
 
                 <div className="flex flex-col gap-[12px]">
                   {upcomingBookings.map((booking) => (
@@ -247,68 +217,78 @@ export default function MyBookingPage({ onRequireAuth }) {
               </section>
             )}
 
-            {!loading && !error && selectedBooking && (
-              <BookingDetailPanel
-                booking={selectedBooking}
-                onBrowseMovies={() => navigate("/movies/showing-now")}
-              />
-            )}
-
             {!loading && !error && pastBookings.length > 0 && (
-              <section className="rounded-tk-8 border border-app-border bg-app-surface p-[16px]">
-                <div className="mb-[14px] flex items-center justify-between gap-[12px]">
-                  <h2 className="type-h6 text-app-text">Previous Bookings</h2>
-                  <span className="type-body-xs text-app-text-muted">
-                    Reopen past confirmations and ticket codes
-                  </span>
-                </div>
+              <section>
+                <h2 className="type-h5 mb-[22px] text-app-text">Past Tickets And Orders</h2>
 
-                <div className="grid gap-[10px]">
+                <div className="grid gap-[12px]">
                   {pastBookings.map((booking) => (
-                    <button
+                    <UpcomingBookingCard
                       key={booking.id}
-                      type="button"
-                      onClick={() => selectBooking(booking)}
-                      className={`flex items-center justify-between gap-[16px] rounded-tk-8 border px-[16px] py-[14px] text-left transition-colors ${
-                        selectedBooking?.id === booking.id
-                          ? "border-primary-600 bg-app-background"
-                          : "border-app-border bg-app-background hover:border-app-text"
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <p className="type-body-m truncate text-app-text">{booking.movieTitle}</p>
-                        <p className="type-body-xs mt-[4px] text-app-text-muted">
-                          {booking.dateTimeLabel} / {booking.cinemaName}
-                        </p>
-                      </div>
-                      <span className="type-body-xs text-app-text-muted">
-                        {booking.status}
-                      </span>
-                    </button>
+                      posterUrl={booking.posterUrl}
+                      movieTitle={booking.movieTitle}
+                      dateTime={booking.dateTimeLabel}
+                      cinemaName={booking.cinemaName}
+                      seats={booking.seatsLabel}
+                      onViewDetails={() => selectBooking(booking)}
+                    />
                   ))}
                 </div>
               </section>
             )}
           </div>
-
-          <aside className="col-span-12 lg:col-span-3">
-            <ProfileSummaryCard user={user} />
-          </aside>
         </div>
       </main>
+
+      {!loading && !error && selectedBooking && (
+        <BookingDetailModal
+          booking={selectedBooking}
+          onClose={closeBookingDetails}
+          onBrowseMovies={() => navigate("/movies/showing-now")}
+        />
+      )}
     </div>
   );
 }
 
-function BookingDetailPanel({ booking, onBrowseMovies }) {
+function BookingDetailModal({ booking, onClose, onBrowseMovies }) {
   const ticketCount = booking?.tickets?.length || 0;
+  const orderNumber = String(booking.id).slice(0, 8).toUpperCase();
+
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") onClose();
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   return (
-    <section className="rounded-tk-12 border border-app-border bg-app-surface p-[24px]">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-[16px] backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+    <section
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="booking-details-title"
+      className="relative max-h-[calc(100vh-32px)] w-full max-w-[980px] overflow-y-auto rounded-tk-12 border border-app-border bg-app-surface/95 p-[24px] shadow-[0_24px_80px_rgba(0,0,0,0.48)]"
+    >
+      <button
+        type="button"
+        aria-label="Close booking details"
+        className="absolute right-[18px] top-[18px] flex h-[36px] w-[36px] items-center justify-center rounded-full border border-app-border text-app-text-muted transition-colors hover:border-app-text hover:text-app-text"
+        onClick={onClose}
+      >
+        <X className="h-[18px] w-[18px]" />
+      </button>
       <div className="flex flex-wrap items-start justify-between gap-[16px]">
-        <div>
+        <div className="pr-[52px]">
           <p className="type-label-s text-brand">BOOKING DETAILS</p>
-          <h2 className="type-h4 mt-[6px] text-app-text">{booking.movieTitle}</h2>
+          <h2 id="booking-details-title" className="type-h4 mt-[6px] text-app-text">{booking.movieTitle}</h2>
           <p className="type-body-s mt-[8px] text-app-text-muted">
             Booking {String(booking.id).slice(0, 8).toUpperCase()} / Created {booking.bookedAtLabel}
           </p>
@@ -381,7 +361,11 @@ function BookingDetailPanel({ booking, onBrowseMovies }) {
         </div>
 
         <div className="rounded-tk-8 border border-app-border bg-app-background p-[18px]">
-          <div className="flex items-center gap-[10px]">
+          <p className="type-body-xs text-app-text-muted">Order Number</p>
+          <p className="type-body-m mt-[5px] text-app-text">{orderNumber}</p>
+          <TicketBarcode value={booking.id} className="mt-[14px]" />
+
+          <div className="mt-[20px] flex items-center gap-[10px]">
             <Popcorn className="h-[18px] w-[18px] text-brand" />
             <h3 className="type-h6 text-app-text">Payment Summary</h3>
           </div>
@@ -416,14 +400,15 @@ function BookingDetailPanel({ booking, onBrowseMovies }) {
       </div>
 
       <div className="mt-[24px] flex flex-wrap gap-[12px]">
-        <Button size={40} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-          Back to Top
+        <Button size={40} onClick={onClose}>
+          Close Details
         </Button>
         <Button size={40} variant="outline" tone="base" onClick={onBrowseMovies}>
           Book Another Movie
         </Button>
       </div>
     </section>
+    </div>
   );
 }
 

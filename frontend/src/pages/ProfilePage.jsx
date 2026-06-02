@@ -1,40 +1,27 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  BellRing,
   CalendarDays,
   Camera,
   CheckCircle2,
-  Clock3,
-  CreditCard,
   Eye,
   EyeOff,
-  History,
   LockKeyhole,
   Mail,
-  MapPin,
   Phone,
-  Ticket,
   UserRound,
   X,
 } from "lucide-react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { authApi, bookingApi, notificationApi } from "../api/api";
-import Avatar from "../components/common/Avatar";
+import { Link, useSearchParams } from "react-router-dom";
+import { authApi, notificationApi } from "../api/api";
 import Button from "../components/common/Button";
-import { getPosterUrl } from "../components/home/homeUtils";
+import ProfileSidebar from "../components/dashboard/ProfileSidebar";
+import NotificationAvatar from "../components/notifications/NotificationAvatar";
 import { useAuth } from "../context/useAuth";
 import { cn } from "../utils/cn";
-import { formatVnd } from "../utils/currency";
 import {
   NOTIFICATIONS_UPDATED_EVENT,
   notifyNotificationsUpdated,
 } from "../utils/notificationEvents";
-
-const sections = [
-  { id: "personal", label: "Personal Information", icon: UserRound },
-  { id: "notifications", label: "Notifications", icon: BellRing },
-  { id: "history", label: "History", icon: History },
-];
 
 const emptyProfile = {
   fullName: "",
@@ -50,9 +37,8 @@ const inputClassName =
   "h-[48px] w-full rounded-tk-8 border border-app-border bg-app-background px-[14px] type-body-m text-app-text outline-none transition-colors placeholder:text-app-text-subtle focus:border-brand disabled:cursor-not-allowed disabled:opacity-70";
 
 export default function ProfilePage({ onRequireAuth }) {
-  const navigate = useNavigate();
   const { user, isAuthenticated, updateUser } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [profile, setProfile] = useState(emptyProfile);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -60,13 +46,9 @@ export default function ProfilePage({ onRequireAuth }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
-  const [bookings, setBookings] = useState([]);
-  const [bookingsLoading, setBookingsLoading] = useState(true);
-  const [bookingsError, setBookingsError] = useState("");
-  const [expandedBookingId, setExpandedBookingId] = useState("");
-  const activeSection = sections.some((section) => section.id === searchParams.get("section"))
+  const activeSection = ["account", "notifications"].includes(searchParams.get("section"))
     ? searchParams.get("section")
-    : "personal";
+    : "account";
 
   useEffect(() => {
     let ignore = false;
@@ -103,42 +85,6 @@ export default function ProfilePage({ onRequireAuth }) {
     };
   }, [isAuthenticated]);
 
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadBookings() {
-      if (!isAuthenticated || !user?.userId) {
-        setBookings([]);
-        setBookingsLoading(false);
-        return;
-      }
-
-      try {
-        setBookingsLoading(true);
-        setBookingsError("");
-        const data = await bookingApi.getUserBookings(user.userId);
-
-        if (!ignore) {
-          setBookings((Array.isArray(data) ? data : []).map(normalizeBooking));
-        }
-      } catch {
-        if (!ignore) {
-          setBookingsError("We couldn't load your booking history right now.");
-        }
-      } finally {
-        if (!ignore) {
-          setBookingsLoading(false);
-        }
-      }
-    }
-
-    loadBookings();
-
-    return () => {
-      ignore = true;
-    };
-  }, [isAuthenticated, user?.userId]);
-
   function updateField(field, value) {
     setProfile((currentProfile) => ({
       ...currentProfile,
@@ -151,9 +97,7 @@ export default function ProfilePage({ onRequireAuth }) {
     const file = event.target.files?.[0];
     event.target.value = "";
 
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     try {
       setAvatarSaving(true);
@@ -203,7 +147,7 @@ export default function ProfilePage({ onRequireAuth }) {
     return (
       <div className="ticketor-container py-[72px]">
         <div className="rounded-card border border-app-border bg-app-surface p-[32px] text-center">
-          <p className="type-label-m text-brand">PROFILE SETTINGS</p>
+          <p className="type-label-m text-brand">PROFILE</p>
           <h1 className="type-h4 mt-[12px] text-app-text">Sign in to manage your profile.</h1>
           <p className="type-body-m mt-[12px] text-app-text-muted">
             Keep your personal details and account preferences in one place.
@@ -219,105 +163,47 @@ export default function ProfilePage({ onRequireAuth }) {
   return (
     <div className="min-h-screen bg-app-background text-app-text">
       <main className="ticketor-container py-[48px]">
-        <section className="overflow-hidden rounded-tk-12 border border-app-border bg-app-surface">
-          <div className="flex flex-col gap-[18px] border-b border-app-border p-[24px] sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-[16px]">
-              <div className="grid shrink-0 justify-items-center gap-[6px]">
-                <Avatar size={56} src={profile.avatarUrl || user?.avatarUrl} alt={user?.fullName} />
-                <label className="flex cursor-pointer items-center gap-[4px] type-body-xs text-brand transition-colors hover:text-brand-hover">
-                  <Camera className="h-[13px] w-[13px]" />
-                  {avatarSaving ? "Saving..." : "Change"}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="hidden"
-                    onChange={handleAvatarChange}
+        <div className="grid grid-cols-12 gap-[28px] lg:gap-[48px]">
+          <aside className="col-span-12 lg:col-span-3">
+            <ProfileSidebar user={user} activeKey={activeSection} />
+          </aside>
+
+          <div className="col-span-12 lg:col-span-9">
+            {error && (
+              <div className="mb-[16px] rounded-tk-8 border border-error-500 bg-app-surface px-[16px] py-[12px] type-body-s text-error-500">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="mb-[16px] flex items-center gap-[8px] rounded-tk-8 border border-success-500 bg-app-surface px-[16px] py-[12px] type-body-s text-success-400">
+                <CheckCircle2 className="h-[18px] w-[18px]" />
+                {success}
+              </div>
+            )}
+
+            {loading ? (
+              <div className="rounded-tk-8 border border-app-border bg-app-surface p-[24px] type-body-m text-app-text-muted">
+                Loading your profile...
+              </div>
+            ) : (
+              <>
+                {activeSection === "account" && (
+                  <PersonalInformationSection
+                    profile={profile}
+                    saving={saving}
+                    onChange={updateField}
+                    onSubmit={handleSubmit}
+                    onOpenPasswordModal={() => setPasswordModalOpen(true)}
+                    onAvatarChange={handleAvatarChange}
+                    avatarSaving={avatarSaving}
                   />
-                </label>
-              </div>
-              <div className="min-w-0">
-                <p className="type-label-m text-brand">PROFILE SETTINGS</p>
-                <h1 className="type-h4 mt-[4px] truncate text-app-text">{user?.fullName}</h1>
-                <p className="type-body-s mt-[4px] truncate text-app-text-muted">{user?.email}</p>
-              </div>
-            </div>
-            <span className="w-fit rounded-full border border-app-border bg-app-background px-[14px] py-[8px] type-body-xs text-app-text-muted">
-              {formatProvider(user?.provider)}
-            </span>
-          </div>
-
-          <nav className="flex overflow-x-auto px-[12px] sm:px-[20px]" aria-label="Profile sections">
-            {sections.map((section) => {
-              const Icon = section.icon;
-              const isActive = activeSection === section.id;
-
-              return (
-                <button
-                  key={section.id}
-                  type="button"
-                  onClick={() => setSearchParams({ section: section.id })}
-                  className={cn(
-                    "flex shrink-0 items-center gap-[8px] border-b-2 px-[14px] py-[16px] type-body-s transition-colors sm:px-[18px]",
-                    isActive
-                      ? "border-brand text-brand"
-                      : "border-transparent text-app-text-muted hover:text-app-text"
-                  )}
-                >
-                  <Icon className="h-[17px] w-[17px]" />
-                  {section.label}
-                </button>
-              );
-            })}
-          </nav>
-        </section>
-
-        {error && (
-          <div className="mt-[20px] rounded-tk-8 border border-error-500 bg-app-surface px-[16px] py-[12px] type-body-s text-error-500">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="mt-[20px] flex items-center gap-[8px] rounded-tk-8 border border-success-500 bg-app-surface px-[16px] py-[12px] type-body-s text-success-400">
-            <CheckCircle2 className="h-[18px] w-[18px]" />
-            {success}
-          </div>
-        )}
-
-        {loading ? (
-          <div className="mt-[24px] rounded-tk-12 border border-app-border bg-app-surface p-[24px] type-body-m text-app-text-muted">
-            Loading your profile...
-          </div>
-        ) : (
-          <>
-            {activeSection === "personal" && (
-              <PersonalInformationSection
-                profile={profile}
-                saving={saving}
-                onChange={updateField}
-                onSubmit={handleSubmit}
-                onOpenPasswordModal={() => setPasswordModalOpen(true)}
-              />
+                )}
+                {activeSection === "notifications" && <NotificationsSection />}
+              </>
             )}
-            {activeSection === "notifications" && <NotificationsSection />}
-            {activeSection === "history" && (
-              <HistorySection
-                bookings={bookings}
-                loading={bookingsLoading}
-                error={bookingsError}
-                expandedBookingId={expandedBookingId}
-                onBookingClick={(booking) => {
-                  if (booking.isActive) {
-                    navigate(`/my-booking/${booking.id}`);
-                    return;
-                  }
-
-                  setExpandedBookingId((currentId) => currentId === booking.id ? "" : booking.id);
-                }}
-              />
-            )}
-          </>
-        )}
+          </div>
+        </div>
       </main>
 
       {passwordModalOpen && (
@@ -333,16 +219,37 @@ export default function ProfilePage({ onRequireAuth }) {
   );
 }
 
-function PersonalInformationSection({ profile, saving, onChange, onSubmit, onOpenPasswordModal }) {
+function PersonalInformationSection({
+  profile,
+  saving,
+  avatarSaving,
+  onChange,
+  onSubmit,
+  onAvatarChange,
+  onOpenPasswordModal,
+}) {
   return (
     <form onSubmit={onSubmit} className="mt-[24px]">
-      <section className="rounded-tk-12 border border-app-border bg-app-surface p-[20px] sm:p-[24px]">
-        <div>
-          <p className="type-label-m text-brand">PERSONAL INFORMATION</p>
+      <section className="rounded-tk-8 border border-app-border bg-app-surface p-[20px] sm:p-[24px]">
+        <div className="flex flex-wrap items-start justify-between gap-[16px]">
+          <div>
+          <p className="type-label-m text-brand">MY ACCOUNT</p>
           <h2 className="type-h5 mt-[6px] text-app-text">Your account details</h2>
           <p className="type-body-s mt-[6px] text-app-text-muted">
             Keep these details current so your booking account stays easy to identify.
           </p>
+          </div>
+
+          <label className="inline-flex cursor-pointer items-center gap-[6px] type-body-xs text-brand transition-colors hover:text-brand-hover">
+            <Camera className="h-[15px] w-[15px]" />
+            {avatarSaving ? "Saving photo..." : "Change profile photo"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={onAvatarChange}
+            />
+          </label>
         </div>
 
         <div className="mt-[22px] grid gap-[18px] md:grid-cols-2">
@@ -435,6 +342,7 @@ function PersonalInformationSection({ profile, saving, onChange, onSubmit, onOpe
 }
 
 function NotificationsSection() {
+  const markingReadIdsRef = useRef(new Set());
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -466,9 +374,11 @@ function NotificationsSection() {
   }, [loadNotifications]);
 
   async function markRead(notification) {
-    if (notification.read) {
+    if (notification.read || markingReadIdsRef.current.has(notification.id)) {
       return;
     }
+
+    markingReadIdsRef.current.add(notification.id);
 
     try {
       await notificationApi.markRead(notification.id);
@@ -481,6 +391,8 @@ function NotificationsSection() {
       notifyNotificationsUpdated();
     } catch {
       loadNotifications();
+    } finally {
+      markingReadIdsRef.current.delete(notification.id);
     }
   }
 
@@ -498,7 +410,7 @@ function NotificationsSection() {
   }
 
   return (
-    <section className="mt-[24px] rounded-tk-12 border border-app-border bg-app-surface p-[20px] sm:p-[24px]">
+    <section className="rounded-tk-8 border border-app-border bg-app-surface p-[20px] sm:p-[24px]">
       <div className="flex items-center justify-between gap-[16px]">
         <div>
           <p className="type-label-m text-brand">NOTIFICATIONS</p>
@@ -525,18 +437,13 @@ function NotificationsSection() {
             <Link
               key={notification.id}
               to={notification.actionUrl || "/profile"}
-              onClick={() => markRead(notification)}
+              onMouseEnter={() => markRead(notification)}
               className={cn(
                 "flex items-start gap-[12px] rounded-tk-8 border border-app-border bg-app-background p-[14px] transition-colors hover:border-app-text",
                 !notification.read && "border-brand/50 bg-brand/5"
               )}
             >
-              <span
-                className={cn(
-                  "mt-[6px] h-[9px] w-[9px] shrink-0 rounded-full",
-                  notification.read ? "bg-app-border" : "bg-brand"
-                )}
-              />
+              <NotificationAvatar notification={notification} />
               <div className="min-w-0">
                 <p className="type-body-s font-bold text-app-text">{notification.title}</p>
                 <p className="type-body-xs mt-[4px] text-app-text-muted">{notification.message}</p>
@@ -545,63 +452,6 @@ function NotificationsSection() {
                 </p>
               </div>
             </Link>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function HistorySection({ bookings, loading, error, expandedBookingId, onBookingClick }) {
-  return (
-    <section className="mt-[24px] rounded-tk-12 border border-app-border bg-app-surface p-[20px] sm:p-[24px]">
-      <p className="type-label-m text-brand">HISTORY</p>
-
-      {loading && <p className="type-body-s mt-[8px] text-app-text-muted">Loading your booking history...</p>}
-      {!loading && error && <p className="type-body-s mt-[8px] text-error-500">{error}</p>}
-      {!loading && !error && bookings.length === 0 && (
-        <p className="type-body-s mt-[8px] text-app-text-muted">You don't have any booking history yet.</p>
-      )}
-
-      {!loading && !error && bookings.length > 0 && (
-        <div className="mt-[18px] grid gap-[12px]">
-          {bookings.map((booking) => (
-            <div key={booking.id}>
-              <button
-                type="button"
-                onClick={() => onBookingClick(booking)}
-                className="flex w-full items-center justify-between gap-[16px] rounded-tk-8 border border-app-border bg-app-background p-[14px] text-left transition-colors hover:border-app-text"
-              >
-                <div className="flex min-w-0 items-center gap-[14px]">
-                  <div className="h-[72px] w-[52px] shrink-0 overflow-hidden rounded-tk-4 bg-app-surface">
-                    {booking.posterUrl ? (
-                      <img src={booking.posterUrl} alt={booking.movieTitle} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="h-full w-full bg-neutral-700" />
-                    )}
-                  </div>
-
-                  <div className="min-w-0">
-                    <p className="type-h6 truncate text-app-text">{booking.movieTitle}</p>
-                    <p className="type-body-xs mt-[4px] text-app-text-muted">{booking.dateTimeLabel}</p>
-                    <p className="type-body-xs mt-[4px] truncate text-app-text-muted">{booking.cinemaName}</p>
-                  </div>
-                </div>
-
-                <span className={cn(
-                  "shrink-0 rounded-full border px-[10px] py-[5px] type-body-xs",
-                  booking.isActive
-                    ? "border-success-500 text-success-400"
-                    : "border-app-border text-app-text-subtle"
-                )}>
-                  {booking.isActive ? "Upcoming" : "Expired"}
-                </span>
-              </button>
-
-              {!booking.isActive && expandedBookingId === booking.id && (
-                <ExpiredBookingDetails booking={booking} />
-              )}
-            </div>
           ))}
         </div>
       )}
@@ -730,31 +580,6 @@ function PasswordInput({ label, value, visible, onChange, onToggle }) {
   );
 }
 
-function ExpiredBookingDetails({ booking }) {
-  return (
-    <div className="mx-[8px] rounded-b-tk-8 border border-t-0 border-app-border bg-app-background px-[16px] py-[14px]">
-      <div className="grid gap-[10px] sm:grid-cols-2">
-        <HistoryDetail icon={Ticket} label="Seats" value={booking.seatsLabel} />
-        <HistoryDetail icon={MapPin} label="Cinema" value={`${booking.cinemaName} / ${booking.roomName}`} />
-        <HistoryDetail icon={CreditCard} label="Total" value={formatVnd(booking.totalAmount)} />
-        <HistoryDetail icon={Clock3} label="Status" value={`${booking.status} / ${booking.paymentStatus}`} />
-      </div>
-    </div>
-  );
-}
-
-function HistoryDetail({ icon: Icon, label, value }) {
-  return (
-    <div className="flex items-start gap-[8px]">
-      <Icon className="mt-[1px] h-[15px] w-[15px] shrink-0 text-brand" />
-      <div>
-        <p className="type-body-xs text-app-text-subtle">{label}</p>
-        <p className="type-body-s mt-[2px] text-app-text-muted">{value}</p>
-      </div>
-    </div>
-  );
-}
-
 function ProfileField({ label, icon: Icon, children }) {
   return (
     <label className="grid gap-[8px]">
@@ -779,37 +604,8 @@ function toProfileForm(profile) {
   };
 }
 
-function normalizeBooking(booking) {
-  const startTime = booking?.startTime ? new Date(booking.startTime) : null;
-  const ticketCount = booking?.tickets?.length || booking?.seatSummary?.split(",").length || 0;
-
-  return {
-    ...booking,
-    posterUrl: getPosterUrl({ posterUrl: booking?.posterUrl }),
-    dateTimeLabel: startTime ? formatBookingDate(startTime) : "Schedule pending",
-    seatsLabel: booking?.seatSummary
-      ? `${ticketCount} Ticket${ticketCount === 1 ? "" : "s"} - Seat ${booking.seatSummary}`
-      : "Seats will appear after confirmation",
-    isActive: Boolean(startTime) && startTime.getTime() >= Date.now() && booking?.status === "CONFIRMED",
-  };
-}
-
-function formatBookingDate(value) {
-  return value.toLocaleString("en-US", {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 function formatNotificationDate(value) {
   return value ? new Date(value).toLocaleString() : "";
-}
-
-function formatProvider(provider) {
-  return provider === "GOOGLE" ? "Google account" : "Email account";
 }
 
 function resizeAvatar(file) {

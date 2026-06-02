@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { bookingApi, concessionApi, movieApi, showtimeApi } from "../api/api";
 import BookingProgress from "../components/booking/BookingProgress";
+import TicketBarcode from "../components/booking/TicketBarcode";
 import Button from "../components/common/Button";
 import Footer from "../components/layout/Footer";
 import { formatDuration, getPosterUrl } from "../components/home/homeUtils";
@@ -487,6 +488,7 @@ function PaymentSuccessPage({
             <div className="mt-[2px] rounded-b-tk-8 bg-app-surface p-[20px]">
               <p className="type-body-xs text-app-text-muted">Order Number</p>
               <p className="type-body-m mt-[5px] text-app-text">{orderNumber}</p>
+              <TicketBarcode value={booking.id} className="mt-[14px]" />
             </div>
           </aside>
 
@@ -542,7 +544,7 @@ function PaymentSuccessPage({
                 Share ticket
               </button>
               <Button size={48} variant="outline" onClick={onViewBooking}>
-                View My Booking
+                View My Tickets
               </Button>
             </div>
 

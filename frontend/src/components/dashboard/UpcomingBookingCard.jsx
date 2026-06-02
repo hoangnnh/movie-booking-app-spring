@@ -15,7 +15,7 @@ export default function UpcomingBookingCard({
     <article
       className={cn(
         "flex items-center justify-between gap-[24px]",
-        "rounded-tk-8 border border-app-border bg-app-background p-[16px]",
+        "rounded-tk-8 border border-app-border bg-app-surface p-[16px] transition-colors hover:border-app-text hover:bg-app-surface-soft",
         className
       )}
     >
