@@ -55,7 +55,7 @@ public class EmailService {
     public void sendVerificationEmail(String toEmail, String token) {
         String link = baseUrl + "/api/auth/verify-email?token=" + token;
         sendEmail(toEmail,
-                "🎬 Ticketor Account Verification",
+                "🎬 CinemaTick Account Verification",
                 "Please click the following link to verify your email address:\n\n" + link +
                         "\n\nThis link will expire in " + verificationTokenExpiryHours + " hours"
         );
@@ -64,7 +64,7 @@ public class EmailService {
     public void sendPasswordResetEmail(String toEmail, String token) {
         String link = frontendUrl + "/reset-password?token=" + token;
         sendEmail(toEmail,
-                "🔐 Ticketor Password Reset",
+                "🔐 CinemaTick Password Reset",
                 "Click the following link to reset your password:\n\n" + link +
                         "\n\nThis link will expire in 15 minutes.\n" +
                         "If you did not request this, please ignore this email."
@@ -105,7 +105,7 @@ public class EmailService {
             RestClient.builder()
                     .baseUrl(resendBaseUrl)
                     .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + resendApiKey)
-                    .defaultHeader(HttpHeaders.USER_AGENT, "ticketor-backend/1.0")
+                    .defaultHeader(HttpHeaders.USER_AGENT, "cinematick-backend/1.0")
                     .build()
                     .post()
                     .uri("/emails")

@@ -9,6 +9,8 @@ export default function SeatMap({
   size = "md",
   className = "",
 }) {
+  const seatRows = groupSeatsByRow(seats, columns);
+
   return (
     <div className={cn("w-full", className)}>
       <div className="mb-[24px] flex justify-center sm:mb-[32px]">
@@ -18,36 +20,41 @@ export default function SeatMap({
       </div>
 
       <div className="overflow-x-auto pb-[6px]">
-        <div
-          className="mx-auto grid w-fit min-w-max gap-[8px] sm:gap-[12px]"
-          style={{
-            gridTemplateColumns: `repeat(${columns}, minmax(0, auto))`,
-          }}
-        >
-          {seats.map((seat) => {
-            const seatId = seat.seatId || seat.id;
-            const isSelected = selectedSeatIds.includes(seatId);
+        <div className="mx-auto flex w-fit min-w-max flex-col gap-[8px] sm:gap-[12px]">
+          {seatRows.map(([rowName, rowSeats]) => (
+            <div
+              key={rowName}
+              className="grid gap-[8px] sm:gap-[12px]"
+              style={{
+                gridTemplateColumns: `repeat(${rowSeats.length}, minmax(0, auto))`,
+              }}
+            >
+              {rowSeats.map((seat) => {
+                const seatId = seat.seatId || seat.id;
+                const isSelected = selectedSeatIds.includes(seatId);
 
-            let status = "available";
+                let status = "available";
 
-            if (seat.booked) {
-              status = "booked";
-            } else if (seat.disabled) {
-              status = "disabled";
-            } else if (isSelected) {
-              status = "selected";
-            }
+                if (seat.booked) {
+                  status = "booked";
+                } else if (seat.disabled) {
+                  status = "disabled";
+                } else if (isSelected) {
+                  status = "selected";
+                }
 
-            return (
-              <SeatButton
-                key={seatId}
-                label={seat.label}
-                status={status}
-                size={size}
-                onClick={() => onToggleSeat?.(seat)}
-              />
-            );
-          })}
+                return (
+                  <SeatButton
+                    key={seatId}
+                    label={seat.label}
+                    status={status}
+                    size={size}
+                    onClick={() => onToggleSeat?.(seat)}
+                  />
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -58,6 +65,20 @@ export default function SeatMap({
       </div>
     </div>
   );
+}
+
+function groupSeatsByRow(seats, columns) {
+  const rows = new Map();
+
+  seats.forEach((seat, index) => {
+    const rowName = seat.rowName
+      || seat.label?.match(/^[^\d]+/)?.[0]
+      || `row-${Math.floor(index / columns)}`;
+
+    rows.set(rowName, [...(rows.get(rowName) || []), seat]);
+  });
+
+  return [...rows.entries()];
 }
 
 function LegendItem({ status, label }) {

@@ -9,7 +9,7 @@ import CastSection from "../components/movieDetail/CastSection";
 import ReviewsSection from "../components/movieDetail/ReviewsSection";
 import ShowtimesSection from "../components/movieDetail/ShowtimesSection";
 
-import { formatDuration, getPosterUrl, isComingSoon } from "../components/home/homeUtils";
+import { formatDuration, getPosterUrl } from "../components/home/homeUtils";
 import { getEmbeddedTrailerUrl } from "../components/movieDetail/trailerUtils";
 import { getMovieDetailPath } from "../utils/moviePath";
 
@@ -20,7 +20,7 @@ export default function MovieDetailPage() {
 
   const [movie, setMovie] = useState(null);
   const [showtimes, setShowtimes] = useState([]);
-  const [similarMovies, setSimilarMovies] = useState([]);
+  const [nowPlayingMovies, setNowPlayingMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isTrailerOpen, setIsTrailerOpen] = useState(false);
@@ -49,26 +49,26 @@ export default function MovieDetailPage() {
   useEffect(() => {
     let ignore = false;
 
-    async function loadSimilarMovies() {
+    async function loadNowPlayingMovies() {
       if (!movie?.id) {
-        setSimilarMovies([]);
+        setNowPlayingMovies([]);
         return;
       }
 
       try {
-        const data = await movieApi.getSimilar(movie.id, 8);
+        const data = await movieApi.getNowPlaying(9);
 
         if (!ignore) {
-          setSimilarMovies(Array.isArray(data) ? data : []);
+          setNowPlayingMovies(Array.isArray(data) ? data : []);
         }
       } catch {
         if (!ignore) {
-          setSimilarMovies([]);
+          setNowPlayingMovies([]);
         }
       }
     }
 
-    loadSimilarMovies();
+    loadNowPlayingMovies();
 
     return () => {
       ignore = true;
@@ -90,9 +90,9 @@ export default function MovieDetailPage() {
     };
   }, [movie]);
 
-  const visibleSimilarMovies = useMemo(() => {
-    return similarMovies.filter((item) => !isComingSoon(item));
-  }, [similarMovies]);
+  const visibleNowPlayingMovies = useMemo(() => {
+    return nowPlayingMovies.filter((item) => String(item.id) !== String(movie?.id));
+  }, [movie?.id, nowPlayingMovies]);
   const bookingAvailable = computedMovie?.displayStatus === "SHOWING_NOW";
 
   useEffect(() => {
@@ -170,11 +170,11 @@ export default function MovieDetailPage() {
       <CastSection cast={computedMovie.cast} />
       <ReviewsSection score={computedMovie.rating} />
       <ShowtimesSection showtimes={showtimes} bookingAvailable={bookingAvailable} />
-      {visibleSimilarMovies.length > 0 && (
+      {visibleNowPlayingMovies.length > 0 && (
         <MovieSection
-          title="More Like This"
-          description="Java-side similarity picks paired with your upgraded recommendation engine."
-          movies={visibleSimilarMovies}
+          title="Showing Now"
+          description="Explore more movies currently playing in theaters."
+          movies={visibleNowPlayingMovies}
           status="released"
           limit={8}
         />

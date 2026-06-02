@@ -6,6 +6,10 @@ import SectionHeader from "./SectionHeader";
 import { normalizeMovie } from "./homeUtils";
 import { getMovieDetailPath } from "../../utils/moviePath";
 
+const MAX_VISIBLE_CARDS = 5;
+const MIN_CARD_WIDTH = 190;
+const CARD_GAP = 24;
+
 export default function MovieSection({
   title,
   description,
@@ -20,6 +24,7 @@ export default function MovieSection({
 
   const visibleMovies = movies.slice(0, limit).map(normalizeMovie);
   const maxStartIndex = Math.max(0, visibleMovies.length - visibleCount);
+  const renderedMovies = visibleMovies.slice(startIndex, startIndex + visibleCount);
 
   useEffect(() => {
     const carousel = carouselRef.current;
@@ -27,15 +32,13 @@ export default function MovieSection({
     if (!carousel) return undefined;
 
     function updateVisibleCount() {
-      const firstCard = carousel.querySelector("article");
-
-      if (!firstCard) return;
-
-      const styles = window.getComputedStyle(carousel);
-      const gap = Number.parseFloat(styles.columnGap || styles.gap) || 0;
-      const nextVisibleCount = Math.max(
+      const nextVisibleCount = Math.min(
+        MAX_VISIBLE_CARDS,
+        visibleMovies.length,
+        Math.max(
         1,
-        Math.floor((carousel.clientWidth + gap) / (firstCard.offsetWidth + gap))
+          Math.floor((carousel.clientWidth + CARD_GAP) / (MIN_CARD_WIDTH + CARD_GAP))
+        )
       );
 
       setVisibleCount(nextVisibleCount);
@@ -51,18 +54,6 @@ export default function MovieSection({
 
     return () => resizeObserver.disconnect();
   }, [visibleMovies.length]);
-
-  useEffect(() => {
-    const carousel = carouselRef.current;
-    const targetCard = carousel?.querySelectorAll("article")[startIndex];
-
-    if (!carousel || !targetCard) return;
-
-    carousel.scrollTo({
-      left: targetCard.offsetLeft,
-      behavior: "smooth",
-    });
-  }, [startIndex]);
 
   if (visibleMovies.length === 0) return null;
 
@@ -90,9 +81,12 @@ export default function MovieSection({
 
         <div
           ref={carouselRef}
-          className="flex gap-[24px] overflow-hidden pb-[12px] scroll-smooth"
+          className="grid gap-[24px] overflow-hidden pb-[12px]"
+          style={{
+            gridTemplateColumns: `repeat(${renderedMovies.length}, minmax(0, 1fr))`,
+          }}
         >
-          {visibleMovies.map((movie) => (
+          {renderedMovies.map((movie) => (
             <MovieCard
               key={movie.id}
               title={movie.title}
@@ -115,7 +109,7 @@ export default function MovieSection({
                     )}`
                   : "Releases March 15, 2025"
               }
-              className="w-[220px] snap-start"
+              className="!w-full min-w-0"
               onBook={() => navigate(getMovieDetailPath(movie))}
               onOpenDetails={() => navigate(getMovieDetailPath(movie))}
             />

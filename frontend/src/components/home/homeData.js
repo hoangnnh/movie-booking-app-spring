@@ -42,15 +42,15 @@ export const testimonials = [
   {
     name: "James",
     role: "Teacher",
-    text: "Ticketor consistently goes above and beyond my expectations.",
+    text: "CinemaTick consistently goes above and beyond my expectations.",
   },
 ];
 
 export const faqs = [
   {
-    question: "What is Ticketor?",
+    question: "What is CinemaTick?",
     answer:
-      "Ticketor is an online movie ticket booking platform that helps users find movies, choose showtimes, select seats, and manage their tickets.",
+      "CinemaTick is an online movie ticket booking platform that helps users find movies, choose showtimes, select seats, and manage their tickets.",
   },
   {
     question: "Can I modify my seat selection after booking a ticket?",
@@ -58,7 +58,7 @@ export const faqs = [
       "For this project MVP, seat changes are not supported after booking. This can be added later as a future feature.",
   },
   {
-    question: "Is my payment information secure with Ticketor?",
+    question: "Is my payment information secure with CinemaTick?",
     answer:
       "Current payment is mocked for demo purposes. Real payment security should be handled through a trusted payment gateway later.",
   },

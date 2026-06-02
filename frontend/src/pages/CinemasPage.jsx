@@ -61,7 +61,7 @@ export default function CinemasPage() {
         <section className="mt-[32px] grid gap-[16px] md:grid-cols-2">
           {visibleCinemas.map((cinema) => (
             <article key={cinema.id} className="rounded-tk-8 border border-app-border bg-app-surface p-[20px]">
-              <p className="type-body-xs text-brand">{cinema.brand || "Ticketor Cinema"}</p>
+              <p className="type-body-xs text-brand">{cinema.brand || "CinemaTick Cinema"}</p>
               <h2 className="type-h5 mt-[4px]">{cinema.name}</h2>
               <p className="mt-[14px] flex gap-[8px] type-body-s text-app-text-muted">
                 <MapPin className="h-[18px] w-[18px] shrink-0" />

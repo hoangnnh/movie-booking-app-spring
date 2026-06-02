@@ -76,7 +76,7 @@ public class PaymentGatewayService {
         params.put("vnp_Amount", toVnpayAmount(booking.getTotalAmount()));
         params.put("vnp_CurrCode", "VND");
         params.put("vnp_TxnRef", booking.getPaymentReference());
-        params.put("vnp_OrderInfo", "Ticketor booking " + booking.getId());
+        params.put("vnp_OrderInfo", "CinemaTick booking " + booking.getId());
         params.put("vnp_OrderType", "billpayment");
         params.put("vnp_Locale", "vn");
         params.put("vnp_ReturnUrl", backendBaseUrl + "/api/payments/vnpay/return");

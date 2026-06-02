@@ -3,6 +3,7 @@ import { useState } from "react";
 import AuthModal from "./components/auth/AuthModal";
 import AdminRoute from "./components/auth/AdminRoute";
 import Navbar from "./components/layout/Navbar";
+import Footer from "./components/layout/Footer";
 import { useAuth } from "./context/useAuth";
 import { useTheme } from "./context/useTheme";
 import HomePage from "./pages/HomePage";
@@ -28,6 +29,11 @@ export default function App() {
   const { theme, toggleTheme } = useTheme();
   const [authMode, setAuthMode] = useState(null);
   const isHome = location.pathname === "/";
+  const hideFooter = /^\/booking\/[^/]+\/(seats|food|payment)$/.test(location.pathname)
+    || location.pathname.startsWith("/admin")
+    || location.pathname === "/tmdb"
+    || location.pathname === "/oauth/callback"
+    || location.pathname === "/reset-password";
 
   if (!ready) {
     return null;
@@ -97,6 +103,8 @@ export default function App() {
         />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+
+      {!hideFooter && <Footer variant="plain" />}
 
       {authMode && (
         <AuthModal

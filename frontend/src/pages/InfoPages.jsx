@@ -1,6 +1,5 @@
 import { Mail, MapPin, Phone, ShieldCheck, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
-import Footer from "../components/layout/Footer";
 import { useTheme } from "../context/useTheme";
 
 function PageHero({ eyebrow, title, description, accent = "brand" }) {
@@ -63,7 +62,7 @@ export function ContactPage() {
     <div className="min-h-screen bg-app-background text-app-text">
       <main className="ticketor-container py-[48px]">
         <PageHero
-          eyebrow="CONTACT TICKETOR"
+          eyebrow="CONTACT CINEMATICK"
           title="We are here to help with bookings, account issues, and cinema support."
           description="Reach out to our team for anything from refund questions to accessibility support. We aim to respond to most requests within one business day."
           accent="info"
@@ -121,13 +120,12 @@ export function ContactPage() {
           </ContentCard>
           <ContentCard title="Partnerships" icon={MapPin}>
             <p className="type-body-s">
-              For cinema operators, event organizers, or corporate bookings, email partnerships@ticketor.example.
+              For cinema operators, event organizers, or corporate bookings, email partnerships@cinematick.example.
             </p>
           </ContentCard>
         </section>
       </main>
 
-      <Footer variant="plain" />
     </div>
   );
 }
@@ -138,14 +136,14 @@ export function TermsOfUsePage() {
       <main className="ticketor-container py-[48px]">
         <PageHero
           eyebrow="TERMS OF USE"
-          title="The rules for using Ticketor, booking showtimes, and managing your account."
+          title="The rules for using CinemaTick, booking showtimes, and managing your account."
           description="These terms explain how the platform may be used, what users are responsible for, and how bookings, cancellations, and content access are handled."
         />
 
         <section className="mt-[28px] grid gap-[20px]">
           <ContentCard title="1. Using The Service" icon={FileText}>
             <p className="type-body-s">
-              Ticketor is provided for browsing films, selecting showtimes, reserving seats, and managing movie ticket bookings. You agree to provide accurate account and payment information and to use the platform only for lawful personal or business purposes approved by your cinema partner.
+              CinemaTick is provided for browsing films, selecting showtimes, reserving seats, and managing movie ticket bookings. You agree to provide accurate account and payment information and to use the platform only for lawful personal or business purposes approved by your cinema partner.
             </p>
           </ContentCard>
 
@@ -186,7 +184,6 @@ export function TermsOfUsePage() {
         </section>
       </main>
 
-      <Footer variant="plain" />
     </div>
   );
 }
@@ -197,7 +194,7 @@ export function PrivacyPolicyPage() {
       <main className="ticketor-container py-[48px]">
         <PageHero
           eyebrow="PRIVACY POLICY"
-          title="How Ticketor collects, uses, and protects your personal information."
+          title="How CinemaTick collects, uses, and protects your personal information."
           description="This policy summarizes what data we store, why we use it, and the choices available to users around account security, communications, and bookings."
           accent="info"
         />
@@ -222,7 +219,7 @@ export function PrivacyPolicyPage() {
 
           <ContentCard title="When We Share Information" icon={Mail}>
             <p className="type-body-s">
-              We may share limited booking and operational information with cinema partners, payment providers, email delivery services, and infrastructure vendors that help us operate Ticketor. We do not sell your personal information for unrelated advertising purposes.
+              We may share limited booking and operational information with cinema partners, payment providers, email delivery services, and infrastructure vendors that help us operate CinemaTick. We do not sell your personal information for unrelated advertising purposes.
             </p>
           </ContentCard>
 
@@ -240,7 +237,6 @@ export function PrivacyPolicyPage() {
         </section>
       </main>
 
-      <Footer variant="plain" />
     </div>
   );
 }

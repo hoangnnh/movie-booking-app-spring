@@ -213,7 +213,7 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
                     {isLogin ? "WELCOME BACK" : "START WATCHING"}
                   </p>
                   <h2 className="type-h3 text-app-text">
-                    {isLogin ? "Login to Ticketor" : "Create your account"}
+                    {isLogin ? "Login to CinemaTick" : "Create your account"}
                   </h2>
                 </div>
 

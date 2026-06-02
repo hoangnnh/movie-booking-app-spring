@@ -5,7 +5,7 @@
 }
 
 /* ================================
-   Ticketor Design Tokens - Colors
+   CinemaTick Design Tokens - Colors
    Source: Color Foundation
 ================================ */
 
@@ -79,7 +79,7 @@
 
 
     /* ================================
-   Ticketor Design Tokens - Typography
+   CinemaTick Design Tokens - Typography
    Font: Manrope
 ================================ */
 
@@ -160,7 +160,7 @@
     --tracking-label: 0.8px;
 
     /* ================================
-   Ticketor Design Tokens - Layout Grid
+   CinemaTick Design Tokens - Layout Grid
 ================================ */
 
     --container-ticketor: 1232px;
@@ -170,7 +170,7 @@
     --grid-ticketor-gutter: 16px;
 
     /* ================================
-   Ticketor Design Tokens - Spacing
+   CinemaTick Design Tokens - Spacing
 ================================ */
 
     --spacing-tk-4: 4px;
@@ -201,7 +201,7 @@
     --spacing-item-gap: 16px;
 
     /* ================================
-   Ticketor Design Tokens - Radius
+   CinemaTick Design Tokens - Radius
 ================================ */
 
     --radius-tk-4: 4px;
@@ -245,6 +245,10 @@
         background: var(--color-app-background);
     }
 
+    .cinematick-logo {
+        filter: invert(1);
+    }
+
     html[data-theme="light"] {
         --color-primary-900: #4f4200;
         --color-primary-800: #6d5a00;
@@ -269,6 +273,10 @@
         --color-brand-dark: #4f4200;
         --color-info: #216b6b;
         --color-info-soft: #d7ece7;
+    }
+
+    html[data-theme="light"] .cinematick-logo {
+        filter: none;
     }
 }
 

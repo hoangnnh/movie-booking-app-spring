@@ -7,15 +7,16 @@ const footerColumns = [
     {
         title: "Find a Movie",
         links: [
-            { label: "Showing Now", to: "/movies/showing-now" },
+            { label: "In Theaters", to: "/movies/showing-now" },
+            { label: "Top Movies", to: "/movies/showing-now" },
             { label: "Coming Soon", to: "/movies/coming-soon" },
         ],
     },
     {
         title: "Company",
         links: [
-            { label: "Terms of Use", to: "/terms" },
-            { label: "Privacy Policy", to: "/privacy" },
+            { label: "About Us", to: "/contact" },
+            { label: "Partnerships", to: "/contact" },
             { label: "Get the App", to: "/contact" },
         ],
     },
@@ -39,38 +40,37 @@ export default function Footer({
     return (
         <footer
             className={cn(
-                "relative overflow-hidden bg-app-background text-app-text",
-                "border-t border-app-border",
+                "relative overflow-hidden border-t border-app-border bg-app-background text-app-text",
                 className
             )}
         >
-            <div className="ticketor-container relative z-10 py-[40px] md:py-[48px]">
-                <div className="grid gap-[24px] lg:grid-cols-12">
-                    <div className="lg:col-span-5">
-                        <Logo className="mb-[16px]" />
+            <div className="ticketor-container relative z-10 py-[64px] md:py-[84px]">
+                <div className="grid gap-[44px] lg:grid-cols-[minmax(0,2.1fr)_repeat(3,minmax(120px,0.65fr))] lg:gap-[56px]">
+                    <div>
+                        <Logo className="mb-[20px]" />
 
-                        <p className="type-body-xs max-w-[360px] text-app-text-muted">
-                            Ticketor helps moviegoers discover films, pick showtimes,
+                        <p className="type-body-xs max-w-[460px] text-app-text-muted">
+                            CinemaTick helps moviegoers discover films, pick showtimes,
                             reserve seats, and keep every booking in one place.
                         </p>
 
-                        <div className="mt-[16px] flex items-center gap-[16px]">
+                        <div className="mt-[24px] flex items-center gap-[24px]">
                             <SocialLink label="Instagram">
-                                <FaInstagram className="h-[16px] w-[16px]" />
+                                <FaInstagram className="h-[28px] w-[28px]" />
                             </SocialLink>
 
                             <SocialLink label="X">
-                                <FaXTwitter className="h-[16px] w-[16px]" />
+                                <FaXTwitter className="h-[28px] w-[28px]" />
                             </SocialLink>
 
                             <SocialLink label="LinkedIn">
-                                <FaLinkedinIn className="h-[16px] w-[16px]" />
+                                <FaLinkedinIn className="h-[28px] w-[28px]" />
                             </SocialLink>
                         </div>
 
-                        <div className="mt-[12px] flex flex-wrap items-center gap-x-[24px] gap-y-[8px]">
+                        <div className="mt-[16px] flex flex-wrap items-center gap-x-[20px] gap-y-[8px]">
                             <p className="type-body-xs text-app-text-muted">
-                                Copyright © 2016 - 2025 Ticketor.
+                                Copyright © 2016 - {new Date().getFullYear()} CinemaTick.
                             </p>
 
                             <Link to="/privacy" className="type-body-xs text-app-text-muted hover:text-brand">
@@ -78,7 +78,7 @@ export default function Footer({
                             </Link>
 
                             <Link to="/terms" className="type-body-xs text-app-text-muted hover:text-brand">
-                                Terms of Use
+                                Terms of service
                             </Link>
                         </div>
 
@@ -87,28 +87,26 @@ export default function Footer({
                         </p>
                     </div>
 
-                    <div className="grid gap-[20px] sm:grid-cols-2 lg:col-span-7 lg:grid-cols-3">
-                        {footerColumns.map((column) => (
-                            <div key={column.title}>
-                                <h3 className="type-caption-s mb-[12px] text-app-text">
-                                    {column.title}
-                                </h3>
+                    {footerColumns.map((column) => (
+                        <div key={column.title}>
+                            <h3 className="type-body-s mb-[16px] text-app-text">
+                                {column.title}
+                            </h3>
 
-                                <ul className="flex flex-col gap-[8px]">
-                                    {column.links.map((link) => (
-                                        <li key={link.label}>
-                                            <Link
-                                                to={link.to}
-                                                className="type-body-xs text-app-text-muted transition-colors hover:text-brand"
-                                            >
-                                                {link.label}
-                                            </Link>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        ))}
-                    </div>
+                            <ul className="flex flex-col gap-[14px]">
+                                {column.links.map((link) => (
+                                    <li key={link.label}>
+                                        <Link
+                                            to={link.to}
+                                            className="type-body-xs text-app-text-muted transition-colors hover:text-brand"
+                                        >
+                                            {link.label}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
                 </div>
             </div>
 
@@ -129,7 +127,7 @@ function SocialLink({ label, children }) {
         <a
             href="#"
             aria-label={label}
-            className="flex h-[24px] w-[24px] items-center justify-center rounded-tk-4 text-app-text transition-colors hover:bg-app-surface hover:text-brand"
+            className="flex h-[28px] w-[28px] items-center justify-center text-app-text transition-colors hover:text-brand"
         >
             {children}
         </a>
