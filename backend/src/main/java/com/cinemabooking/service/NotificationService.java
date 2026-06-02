@@ -32,7 +32,8 @@ public class NotificationService {
                 "PASSWORD_CHANGED",
                 "Password changed",
                 "Your account password was changed successfully.",
-                "/profile"
+                "/profile",
+                null
         );
     }
 
@@ -49,7 +50,8 @@ public class NotificationService {
                 confirmed
                         ? "Your tickets for " + movieTitle + " are confirmed. Seats: " + seats + "."
                         : "Complete payment for " + movieTitle + " to keep your selected seats: " + seats + ".",
-                MY_BOOKING_URL
+                MY_BOOKING_URL,
+                confirmed ? booking.getShowtime().getMovie().getPosterUrl() : null
         );
     }
 
@@ -82,13 +84,21 @@ public class NotificationService {
         notificationRepository.markAllReadByUserId(userId);
     }
 
-    private void createNotification(AppUser user, String type, String title, String message, String actionUrl) {
+    private void createNotification(
+            AppUser user,
+            String type,
+            String title,
+            String message,
+            String actionUrl,
+            String imageUrl
+    ) {
         Notification notification = new Notification();
         notification.setUser(user);
         notification.setType(type);
         notification.setTitle(title);
         notification.setMessage(message);
         notification.setActionUrl(actionUrl);
+        notification.setImageUrl(imageUrl);
         notificationRepository.save(notification);
     }
 
@@ -99,6 +109,7 @@ public class NotificationService {
                 notification.getTitle(),
                 notification.getMessage(),
                 notification.getActionUrl(),
+                notification.getImageUrl(),
                 notification.isRead(),
                 notification.getCreatedAt()
         );

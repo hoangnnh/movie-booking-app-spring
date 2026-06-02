@@ -239,13 +239,31 @@ public class BookingService {
         );
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<BookingResponse> getBookingsByUser(UUID userId) {
-        expireStaleBookings();
+        List<Booking> bookings = bookingRepository.findByUser_IdOrderByCreatedAtDesc(userId);
+        if (bookings.isEmpty()) {
+            return List.of();
+        }
 
-        return bookingRepository.findByUser_IdOrderByCreatedAtDesc(userId)
+        List<UUID> bookingIds = bookings.stream()
+                .map(Booking::getId)
+                .toList();
+        Map<UUID, List<Ticket>> ticketsByBookingId = ticketRepository.findByBooking_IdIn(bookingIds)
                 .stream()
-                .map(this::toBookingResponse)
+                .collect(Collectors.groupingBy(ticket -> ticket.getBooking().getId()));
+        Map<UUID, List<BookingFoodItem>> foodItemsByBookingId =
+                bookingFoodItemRepository.findByBooking_IdInOrderByCreatedAtAsc(bookingIds)
+                        .stream()
+                        .collect(Collectors.groupingBy(item -> item.getBooking().getId()));
+
+        return bookings
+                .stream()
+                .map(booking -> toBookingResponse(
+                        booking,
+                        ticketsByBookingId.getOrDefault(booking.getId(), List.of()),
+                        foodItemsByBookingId.getOrDefault(booking.getId(), List.of())
+                ))
                 .toList();
     }
 
@@ -339,8 +357,18 @@ public class BookingService {
     }
 
     private BookingResponse toBookingResponse(Booking booking) {
-        List<Ticket> tickets = ticketRepository.findByBooking_Id(booking.getId());
+        return toBookingResponse(
+                booking,
+                ticketRepository.findByBooking_Id(booking.getId()),
+                bookingFoodItemRepository.findByBooking_IdOrderByCreatedAtAsc(booking.getId())
+        );
+    }
 
+    private BookingResponse toBookingResponse(
+            Booking booking,
+            List<Ticket> tickets,
+            List<BookingFoodItem> foodItems
+    ) {
         List<TicketResponse> ticketResponses = tickets.stream()
                 .map(ticket -> new TicketResponse(
                         ticket.getId(),
@@ -351,7 +379,9 @@ public class BookingService {
                 ))
                 .toList();
 
-        List<BookingFoodItemResponse> foodItemResponses = getFoodItemsByBooking(booking.getId());
+        List<BookingFoodItemResponse> foodItemResponses = foodItems.stream()
+                .map(this::toBookingFoodItemResponse)
+                .toList();
 
         return new BookingResponse(
                 booking.getId(),

@@ -39,6 +39,9 @@ public class Notification extends BaseEntity {
     @Column(name = "action_url", length = 250)
     private String actionUrl;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Column(name = "is_read", nullable = false)
     private boolean read;
 }

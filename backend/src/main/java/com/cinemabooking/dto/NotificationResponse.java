@@ -9,6 +9,7 @@ public record NotificationResponse(
         String title,
         String message,
         String actionUrl,
+        String imageUrl,
         boolean read,
         LocalDateTime createdAt
 ) {
