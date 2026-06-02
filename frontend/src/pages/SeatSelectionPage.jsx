@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Clock,
   MapPin,
-  Ticket,
+  Star,
 } from "lucide-react";
 import { bookingApi, movieApi, showtimeApi } from "../api/api";
 import BookingProgress from "../components/booking/BookingProgress";
@@ -138,6 +136,8 @@ export default function SeatSelectionPage() {
       posterUrl: getPosterUrl(movie, 0),
       duration: formatDuration(movie.durationMinutes),
       genres: Array.isArray(movie.genres) ? movie.genres.join(", ") : "Drama",
+      ageRating: movie.ageRating || "T13",
+      rating: movie.rating || movie.voteAverage || "N/A",
     };
   }, [movie]);
 
@@ -198,10 +198,10 @@ export default function SeatSelectionPage() {
 
   return (
     <div className="min-h-screen bg-app-background text-app-text">
-      <main className="ticketor-container py-[24px] sm:py-[40px]">
+      <main className="ticketor-container py-[20px] sm:py-[28px]">
         <button
           type="button"
-          className="mb-[32px] inline-flex items-center gap-[8px] type-body-s text-app-text-muted transition-colors hover:text-brand"
+          className="mb-[18px] inline-flex items-center gap-[8px] type-body-s text-app-text-muted transition-colors hover:text-brand"
           onClick={() =>
             navigate(
               `${getMovieBookingPath(movie)}${
@@ -214,111 +214,91 @@ export default function SeatSelectionPage() {
           Back to movie showtimes
         </button>
 
-        <BookingProgress currentStep={0} className="mb-[32px] sm:mb-[56px]" />
-
-        <div className="grid gap-[20px] xl:grid-cols-[280px_minmax(0,1fr)_300px]">
+        <div className="grid gap-[20px] xl:grid-cols-[220px_minmax(0,1fr)_250px]">
           <aside className="xl:order-1">
-            <div className="sticky top-[24px] overflow-hidden rounded-tk-8 border border-app-border bg-app-surface">
+            <div className="sticky top-[24px] overflow-hidden border border-app-border bg-black/35">
+              <div className="p-[14px] pb-[10px]">
+                <h1 className="type-h5 text-app-text">{movieView.title}</h1>
+                <div className="mt-[6px] flex flex-wrap items-center gap-[7px] type-body-xs text-app-text-muted">
+                  <span>{movieView.duration}</span>
+                  <span>/</span>
+                  <span>{movieView.ageRating}</span>
+                  <span>/</span>
+                  <span className="inline-flex items-center gap-[4px]">
+                    <Star className="h-[12px] w-[12px] fill-app-text text-app-text" />
+                    {movieView.rating}
+                  </span>
+                </div>
+              </div>
+
               <img
                 src={movieView.posterUrl}
                 alt={movieView.title}
-                className="h-[320px] w-full object-cover"
+                className="h-[300px] w-full object-cover"
               />
 
-              <div className="p-[20px]">
-                <h1 className="type-h5 text-app-text">{movieView.title}</h1>
-                <p className="type-body-xs mt-[6px] text-app-text-muted">
-                  {movieView.genres}
-                </p>
-
-                <div className="mt-[18px] grid gap-[12px] text-app-text-muted">
-                  <InfoRow icon={<CalendarDays />} label={timeView.date} />
-                  <InfoRow icon={<Clock />} label={timeView.time} />
-                  <InfoRow icon={<MapPin />} label={displayCinemaName} />
+              <div className="p-[14px]">
+                <p className="type-body-xs text-app-text">{displayCinemaName}</p>
+                <p className="type-body-xs mt-[4px] text-secondary-600">{showtime.roomName}</p>
+                <div className="mt-[14px] flex items-center gap-[6px] type-body-xs text-app-text-muted">
+                  <MapPin className="h-[13px] w-[13px]" />
+                  <span>{timeView.date}, {timeView.time}</span>
                 </div>
               </div>
             </div>
           </aside>
 
-          <section className="xl:order-2 rounded-tk-8 border border-app-border bg-app-surface p-[20px] sm:p-[24px] lg:p-[32px]">
-            <div className="mb-[32px] text-center">
-              <p className="type-label-s text-brand">Seat Selection</p>
-              <h2 className="type-h4 mt-[4px] text-app-text">
-                Choose Your Seats
-              </h2>
-              <p className="type-body-s mt-[8px] text-app-text-muted">
-                Select the seats you want. Ticket quantity is counted from your selected seats.
-              </p>
+          <section className="xl:order-2 min-w-0">
+            <BookingProgress currentStep={0} className="mb-[28px]" />
+
+            <div className="min-h-[440px] bg-black/25 px-[18px] py-[28px]">
+              <SeatMap
+                seats={seats}
+                selectedSeatIds={selectedSeatIds}
+                onToggleSeat={toggleSeat}
+                columns={8}
+                size="theater"
+                variant="theater"
+              />
+
+              {ticketCount === 0 && (
+                <p className="type-body-xs mt-[20px] text-center text-app-text-muted">
+                  Select at least one seat to continue.
+                </p>
+              )}
+
+              {seatSpacingViolation && (
+                <p className="type-body-xs mx-auto mt-[20px] max-w-[540px] rounded-tk-4 border border-error-500 bg-app-background px-[12px] py-[10px] text-center text-error-500">
+                  Seat {seatSpacingViolation.seatLabel} cannot be left as a single empty seat next to your selection.
+                </p>
+              )}
             </div>
-
-            <SeatMap
-              seats={seats}
-              selectedSeatIds={selectedSeatIds}
-              onToggleSeat={toggleSeat}
-              columns={8}
-              size="lg"
-            />
-
-            {ticketCount === 0 && (
-              <p className="type-body-xs mt-[20px] text-center text-app-text-muted">
-                Select at least one seat to continue.
-              </p>
-            )}
-
-            {seatSpacingViolation && (
-              <p className="type-body-xs mt-[20px] rounded-tk-4 border border-error-500 bg-app-background px-[12px] py-[10px] text-center text-error-500">
-                Seat {seatSpacingViolation.seatLabel} cannot be left as a single empty seat next to your selection.
-              </p>
-            )}
           </section>
 
-          <aside className="xl:order-3">
-            <div className="sticky top-[24px] rounded-tk-8 border border-app-border bg-app-surface p-[24px]">
-              <div className="flex items-center gap-[10px]">
-                <Ticket className="h-[20px] w-[20px] text-brand" />
-                <h2 className="type-h5 text-app-text">Order Details</h2>
-              </div>
+          <aside className="xl:order-3 xl:pt-[88px]">
+            <div className="sticky top-[24px] p-[4px]">
+              <h2 className="type-body-s text-app-text">Selected Seats</h2>
 
-              <div className="mt-[24px] grid gap-[16px]">
-                <SummaryRow label="Movie" value={movieView.title} />
-                <SummaryRow label="Duration" value={movieView.duration} />
-                <SummaryRow label="Cinema" value={displayCinemaName} />
-                <SummaryRow label="Room" value={showtime.roomName} />
-                <SummaryRow
-                  label="Tickets"
-                  value={`${ticketCount} x ${formatVnd(ticketUnitPrice)}`}
-                />
-              </div>
-
-              <div className="mt-[24px] border-t border-app-border pt-[20px]">
-                <p className="type-body-xs text-app-text-muted">Selected Seats</p>
-                <div className="mt-[8px] min-h-[40px]">
-                  {selectedSeats.length > 0 ? (
-                    <div className="flex flex-wrap gap-[8px]">
-                      {selectedSeats.map((seat) => (
-                        <span
-                          key={getSeatId(seat)}
-                          className="rounded-tk-4 bg-primary-600 px-[10px] py-[5px] type-label-s text-neutral-900"
-                        >
-                          {seat.label}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="type-body-s text-app-text-muted">
-                      No seats selected yet.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-[24px] border-t border-app-border pt-[20px]">
+              <div className="mt-[14px] rounded-tk-4 border border-app-border bg-black/25 px-[12px] py-[11px]">
                 <div className="flex items-center justify-between">
-                  <span className="type-body-s text-app-text-muted">Total</span>
-                  <span className="type-h5 text-app-text">
-                    {formatVnd(totalAmount)}
-                  </span>
+                  <span className="type-body-xs text-app-text-muted">Tickets</span>
+                  <span className="type-body-s text-app-text">{ticketCount}</span>
                 </div>
+              </div>
+
+              <div className="mt-[14px] min-h-[56px] border-b border-app-border pb-[14px]">
+                {selectedSeats.length > 0 ? (
+                  <p className="type-body-xs leading-5 text-secondary-600">
+                    {selectedSeats.map((seat) => seat.label).join(", ")}
+                  </p>
+                ) : (
+                  <p className="type-body-xs text-app-text-muted">No seats selected yet.</p>
+                )}
+              </div>
+
+              <div className="mt-[16px] flex items-center justify-between">
+                <span className="type-body-xs text-app-text">Total Payment</span>
+                <span className="type-body-s text-app-text">{formatVnd(totalAmount)}</span>
               </div>
 
               <Button
@@ -326,7 +306,7 @@ export default function SeatSelectionPage() {
                 variant="primary"
                 rightIcon={<ChevronRight />}
                 disabled={!selectionComplete}
-                className="mt-[24px] w-full"
+                className="mt-[20px] w-full"
                 onClick={() =>
                   {
                     const nextParams = new URLSearchParams({
@@ -350,32 +330,28 @@ export default function SeatSelectionPage() {
                   }
                 }
               >
-                Continue
+                Add to Cart
+              </Button>
+
+              <Button
+                size={40}
+                variant="outline"
+                tone="base"
+                className="mt-[10px] w-full"
+                onClick={() =>
+                  navigate(
+                    `${getMovieBookingPath(movie)}${
+                      selectedDateParam ? `?date=${encodeURIComponent(selectedDateParam)}` : ""
+                    }`
+                  )
+                }
+              >
+                Cancel
               </Button>
             </div>
           </aside>
         </div>
       </main>
-    </div>
-  );
-}
-
-function InfoRow({ icon, label }) {
-  return (
-    <div className="flex items-center gap-[10px]">
-      <span className="flex h-[18px] w-[18px] items-center justify-center text-secondary-600">
-        {icon}
-      </span>
-      <span className="type-body-s">{label}</span>
-    </div>
-  );
-}
-
-function SummaryRow({ label, value }) {
-  return (
-    <div className="flex items-start justify-between gap-[16px]">
-      <span className="type-body-xs text-app-text-muted">{label}</span>
-      <span className="type-body-s text-right text-app-text">{value}</span>
     </div>
   );
 }

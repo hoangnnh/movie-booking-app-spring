@@ -35,7 +35,7 @@ export default function BookingProgress({
               <span
                 className={cn(
                   "h-[20px] w-[20px] rounded-full border transition-colors",
-                  isCompleted && "border-app-text bg-app-text",
+                  isCompleted && "border-brand bg-brand",
                   isActive && "border-primary-600 bg-primary-600",
                   !isCompleted &&
                   !isActive &&
