@@ -107,6 +107,7 @@ public class SecurityConfig {
                         .requestMatchers(GET, "/api/payments/**").permitAll()
                         .requestMatchers(POST, "/api/payments/**").permitAll()
                         .requestMatchers(GET, "/api/movies/**", "/api/showtimes/**").permitAll()
+                        .requestMatchers(POST, "/api/movies/*/reviews").authenticated()
                         .requestMatchers("/api/tmdb/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/bookings", "/api/bookings/**", "/api/users/**").authenticated()
