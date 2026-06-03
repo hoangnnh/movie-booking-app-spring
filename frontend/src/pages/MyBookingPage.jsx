@@ -193,7 +193,7 @@ export default function MyBookingPage({ onRequireAuth }) {
             )}
 
             {!loading && !error && upcomingBookings.length > 0 && (
-              <section>
+              <section className="w-full">
                 <h1 className="type-h5 mb-[22px] text-app-text">Upcoming Tickets And Orders</h1>
 
                 <div className="flex flex-col gap-[12px]">
@@ -218,7 +218,7 @@ export default function MyBookingPage({ onRequireAuth }) {
             )}
 
             {!loading && !error && pastBookings.length > 0 && (
-              <section>
+              <section className="w-full">
                 <h2 className="type-h5 mb-[22px] text-app-text">Past Tickets And Orders</h2>
 
                 <div className="grid gap-[12px]">
@@ -266,7 +266,7 @@ function BookingDetailModal({ booking, onClose, onBrowseMovies }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-[16px] backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-[16px] backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -275,31 +275,31 @@ function BookingDetailModal({ booking, onClose, onBrowseMovies }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="booking-details-title"
-      className="relative max-h-[calc(100vh-32px)] w-full max-w-[980px] overflow-y-auto rounded-tk-12 border border-app-border bg-app-surface/95 p-[24px] shadow-[0_24px_80px_rgba(0,0,0,0.48)]"
+      className="relative max-h-[calc(100vh-32px)] w-full max-w-[820px] overflow-y-auto rounded-tk-8 border border-app-border bg-app-surface/95 p-[18px] shadow-[0_20px_64px_rgba(0,0,0,0.36)]"
     >
       <button
         type="button"
         aria-label="Close booking details"
-        className="absolute right-[18px] top-[18px] flex h-[36px] w-[36px] items-center justify-center rounded-full border border-app-border text-app-text-muted transition-colors hover:border-app-text hover:text-app-text"
+        className="absolute right-[14px] top-[14px] flex h-[32px] w-[32px] items-center justify-center rounded-full border border-app-border text-app-text-muted transition-colors hover:border-app-text hover:text-app-text"
         onClick={onClose}
       >
         <X className="h-[18px] w-[18px]" />
       </button>
-      <div className="flex flex-wrap items-start justify-between gap-[16px]">
-        <div className="pr-[52px]">
+      <div className="flex flex-wrap items-start justify-between gap-[12px]">
+        <div className="pr-[44px]">
           <p className="type-label-s text-brand">BOOKING DETAILS</p>
-          <h2 id="booking-details-title" className="type-h4 mt-[6px] text-app-text">{booking.movieTitle}</h2>
-          <p className="type-body-s mt-[8px] text-app-text-muted">
+          <h2 id="booking-details-title" className="type-h5 mt-[5px] max-w-[620px] text-app-text">{booking.movieTitle}</h2>
+          <p className="type-body-xs mt-[6px] text-app-text-muted">
             Booking {String(booking.id).slice(0, 8).toUpperCase()} / Created {booking.bookedAtLabel}
           </p>
         </div>
 
-        <div className="rounded-full border border-app-border px-[12px] py-[8px] type-body-xs text-app-text-muted">
+        <div className="rounded-full border border-app-border px-[10px] py-[6px] type-body-xs text-app-text-muted">
           {booking.status} / {booking.paymentStatus}
         </div>
       </div>
 
-      <div className="mt-[24px] grid gap-[12px] md:grid-cols-2">
+      <div className="mt-[16px] grid gap-[10px] md:grid-cols-2">
         <DetailCard
           icon={CalendarDays}
           label="Showtime"
@@ -322,19 +322,19 @@ function BookingDetailModal({ booking, onClose, onBrowseMovies }) {
         />
       </div>
 
-      <div className="mt-[24px] grid gap-[16px] xl:grid-cols-[minmax(0,1fr)_260px]">
-        <div className="rounded-tk-8 border border-app-border bg-app-background p-[18px]">
+      <div className="mt-[16px] grid gap-[14px] lg:grid-cols-[minmax(0,1fr)_230px]">
+        <div className="rounded-tk-8 border border-app-border bg-app-background p-[14px]">
           <div className="flex items-center gap-[10px]">
             <Receipt className="h-[18px] w-[18px] text-brand" />
             <h3 className="type-h6 text-app-text">Ticket Codes</h3>
           </div>
 
-          <div className="mt-[14px] grid gap-[10px]">
+          <div className="mt-[12px] grid gap-[8px]">
             {(booking.tickets || []).length > 0 ? (
               (booking.tickets || []).map((ticket) => (
                 <div
                   key={ticket.id}
-                  className="flex items-center justify-between gap-[12px] rounded-tk-4 border border-app-border bg-app-surface px-[14px] py-[12px]"
+                  className="flex items-center justify-between gap-[12px] rounded-tk-4 border border-app-border bg-app-surface px-[12px] py-[10px]"
                 >
                   <div>
                     <p className="type-body-s text-app-text">Seat {ticket.seatLabel}</p>
@@ -360,17 +360,17 @@ function BookingDetailModal({ booking, onClose, onBrowseMovies }) {
           </div>
         </div>
 
-        <div className="rounded-tk-8 border border-app-border bg-app-background p-[18px]">
+        <div className="rounded-tk-8 border border-app-border bg-app-background p-[14px]">
           <p className="type-body-xs text-app-text-muted">Order Number</p>
           <p className="type-body-m mt-[5px] text-app-text">{orderNumber}</p>
-          <TicketBarcode value={booking.id} className="mt-[14px]" />
+          <TicketBarcode value={booking.id} className="mt-[10px]" />
 
-          <div className="mt-[20px] flex items-center gap-[10px]">
+          <div className="mt-[16px] flex items-center gap-[10px]">
             <Popcorn className="h-[18px] w-[18px] text-brand" />
             <h3 className="type-h6 text-app-text">Payment Summary</h3>
           </div>
 
-          <div className="mt-[14px] grid gap-[12px]">
+          <div className="mt-[12px] grid gap-[9px]">
             <SummaryRow label={`Tickets (${ticketCount})`} value={formatVnd(booking.ticketAmount)} />
             <SummaryRow label="Food & Drink" value={formatVnd(booking.foodAmount)} />
             {(booking.foodItems || []).map((item) => (
@@ -383,14 +383,14 @@ function BookingDetailModal({ booking, onClose, onBrowseMovies }) {
             <SummaryRow label="Total" value={formatVnd(booking.totalAmount)} emphasized />
           </div>
 
-          <div className="mt-[18px] rounded-tk-4 border border-app-border bg-app-surface px-[12px] py-[10px]">
+          <div className="mt-[14px] rounded-tk-4 border border-app-border bg-app-surface px-[10px] py-[8px]">
             <div className="flex items-center gap-[8px] text-app-text-muted">
               <ShieldCheck className="h-[16px] w-[16px] text-secondary-600" />
               <span className="type-body-xs">Payment status: {booking.paymentStatus}</span>
             </div>
           </div>
 
-          <div className="mt-[12px] rounded-tk-4 border border-app-border bg-app-surface px-[12px] py-[10px]">
+          <div className="mt-[8px] rounded-tk-4 border border-app-border bg-app-surface px-[10px] py-[8px]">
             <div className="flex items-center gap-[8px] text-app-text-muted">
               <Clock3 className="h-[16px] w-[16px] text-secondary-600" />
               <span className="type-body-xs">Booked on {booking.bookedAtLabel}</span>
@@ -399,7 +399,7 @@ function BookingDetailModal({ booking, onClose, onBrowseMovies }) {
         </div>
       </div>
 
-      <div className="mt-[24px] flex flex-wrap gap-[12px]">
+      <div className="mt-[16px] flex flex-wrap gap-[10px]">
         <Button size={40} onClick={onClose}>
           Close Details
         </Button>
@@ -414,12 +414,12 @@ function BookingDetailModal({ booking, onClose, onBrowseMovies }) {
 
 function DetailCard({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-tk-8 border border-app-border bg-app-background p-[16px]">
+    <div className="rounded-tk-4 border border-app-border bg-app-background p-[12px]">
       <div className="flex items-center gap-[8px] text-brand">
         <Icon className="h-[18px] w-[18px]" />
         <span className="type-body-xs text-app-text-muted">{label}</span>
       </div>
-      <p className="type-body-m mt-[10px] text-app-text">{value}</p>
+      <p className="type-body-s mt-[8px] text-app-text">{value}</p>
     </div>
   );
 }

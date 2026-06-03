@@ -19,10 +19,10 @@ const statusMap = {
 };
 
 const theaterStatusMap = {
-  available: "border-transparent bg-transparent text-[#f4f1df] hover:border-transparent hover:text-primary-600",
+  available: "border-transparent bg-transparent text-app-background hover:border-transparent hover:text-primary-600",
   selected: "border-transparent bg-transparent text-primary-600 hover:border-transparent",
-  booked: "cursor-not-allowed border-transparent bg-transparent text-[#59590a]",
-  disabled: "cursor-not-allowed border-transparent bg-transparent text-neutral-600",
+  booked: "cursor-not-allowed border-transparent bg-transparent text-brand-dark",
+  disabled: "cursor-not-allowed border-transparent bg-transparent text-app-text-subtle",
 };
 
 export default function SeatButton({

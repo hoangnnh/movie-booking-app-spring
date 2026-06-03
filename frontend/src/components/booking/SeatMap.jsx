@@ -18,8 +18,8 @@ export default function SeatMap({
       {isTheater ? (
         <div className="mb-[34px] flex justify-center">
           <div className="w-[72%]">
-            <div className="h-[38px] bg-neutral-600 [clip-path:polygon(0_0,100%_0,86%_100%,14%_100%)]" />
-            <p className="mt-[-25px] text-center type-body-xs text-neutral-300">Stage</p>
+            <div className="h-[38px] bg-app-surface-soft [clip-path:polygon(0_0,100%_0,86%_100%,14%_100%)]" />
+            <p className="mt-[-25px] text-center type-body-xs text-app-text-muted">Stage</p>
           </div>
         </div>
       ) : (

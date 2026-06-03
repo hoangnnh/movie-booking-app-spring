@@ -216,7 +216,7 @@ export default function SeatSelectionPage() {
 
         <div className="grid gap-[20px] xl:grid-cols-[220px_minmax(0,1fr)_250px]">
           <aside className="xl:order-1">
-            <div className="sticky top-[24px] overflow-hidden border border-app-border bg-black/35">
+            <div className="sticky top-[24px] overflow-hidden border border-app-border bg-app-surface/80 shadow-sm">
               <div className="p-[14px] pb-[10px]">
                 <h1 className="type-h5 text-app-text">{movieView.title}</h1>
                 <div className="mt-[6px] flex flex-wrap items-center gap-[7px] type-body-xs text-app-text-muted">
@@ -251,7 +251,7 @@ export default function SeatSelectionPage() {
           <section className="xl:order-2 min-w-0">
             <BookingProgress currentStep={0} className="mb-[28px]" />
 
-            <div className="min-h-[440px] bg-black/25 px-[18px] py-[28px]">
+            <div className="min-h-[440px] border border-app-border bg-app-surface/55 px-[18px] py-[28px] shadow-sm">
               <SeatMap
                 seats={seats}
                 selectedSeatIds={selectedSeatIds}
@@ -279,7 +279,7 @@ export default function SeatSelectionPage() {
             <div className="sticky top-[24px] p-[4px]">
               <h2 className="type-body-s text-app-text">Selected Seats</h2>
 
-              <div className="mt-[14px] rounded-tk-4 border border-app-border bg-black/25 px-[12px] py-[11px]">
+              <div className="mt-[14px] rounded-tk-4 border border-app-border bg-app-surface/70 px-[12px] py-[11px]">
                 <div className="flex items-center justify-between">
                   <span className="type-body-xs text-app-text-muted">Tickets</span>
                   <span className="type-body-s text-app-text">{ticketCount}</span>

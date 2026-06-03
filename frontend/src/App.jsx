@@ -66,9 +66,12 @@ export default function App() {
         <Route path="/cinemas" element={<CinemasPage />} />
         <Route
           path="/movies/:movieRef"
-          element={<MovieDetailPage />}
+          element={<MovieDetailPage onRequireAuth={() => setAuthMode("login")} />}
         />
-        <Route path="/booking/:movieRef" element={<MovieDetailPage />} />
+        <Route
+          path="/booking/:movieRef"
+          element={<MovieDetailPage onRequireAuth={() => setAuthMode("login")} />}
+        />
         <Route
           path="/my-booking"
           element={<MyBookingPage onRequireAuth={() => setAuthMode("login")} />}

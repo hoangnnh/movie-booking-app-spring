@@ -14,12 +14,12 @@ export default function UpcomingBookingCard({
   return (
     <article
       className={cn(
-        "flex items-center justify-between gap-[24px]",
+        "flex w-full items-center justify-between gap-[24px]",
         "rounded-tk-8 border border-app-border bg-app-surface p-[16px] transition-colors hover:border-app-text hover:bg-app-surface-soft",
         className
       )}
     >
-      <div className="flex min-w-0 items-center gap-[16px]">
+      <div className="flex min-w-0 flex-1 items-center gap-[16px]">
         <div className="h-[72px] w-[56px] shrink-0 overflow-hidden rounded-tk-4 bg-app-surface">
           {posterUrl ? (
             <img
@@ -32,7 +32,7 @@ export default function UpcomingBookingCard({
           )}
         </div>
 
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h3 className="type-h6 truncate text-app-text">{movieTitle}</h3>
           <p className="type-body-xs mt-[4px] text-app-text-muted">
             {dateTime}
@@ -40,7 +40,7 @@ export default function UpcomingBookingCard({
         </div>
       </div>
 
-      <div className="hidden min-w-0 flex-1 lg:block">
+      <div className="hidden min-w-0 basis-[260px] lg:block">
         <div className="flex items-center gap-[6px] text-app-text-muted">
           <MapPin className="h-[14px] w-[14px]" />
           <span className="type-body-xs truncate">{cinemaName}</span>
@@ -52,7 +52,7 @@ export default function UpcomingBookingCard({
         </div>
       </div>
 
-      <Button size={28} variant="outline" tone="base" onClick={onViewDetails}>
+      <Button size={28} variant="outline" tone="base" className="shrink-0" onClick={onViewDetails}>
         View Details
       </Button>
     </article>
