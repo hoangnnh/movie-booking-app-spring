@@ -30,8 +30,8 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError("Your new password must be at least 6 characters.");
+    if (newPassword.length < 8) {
+      setError("Your new password must be at least 8 characters.");
       return;
     }
 

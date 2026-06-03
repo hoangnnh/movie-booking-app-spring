@@ -66,6 +66,12 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
         setError("Please fill in all fields.");
         return;
       }
+
+      if (newPassword.length < 8) {
+        setError("Your new password must be at least 8 characters.");
+        return;
+      }
+
       try {
         setLoading(true);
         await authApi.resetPassword({ token: resetToken.trim(), newPassword: newPassword.trim() });
@@ -84,6 +90,11 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
 
     if (!email.trim() || !password.trim() || (!isLogin && !fullName.trim())) {
       setError("Please fill in all required fields.");
+      return;
+    }
+
+    if (!isLogin && password.length < 8) {
+      setError("Your password must be at least 8 characters.");
       return;
     }
 
@@ -280,7 +291,7 @@ export default function AuthModal({ mode = "login", onModeChange, onClose }) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Password"
-                    informationText={isLogin ? "" : "Use at least 6 characters."}
+                    informationText={isLogin ? "" : "Use at least 8 characters."}
                   />
                 </div>
 
@@ -464,7 +475,7 @@ function ResetStep({ token, onTokenChange, newPassword, onPasswordChange, onBack
       </p>
       <div className="grid gap-2.5">
         <EmailField label="Reset token" type="text" value={token} onChange={onTokenChange} placeholder="Paste token from email" informationText="" />
-        <EmailField label="New password" type="password" value={newPassword} onChange={onPasswordChange} placeholder="New password" informationText="Use at least 6 characters." />
+        <EmailField label="New password" type="password" value={newPassword} onChange={onPasswordChange} placeholder="New password" informationText="Use at least 8 characters." />
       </div>
     </div>
   );

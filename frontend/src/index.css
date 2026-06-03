@@ -245,7 +245,7 @@
         background: var(--color-app-background);
     }
 
-    .cinematick-logo {
+    .cinematick-logo-mark {
         filter: invert(1);
     }
 
@@ -275,7 +275,7 @@
         --color-info-soft: #d7ece7;
     }
 
-    html[data-theme="light"] .cinematick-logo {
+    html[data-theme="light"] .cinematick-logo-mark {
         filter: none;
     }
 

@@ -36,6 +36,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final NotificationService notificationService;
+    private final EmailService emailService;
 
     @Value("${app.auth.verification-token-expiry-hours:24}")
     private long verificationTokenExpiryHours;
@@ -290,11 +291,6 @@ public class AuthService {
 
         return avatarUrl;
     }
-
-    // Thêm dependency
-    private final EmailService emailService;
-
-
 
     // ── Confirm email ─────────────────────────────────────────
     @Transactional
