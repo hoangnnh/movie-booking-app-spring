@@ -197,11 +197,27 @@ export const movieApi = {
 
   getShowtimes: (movieId) => apiRequest(`/movies/${movieId}/showtimes`),
 
+  getReviews: (movieId) => apiRequest(`/movies/${movieId}/reviews`),
+
+  saveReview: (movieId, data) =>
+    apiRequest(`/movies/${movieId}/reviews`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   getSimilar: (movieId, limit = 8) =>
     apiRequest(`/movies/${movieId}/similar?limit=${limit}`),
 
   getRecommendations: (userId, limit = 10) =>
     apiRequest(`/users/${userId}/recommendations?limit=${limit}`),
+};
+
+export const aiAdvisorApi = {
+  ask: ({ message, currentMovieId = null }) =>
+    apiRequest("/ai/movie-advisor", {
+      method: "POST",
+      body: JSON.stringify({ message, currentMovieId }),
+    }),
 };
 
 export const cinemaApi = {
@@ -253,6 +269,14 @@ export const adminApi = {
       method: "DELETE",
     }),
 
+  deleteMovies: ({ ids, password }) =>
+    apiRequest("/admin/movies/bulk", {
+      method: "DELETE",
+      body: JSON.stringify({ ids, password }),
+    }),
+
+  getMovieOptions: () => apiRequest("/admin/movie-options"),
+
   getUsers: ({ page = 0, size = 20 } = {}) =>
     apiRequest(`/admin/users?page=${page}&size=${size}`),
 
@@ -267,6 +291,12 @@ export const adminApi = {
   deleteUser: (userId) =>
     apiRequest(`/admin/users/${userId}`, {
       method: "DELETE",
+    }),
+
+  deleteUsers: ({ ids, password }) =>
+    apiRequest("/admin/users/bulk", {
+      method: "DELETE",
+      body: JSON.stringify({ ids, password }),
     }),
 
   getBookings: ({ page = 0, size = 20 } = {}) =>
