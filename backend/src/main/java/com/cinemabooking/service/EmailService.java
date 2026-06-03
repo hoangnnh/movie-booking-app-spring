@@ -46,6 +46,12 @@ public class EmailService {
     @Value("${app.email.resend.base-url}")
     private String resendBaseUrl;
 
+    @Value("${app.email.brevo.api-key:}")
+    private String brevoApiKey;
+
+    @Value("${app.email.brevo.base-url}")
+    private String brevoBaseUrl;
+
     @Value("${app.email.console-fallback:false}")
     private boolean consoleFallback;
 
@@ -77,6 +83,11 @@ public class EmailService {
             return;
         }
 
+        if (isBrevoEnabled()) {
+            sendWithBrevo(to, subject, body);
+            return;
+        }
+
         if (isSmtpEnabled()) {
             sendWithSmtp(to, subject, body);
             return;
@@ -93,6 +104,11 @@ public class EmailService {
     private boolean isSmtpEnabled() {
         return "smtp".equalsIgnoreCase(emailProvider) ||
                 ("auto".equalsIgnoreCase(emailProvider) && StringUtils.hasText(smtpUsername));
+    }
+
+    private boolean isBrevoEnabled() {
+        return "brevo".equalsIgnoreCase(emailProvider) ||
+                ("auto".equalsIgnoreCase(emailProvider) && StringUtils.hasText(brevoApiKey));
     }
 
     private void sendWithResend(String to, String subject, String body) {
@@ -156,6 +172,52 @@ public class EmailService {
         }
     }
 
+    private void sendWithBrevo(String to, String subject, String body) {
+        if (!StringUtils.hasText(brevoApiKey) || !StringUtils.hasText(fromEmail)) {
+            handleMissingEmailConfig(to, subject, body);
+            return;
+        }
+
+        EmailAddress sender = parseSender(fromEmail);
+
+        try {
+            RestClient.builder()
+                    .baseUrl(brevoBaseUrl)
+                    .defaultHeader("api-key", brevoApiKey)
+                    .defaultHeader(HttpHeaders.USER_AGENT, "cinematick-backend/1.0")
+                    .build()
+                    .post()
+                    .uri("/v3/smtp/email")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new BrevoEmailRequest(
+                            sender,
+                            new EmailAddress[]{new EmailAddress(to, null)},
+                            subject,
+                            toHtml(body),
+                            body
+                    ))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException ex) {
+            log.warn(
+                    "Brevo email delivery failed. Status: {}, Response: {}",
+                    ex.getStatusCode(),
+                    ex.getResponseBodyAsString()
+            );
+            throw new ResponseStatusException(
+                    SERVICE_UNAVAILABLE,
+                    "Email delivery failed through Brevo. Please check the backend logs for the Brevo response.",
+                    ex
+            );
+        } catch (RuntimeException ex) {
+            throw new ResponseStatusException(
+                    SERVICE_UNAVAILABLE,
+                    "Email delivery failed through Brevo. Please check the Brevo API key, sender, and recipient settings.",
+                    ex
+            );
+        }
+    }
+
     private void handleMissingEmailConfig(String to, String subject, String body) {
         if (consoleFallback) {
             log.warn(
@@ -182,12 +244,41 @@ public class EmailService {
                 + "</p>";
     }
 
+    private EmailAddress parseSender(String value) {
+        String trimmedValue = value.trim();
+        int openBracketIndex = trimmedValue.indexOf('<');
+        int closeBracketIndex = trimmedValue.indexOf('>');
+
+        if (openBracketIndex >= 0 && closeBracketIndex > openBracketIndex) {
+            String name = trimmedValue.substring(0, openBracketIndex).trim();
+            String email = trimmedValue.substring(openBracketIndex + 1, closeBracketIndex).trim();
+            return new EmailAddress(email, name.isBlank() ? null : name);
+        }
+
+        return new EmailAddress(trimmedValue, null);
+    }
+
     private record ResendEmailRequest(
             String from,
             String[] to,
             String subject,
             String html,
             String text
+    ) {
+    }
+
+    private record BrevoEmailRequest(
+            EmailAddress sender,
+            EmailAddress[] to,
+            String subject,
+            String htmlContent,
+            String textContent
+    ) {
+    }
+
+    private record EmailAddress(
+            String email,
+            String name
     ) {
     }
 }
