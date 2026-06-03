@@ -278,6 +278,68 @@ export const adminApi = {
     apiRequest(`/admin/bookings/${bookingId}`, {
       method: "DELETE",
     }),
+
+  deleteBookings: ({ ids, password }) =>
+    apiRequest("/admin/bookings/bulk", {
+      method: "DELETE",
+      body: JSON.stringify({ ids, password }),
+    }),
+
+  getRooms: () => apiRequest("/admin/rooms"),
+
+  getShowtimes: ({
+    page = 0,
+    size = 20,
+    movieId = "",
+    cinemaId = "",
+    roomId = "",
+    fromDate = "",
+    toDate = "",
+    includeExpired = false,
+  } = {}) => {
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(size),
+      includeExpired: String(includeExpired),
+    });
+
+    if (movieId) params.set("movieId", movieId);
+    if (cinemaId) params.set("cinemaId", cinemaId);
+    if (roomId) params.set("roomId", roomId);
+    if (fromDate) params.set("fromDate", fromDate);
+    if (toDate) params.set("toDate", toDate);
+
+    return apiRequest(`/admin/showtimes?${params.toString()}`);
+  },
+
+  createShowtime: (data) =>
+    apiRequest("/admin/showtimes", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateShowtime: (showtimeId, data) =>
+    apiRequest(`/admin/showtimes/${showtimeId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteShowtime: (showtimeId) =>
+    apiRequest(`/admin/showtimes/${showtimeId}`, {
+      method: "DELETE",
+    }),
+
+  createShowtimesBulk: (data) =>
+    apiRequest("/admin/showtimes/bulk", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deleteExpiredUnbookedShowtimes: ({ password, before }) =>
+    apiRequest("/admin/showtimes/expired-unbooked", {
+      method: "DELETE",
+      body: JSON.stringify({ password, before }),
+    }),
 };
 
 export const showtimeApi = {

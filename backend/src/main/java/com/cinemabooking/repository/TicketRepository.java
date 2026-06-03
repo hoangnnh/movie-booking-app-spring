@@ -50,4 +50,6 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
     );
 
     long countByShowtime_Movie_Id(UUID movieId);
+
+    long countByShowtime_Id(UUID showtimeId);
 }
