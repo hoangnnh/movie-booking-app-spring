@@ -13,12 +13,14 @@ import { formatDuration, getPosterUrl } from "../components/home/homeUtils";
 import { getEmbeddedTrailerUrl } from "../components/movieDetail/trailerUtils";
 import { getMovieDetailPath } from "../utils/moviePath";
 
-export default function MovieDetailPage() {
+export default function MovieDetailPage({ onRequireAuth }) {
   const { movieRef } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [movie, setMovie] = useState(null);
+  const [reviewsData, setReviewsData] = useState(null);
   const [showtimes, setShowtimes] = useState([]);
   const [nowPlayingMovies, setNowPlayingMovies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,10 +34,14 @@ export default function MovieDetailPage() {
         setError("");
 
         const movieData = await movieApi.getById(movieRef);
-        const showtimeData = await movieApi.getShowtimes(movieData.id);
+        const [showtimeData, reviewData] = await Promise.all([
+          movieApi.getShowtimes(movieData.id),
+          movieApi.getReviews(movieData.id),
+        ]);
 
         setMovie(movieData);
         setShowtimes(showtimeData);
+        setReviewsData(reviewData);
       } catch {
         setError("Cannot load movie details.");
       } finally {
@@ -45,6 +51,26 @@ export default function MovieDetailPage() {
 
     loadMovieDetail();
   }, [movieRef]);
+
+  async function handleReviewSaved(review) {
+    setReviewsData((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const reviews = current.reviews || [];
+      const nextReviews = [
+        { ...review, currentUserReview: true },
+        ...reviews.filter((item) => item.id !== review.id),
+      ];
+
+      return {
+        ...current,
+        reviews: nextReviews,
+        summary: summarizeReviews(nextReviews),
+      };
+    });
+  }
 
   useEffect(() => {
     let ignore = false;
@@ -168,7 +194,14 @@ export default function MovieDetailPage() {
 
       <MovieSummarySection movie={computedMovie} />
       <CastSection cast={computedMovie.cast} />
-      <ReviewsSection score={computedMovie.rating} />
+      <ReviewsSection
+        movieId={computedMovie.id}
+        score={computedMovie.rating}
+        reviewsData={reviewsData}
+        user={user}
+        onRequireAuth={onRequireAuth}
+        onReviewSaved={handleReviewSaved}
+      />
       <ShowtimesSection showtimes={showtimes} bookingAvailable={bookingAvailable} />
       {visibleNowPlayingMovies.length > 0 && (
         <MovieSection
@@ -221,4 +254,21 @@ export default function MovieDetailPage() {
       )}
     </div>
   );
+}
+
+function summarizeReviews(reviews) {
+  const totalReviews = reviews.length;
+  const totalScore = reviews.reduce((sum, review) => sum + Number(review.score || 0), 0);
+  const averageScore = totalReviews === 0 ? 0 : totalScore / totalReviews;
+
+  return {
+    totalReviews,
+    averageScore,
+    positiveReviews: reviews.filter((review) => Number(review.score) >= 8).length,
+    averageReviews: reviews.filter((review) => {
+      const score = Number(review.score);
+      return score >= 5 && score < 8;
+    }).length,
+    negativeReviews: reviews.filter((review) => Number(review.score) < 5).length,
+  };
 }
