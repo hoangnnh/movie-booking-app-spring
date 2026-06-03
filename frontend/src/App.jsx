@@ -4,6 +4,7 @@ import AuthModal from "./components/auth/AuthModal";
 import AdminRoute from "./components/auth/AdminRoute";
 import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
+import MovieAdvisorChat from "./components/ai/MovieAdvisorChat";
 import { useAuth } from "./context/useAuth";
 import { useTheme } from "./context/useTheme";
 import HomePage from "./pages/HomePage";
@@ -106,6 +107,8 @@ export default function App() {
       </Routes>
 
       {!hideFooter && <Footer variant="plain" />}
+
+      {!isAdminPage && <MovieAdvisorChat />}
 
       {authMode && (
         <AuthModal
